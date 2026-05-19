@@ -1,0 +1,27 @@
+cache = true
+max_cache_age = "1d"
+max_concurrency = 8
+max_redirects = 5
+timeout = 20
+retry_wait_time = 2
+accept = [200, 204, 206, 301, 302, 303, 307, 308, 429]
+no_progress = true
+include_verbatim = false
+include_fragments = false
+exclude_path = [
+  "node_modules",
+  ".git",
+  "target",
+  "dist",
+  "build",
+]
+exclude = [
+  '^https?://localhost',
+  '^https?://127\.0\.0\.1',
+  '^https?://0\.0\.0\.0',
+  '^https?://example\.(com|org|net)',
+  '^mailto:',
+  # GitHub Discussions returns 404 when the feature is disabled on a repo;
+  # we link to it preemptively so contributors find it once enabled.
+  '/discussions/?$',
+]

@@ -1,0 +1,37 @@
+[default]
+# Skip short identifiers that look like typos but are domain-relevant.
+extend-ignore-identifiers-re = [
+  "^(bid|ask|qty|px|tif|gtc|ioc|fok|seq|spsc|mpsc|crtp|sfinae|nvi|aad)$",
+]
+
+[default.extend-words]
+# Words that are real in this project even though typos flags them.
+fo = "fo"      # boost::intrusive abbreviations
+fpe = "fpe"    # floating-point exception
+nd = "nd"      # boost::intrusive::auto_unlink + others
+sps = "sps"    # samples-per-second
+crate = "crate"
+
+[files]
+extend-exclude = [
+  ".git/",
+  ".venv/",
+  "node_modules/",
+  "dist/",
+  "build/",
+  "build-*/",
+  "target/",
+  "vcpkg_installed/",
+  "*.svg",
+  "*.lock",
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "poetry.lock",
+  "Cargo.lock",
+  "go.sum",
+  "uv.lock",
+  # External fixture data: ITCH samples and replay logs are not source.
+  "data/",
+  "tests/fixtures/",
+]
