@@ -197,13 +197,19 @@ TEST_CASE("hier_bitmap prev_set_at_or_before edge cases", "[bitmap]") {
     REQUIRE(bm.prev_set_at_or_before(0) == 0);
 }
 
-TEST_CASE("hier_bitmap next / prev walk monotonically across a four-tier configuration", "[bitmap]") {
+TEST_CASE("hier_bitmap next / prev walk monotonically across a four-tier configuration",
+          "[bitmap]") {
     constexpr std::size_t cap = 1U << 20;
     hier_bitmap<cap> bm;
 
     // Set bits across L0 word boundaries and tier transitions.
     const std::array<std::size_t, 6> bits{
-        0, 63, 64, 4096, 262'143, cap - 1,
+        0,
+        63,
+        64,
+        4096,
+        262'143,
+        cap - 1,
     };
     for (auto b : bits)
         bm.set(b);
@@ -264,9 +270,8 @@ TEST_CASE("hier_bitmap next / prev differential against std::set", "[bitmap][pro
 
         const auto next_actual = bm.next_set_at_or_after(q);
         const auto it_next = oracle.lower_bound(q);
-        const auto next_expected = (it_next == oracle.end())
-                                       ? std::nullopt
-                                       : std::optional<std::size_t>{*it_next};
+        const auto next_expected =
+            (it_next == oracle.end()) ? std::nullopt : std::optional<std::size_t>{*it_next};
         REQUIRE(next_actual == next_expected);
 
         const auto prev_actual = bm.prev_set_at_or_before(q);

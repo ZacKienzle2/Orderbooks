@@ -5,42 +5,46 @@
 
 #include "recording_publisher.hpp"
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_all.hpp>
-
 #include <cstddef>
 #include <cstdint>
 #include <random>
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
+
 namespace {
 
-constexpr std::size_t ticks   = 256;
+constexpr std::size_t ticks = 256;
 constexpr std::size_t max_ord = 256;
 
-using pub_t  = lob::test::recording_publisher;
-using eng_t  = lob::engine<pub_t, ticks, max_ord>;
+using pub_t = lob::test::recording_publisher;
+using eng_t = lob::engine<pub_t, ticks, max_ord>;
 
-lob::submit_msg sub_with_account(
-    lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s,
-    lob::account_id_t acct, lob::tif t = lob::tif::gtc) {
+lob::submit_msg sub_with_account(lob::order_id_t id,
+                                 lob::tick_t px,
+                                 lob::qty_t qty,
+                                 lob::side s,
+                                 lob::account_id_t acct,
+                                 lob::tif t = lob::tif::gtc) {
     return {.id = id, .px = px, .qty = qty, .s = s, .t = t, ._pad = 0, .account_id = acct};
 }
 
 void seed(eng_t& eng, std::uint64_t key) {
     std::mt19937_64 rng{key};
     std::uniform_int_distribution<lob::tick_t> px{0, ticks - 1};
-    std::uniform_int_distribution<lob::qty_t>  qty{1, 50};
-    std::uniform_int_distribution<int>         side_dist{0, 1};
-    std::uniform_int_distribution<int>         acct_dist{1, 3};
+    std::uniform_int_distribution<lob::qty_t> qty{1, 50};
+    std::uniform_int_distribution<int> side_dist{0, 1};
+    std::uniform_int_distribution<int> acct_dist{1, 3};
     for (lob::order_id_t id = 1; id <= 60; ++id) {
-        eng.on_submit(sub_with_account(
-            id, px(rng), qty(rng),
-            (side_dist(rng) == 0) ? lob::side::bid : lob::side::ask,
-            static_cast<lob::account_id_t>(acct_dist(rng))));
+        eng.on_submit(sub_with_account(id,
+                                       px(rng),
+                                       qty(rng),
+                                       (side_dist(rng) == 0) ? lob::side::bid : lob::side::ask,
+                                       static_cast<lob::account_id_t>(acct_dist(rng))));
     }
 }
 
-void require_books_equal(eng_t const& a, eng_t const& b) {
+void require_books_equal(const eng_t& a, const eng_t& b) {
     REQUIRE(a.book_view().bids().best() == b.book_view().bids().best());
     REQUIRE(a.book_view().asks().best() == b.book_view().asks().best());
     for (lob::tick_t px = 0; px < ticks; ++px) {
@@ -70,7 +74,8 @@ TEST_CASE("engine snapshot round-trip preserves book state", "[engine][snapshot]
     REQUIRE(engine_a.last_seq() == engine_b.last_seq());
 }
 
-TEST_CASE("engine snapshot continues to produce identical events after warm start", "[engine][snapshot]") {
+TEST_CASE("engine snapshot continues to produce identical events after warm start",
+          "[engine][snapshot]") {
     pub_t pub_a;
     eng_t engine_a{pub_a, lob::engine_config{}};
     seed(engine_a, 0xC0FFEEULL);
@@ -91,13 +96,17 @@ TEST_CASE("engine snapshot continues to produce identical events after warm star
     std::mt19937_64 rng_a{0xFEEDFACE};
     std::mt19937_64 rng_b{0xFEEDFACE};
     std::uniform_int_distribution<lob::tick_t> px{0, ticks - 1};
-    std::uniform_int_distribution<lob::qty_t>  qty{1, 30};
-    std::uniform_int_distribution<int>         side_dist{0, 1};
+    std::uniform_int_distribution<lob::qty_t> qty{1, 30};
+    std::uniform_int_distribution<int> side_dist{0, 1};
     for (lob::order_id_t id = 1'000; id < 1'050; ++id) {
-        auto m_a = sub_with_account(id, px(rng_a), qty(rng_a),
+        auto m_a = sub_with_account(id,
+                                    px(rng_a),
+                                    qty(rng_a),
                                     (side_dist(rng_a) == 0) ? lob::side::bid : lob::side::ask,
                                     /*acct=*/1);
-        auto m_b = sub_with_account(id, px(rng_b), qty(rng_b),
+        auto m_b = sub_with_account(id,
+                                    px(rng_b),
+                                    qty(rng_b),
                                     (side_dist(rng_b) == 0) ? lob::side::bid : lob::side::ask,
                                     /*acct=*/1);
         REQUIRE(m_a.px == m_b.px);
@@ -109,9 +118,9 @@ TEST_CASE("engine snapshot continues to produce identical events after warm star
     for (std::size_t i = 0; i < pub_a.fills.size(); ++i) {
         REQUIRE(pub_a.fills[i].maker == pub_b.fills[i].maker);
         REQUIRE(pub_a.fills[i].taker == pub_b.fills[i].taker);
-        REQUIRE(pub_a.fills[i].px    == pub_b.fills[i].px);
-        REQUIRE(pub_a.fills[i].qty   == pub_b.fills[i].qty);
-        REQUIRE(pub_a.fills[i].seq   == pub_b.fills[i].seq);
+        REQUIRE(pub_a.fills[i].px == pub_b.fills[i].px);
+        REQUIRE(pub_a.fills[i].qty == pub_b.fills[i].qty);
+        REQUIRE(pub_a.fills[i].seq == pub_b.fills[i].seq);
     }
     require_books_equal(engine_a, engine_b);
 }
@@ -151,7 +160,7 @@ TEST_CASE("engine restore rejects a truncated snapshot", "[engine][snapshot]") {
         REQUIRE(buf.read(first_half));
     }
     lob::vector_snapshot_buffer truncated;
-    truncated.write(std::span<std::byte const>{bytes.data(), bytes.size()});
+    truncated.write(std::span<const std::byte>{bytes.data(), bytes.size()});
     truncated.rewind();
 
     pub_t pub_b;
