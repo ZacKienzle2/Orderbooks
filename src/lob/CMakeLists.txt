@@ -26,6 +26,7 @@ target_sources(
                "${CMAKE_SOURCE_DIR}/include/lob/version.hpp"
                "${CMAKE_SOURCE_DIR}/include/lob/bitmap.hpp"
                "${CMAKE_SOURCE_DIR}/include/lob/arena.hpp"
+               "${CMAKE_SOURCE_DIR}/include/lob/spsc_ring.hpp"
 )
 
 target_include_directories(
