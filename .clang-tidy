@@ -29,7 +29,7 @@ Checks: >
 
 WarningsAsErrors: '*'
 
-HeaderFilterRegex: '(include|src)/lob/.*\\.(hpp|h)$'
+HeaderFilterRegex: '(include|src)/lob/.*\.(hpp|h)$'
 
 FormatStyle: file
 

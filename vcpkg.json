@@ -6,35 +6,28 @@
   "homepage": "https://github.com/ZacKienzle2/Orderbooks",
   "license": "MIT",
   "dependencies": [
-    {
-      "name": "boost-intrusive",
-      "version>=": "1.85.0"
-    },
-    {
-      "name": "fmt",
-      "version>=": "11.0.0"
-    },
-    {
-      "name": "unordered-dense",
-      "version>=": "4.4.0"
-    }
+    "boost-intrusive",
+    "fmt",
+    "unordered-dense"
   ],
   "features": {
     "tests": {
       "description": "Catch2 v3 + RapidCheck property tests + reference engine.",
       "dependencies": [
-        { "name": "catch2", "version>=": "3.6.0" },
-        { "name": "rapidcheck" }
+        "catch2",
+        "rapidcheck"
       ]
     },
     "bench": {
       "description": "Google Benchmark microbenches + nanobench tail reports.",
       "dependencies": [
-        { "name": "benchmark", "version>=": "1.8.5" },
-        { "name": "nanobench", "version>=": "4.3.11" }
+        "benchmark",
+        "nanobench"
       ]
     }
   },
-  "default-features": ["tests", "bench"],
-  "builtin-baseline": "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+  "default-features": [
+    "tests",
+    "bench"
+  ]
 }

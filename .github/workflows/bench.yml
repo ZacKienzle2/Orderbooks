@@ -58,8 +58,6 @@ jobs:
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-        with:
-          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
 
       - name: Configure release
         env:
@@ -94,9 +92,15 @@ jobs:
         if: hashFiles('bench/baseline.json') != ''
         run: |
           set -euo pipefail
-          python3 -m pip install --user 'benchmark-tools>=0.0.1' || true
-          if command -v compare.py >/dev/null 2>&1; then
-            compare.py benchmarks bench/baseline.json artifacts/bench.json | tee artifacts/bench-compare.txt
-          else
-            echo "compare.py not available; skipping regression diff."
-          fi
+          # google/benchmark ships compare.py in its source tree. Pull it
+          # at the same commit vcpkg resolves so the script and the binary
+          # agree on the JSON schema.
+          GBENCH_SHA="$(jq -r '.installed[] |
+              select(.package_name=="benchmark") | .version' \
+              vcpkg_installed/vcpkg/info/*.json 2>/dev/null \
+              | head -n1 || echo main)"
+          base="https://raw.githubusercontent.com/google/benchmark"
+          curl -fsSL "${base}/${GBENCH_SHA}/tools/compare.py" -o compare.py
+          python3 -m pip install --user scipy
+          python3 compare.py benchmarks bench/baseline.json artifacts/bench.json \
+            | tee artifacts/bench-compare.txt
