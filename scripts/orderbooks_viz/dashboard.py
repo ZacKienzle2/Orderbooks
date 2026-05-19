@@ -16,13 +16,13 @@ from orderbooks_viz import bitmap_occupancy, depth, event_log, flow_heatmap, top
 
 def _parse_argv() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--log", type=Path, default=None,
-                        help="JSON Lines event log emitted by lob_replay")
-    parser.add_argument("--bench", type=Path, default=None,
-                        help="Google Benchmark JSON output")
+    parser.add_argument(
+        "--log", type=Path, default=None, help="JSON Lines event log emitted by lob_replay"
+    )
+    parser.add_argument("--bench", type=Path, default=None, help="Google Benchmark JSON output")
     raw = sys.argv[1:]
     if "--" in raw:
-        raw = raw[raw.index("--") + 1:]
+        raw = raw[raw.index("--") + 1 :]
     return parser.parse_args(raw)
 
 
@@ -42,8 +42,12 @@ def main() -> None:
         f"**trades** {len(log.trades)}  |  **self-trades** {len(log.self_trades)}"
     )
 
-    tab_top, tab_depth, tab_flow, tab_heatmap = st.tabs(
-        ["Top-of-book", "Depth snapshot", "Fill density", "Occupancy heatmap"])
+    tab_top, tab_depth, tab_flow, tab_heatmap = st.tabs([
+        "Top-of-book",
+        "Depth snapshot",
+        "Fill density",
+        "Occupancy heatmap",
+    ])
 
     with tab_top:
         st.pyplot(top_series.render(log))

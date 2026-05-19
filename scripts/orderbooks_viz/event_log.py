@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, TextIO
+from typing import TextIO
 
 import pandas as pd
 
@@ -28,8 +29,8 @@ class EventLog:
 
 
 def _stream(records: Iterable[str]) -> Iterable[dict]:
-    for line in records:
-        line = line.strip()
+    for raw in records:
+        line = raw.strip()
         if not line:
             continue
         yield json.loads(line)

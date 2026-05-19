@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import pandas as pd
 
 from .event_log import EventLog
 
@@ -24,8 +23,9 @@ def render(log: EventLog, output: str | Path | None = None) -> plt.Figure:
 
     tops = log.tops.copy().sort_values("seq")
 
-    fig, (ax_px, ax_spread) = plt.subplots(2, 1, figsize=(10, 6), sharex=True,
-                                            gridspec_kw={"height_ratios": [3, 1]})
+    fig, (ax_px, ax_spread) = plt.subplots(
+        2, 1, figsize=(10, 6), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
+    )
 
     has_bid = tops["bid_qty"] > 0
     has_ask = tops["ask_qty"] > 0

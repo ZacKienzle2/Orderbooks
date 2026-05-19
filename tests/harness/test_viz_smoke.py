@@ -13,7 +13,7 @@ from pathlib import Path
 
 import matplotlib
 
-matplotlib.use("Agg")  # noqa: E402  (import-order intentional)
+matplotlib.use("Agg")
 
 import pytest
 
@@ -21,8 +21,13 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from orderbooks_viz import bitmap_occupancy, depth, event_log, flow_heatmap, top_series  # noqa: E402
-
+from orderbooks_viz import (  # noqa: E402
+    bitmap_occupancy,
+    depth,
+    event_log,
+    flow_heatmap,
+    top_series,
+)
 
 SAMPLE_LOG = """\
 {"kind":"top","seq":1,"bid_px":0,"ask_px":100,"bid_qty":0,"ask_qty":10}

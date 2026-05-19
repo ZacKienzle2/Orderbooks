@@ -27,14 +27,16 @@ def render(df: pd.DataFrame, *, output: str | Path | None = None) -> plt.Figure:
     if df.empty:
         raise ValueError("benchmark JSON has no entries")
 
-    means = df[df.get("aggregate_name", "") != ""].copy() if "aggregate_name" in df.columns else df.copy()
-    if "aggregate_name" in means.columns:
+    if "aggregate_name" in df.columns:
+        means = df[df["aggregate_name"] != ""].copy()
         means = means[means["aggregate_name"] == "mean"]
+    else:
+        means = df.copy()
     means = means.sort_values("real_time")
 
     fig, ax = plt.subplots(figsize=(10, max(3, 0.3 * len(means))))
     ax.barh(means["name"], means["real_time"], color="#37474F")
-    unit = means.get("time_unit", pd.Series(["ns"] * len(means))).iloc[0] if not means.empty else "ns"
+    unit = "ns" if means.empty else means.get("time_unit", pd.Series(["ns"] * len(means))).iloc[0]
     ax.set_xlabel(f"real_time ({unit})")
     ax.set_title("Microbench mean latency (lower is better)")
     ax.grid(True, alpha=0.3, axis="x")
