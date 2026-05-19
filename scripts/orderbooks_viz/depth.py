@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import pandas as pd
 
 from .event_log import EventLog
 

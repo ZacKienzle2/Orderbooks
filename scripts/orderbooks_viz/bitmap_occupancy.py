@@ -6,7 +6,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 from .event_log import EventLog
 
@@ -46,16 +45,24 @@ def render(log: EventLog, *, bins: int = 200, output: str | Path | None = None) 
     fig, (ax_bid, ax_ask) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
     if bid_h.size:
         ax_bid.imshow(
-            bid_h, aspect="auto", origin="lower", interpolation="nearest",
-            extent=(seq_edges[0], seq_edges[-1], bid_lo, bid_hi + 1), cmap="Greens",
+            bid_h,
+            aspect="auto",
+            origin="lower",
+            interpolation="nearest",
+            extent=(seq_edges[0], seq_edges[-1], bid_lo, bid_hi + 1),
+            cmap="Greens",
         )
     ax_bid.set_ylabel("bid px (ticks)")
     ax_bid.set_title("Top-of-book occupancy and aggregate qty over time")
 
     if ask_h.size:
         ax_ask.imshow(
-            ask_h, aspect="auto", origin="lower", interpolation="nearest",
-            extent=(seq_edges[0], seq_edges[-1], ask_lo, ask_hi + 1), cmap="Reds",
+            ask_h,
+            aspect="auto",
+            origin="lower",
+            interpolation="nearest",
+            extent=(seq_edges[0], seq_edges[-1], ask_lo, ask_hi + 1),
+            cmap="Reds",
         )
     ax_ask.set_ylabel("ask px (ticks)")
     ax_ask.set_xlabel("sequence")

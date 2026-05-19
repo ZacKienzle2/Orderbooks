@@ -16,10 +16,10 @@ Modules:
 from __future__ import annotations
 
 __all__ = (
+    "bitmap_occupancy",
+    "depth",
     "event_log",
+    "flow_heatmap",
     "latency",
     "top_series",
-    "depth",
-    "bitmap_occupancy",
-    "flow_heatmap",
 )
