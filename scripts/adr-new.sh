@@ -37,12 +37,16 @@ if [ -z "${slug}" ]; then
 fi
 
 # Highest existing 4-digit ADR number; new = highest + 1.
-last_num=$(ls -1 "${adr_dir}" \
-  | grep -E '^[0-9]{4}-' \
-  | sort -r \
-  | head -n1 \
-  | cut -c1-4 \
-  || echo "0000")
+last_num="0000"
+shopt -s nullglob
+for f in "${adr_dir}"/[0-9][0-9][0-9][0-9]-*.md; do
+  base="$(basename "$f")"
+  candidate="${base:0:4}"
+  if [ "${candidate}" \> "${last_num}" ]; then
+    last_num="${candidate}"
+  fi
+done
+shopt -u nullglob
 
 new_num=$(printf '%04d' $((10#${last_num} + 1)))
 new_file="${adr_dir}/${new_num}-${slug}.md"
