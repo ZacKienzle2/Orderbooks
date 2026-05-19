@@ -1,14 +1,4 @@
 rules:
   template-injection:
-    config:
-      ignore:
-        - release.yml:50:11
-  excessive-permissions:
-    config:
-      ignore: []
-  unpinned-uses:
-    config:
-      policies:
-        "actions/*": ref-pin
-        "github/codeql-action/*": ref-pin
-        "*": any
+    ignore:
+      - release.yml:50:11
