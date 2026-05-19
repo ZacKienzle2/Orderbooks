@@ -54,10 +54,12 @@ jobs:
         run: uv pip compile pyproject.toml --all-extras -o requirements.txt
 
       - name: Audit with pip-audit
-        uses: pypa/gh-action-pip-audit@v1
-        with:
-          inputs: requirements.txt
-          summary: true
+        run: |
+          set -euo pipefail
+          pipx run --spec 'pip-audit==2.9.0' pip-audit \
+            --requirement requirements.txt \
+            --strict \
+            --progress-spinner=off
 
   sbom:
     name: CycloneDX SBOM
