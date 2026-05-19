@@ -38,6 +38,7 @@ if(LOB_ENABLE_LTO)
 endif()
 
 add_subdirectory(src/lob)
+add_subdirectory(apps/replay)
 
 if(LOB_BUILD_TESTS)
   enable_testing()
