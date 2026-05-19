@@ -1,0 +1,111 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+version-resolver:
+  major:
+    labels:
+      - "breaking"
+      - "major"
+  minor:
+    labels:
+      - "enhancement"
+      - "feature"
+      - "minor"
+  patch:
+    labels:
+      - "bug"
+      - "fix"
+      - "patch"
+      - "perf"
+      - "performance"
+      - "security"
+  default: patch
+
+categories:
+  - title: "Breaking Changes"
+    labels:
+      - "breaking"
+      - "major"
+  - title: "New Features"
+    labels:
+      - "enhancement"
+      - "feature"
+      - "minor"
+  - title: "Bug Fixes"
+    labels:
+      - "bug"
+      - "fix"
+      - "patch"
+  - title: "Performance"
+    labels:
+      - "perf"
+      - "performance"
+  - title: "Security"
+    labels:
+      - "security"
+  - title: "Documentation"
+    labels:
+      - "documentation"
+      - "docs"
+  - title: "Maintenance"
+    labels:
+      - "chore"
+      - "refactor"
+      - "build"
+      - "ci"
+      - "test"
+      - "dependencies"
+
+change-template: "- $TITLE (#$NUMBER) by @$AUTHOR"
+change-title-escapes: '\<*_&'
+exclude-labels:
+  - "skip-changelog"
+  - "duplicate"
+  - "invalid"
+  - "wontfix"
+  - "question"
+
+autolabeler:
+  - label: "breaking"
+    title:
+      - '/^[a-z]+(\([^)]+\))?!:/'
+    body:
+      - '/BREAKING[ -]CHANGE:/'
+  - label: "feature"
+    title:
+      - "/^feat(\\([^)]+\\))?:/"
+  - label: "fix"
+    title:
+      - "/^fix(\\([^)]+\\))?:/"
+  - label: "perf"
+    title:
+      - "/^perf(\\([^)]+\\))?:/"
+  - label: "documentation"
+    title:
+      - "/^docs(\\([^)]+\\))?:/"
+  - label: "ci"
+    title:
+      - "/^ci(\\([^)]+\\))?:/"
+  - label: "chore"
+    title:
+      - "/^chore(\\([^)]+\\))?:/"
+  - label: "test"
+    title:
+      - "/^test(\\([^)]+\\))?:/"
+  - label: "refactor"
+    title:
+      - "/^refactor(\\([^)]+\\))?:/"
+  - label: "build"
+    title:
+      - "/^build(\\([^)]+\\))?:/"
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

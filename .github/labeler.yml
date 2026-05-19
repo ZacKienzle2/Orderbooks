@@ -1,0 +1,84 @@
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".github/actions/**"
+          - ".github/dependabot.yml"
+          - ".github/labeler.yml"
+
+github-config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/ISSUE_TEMPLATE/**"
+          - ".github/PULL_REQUEST_TEMPLATE.md"
+          - ".github/CODEOWNERS"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "vcpkg.json"
+          - "vcpkg-configuration.json"
+          - "**/pyproject.toml"
+          - "**/uv.lock"
+          - "**/requirements*.txt"
+          - "**/Pipfile*"
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "SECURITY.md"
+          - ".github/workflows/codeql*.yml"
+          - ".github/workflows/security*.yml"
+          - ".github/workflows/trivy*.yml"
+          - ".github/workflows/osv*.yml"
+          - ".github/workflows/scorecard*.yml"
+          - ".github/workflows/zizmor*.yml"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+          - "**/*_test.cpp"
+          - "**/test_*.cpp"
+          - "**/test_*.py"
+
+bench:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "bench/**"
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "CMakeLists.txt"
+          - "**/CMakeLists.txt"
+          - "CMakePresets.json"
+          - "cmake/**"
+          - "vcpkg.json"
+          - "vcpkg-configuration.json"
+
+cpp:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "include/**"
+          - "src/**"
+          - "**/*.cpp"
+          - "**/*.hpp"
+          - "**/*.h"
+          - "**/*.cc"
+          - "**/*.cxx"
+          - "**/*.hxx"
+
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "scripts/**/*.py"
+          - "tests/harness/**"
+          - "pyproject.toml"
+          - ".python-version"

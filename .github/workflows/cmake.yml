@@ -1,0 +1,236 @@
+name: CMake
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "include/**"
+      - "src/**"
+      - "tests/**"
+      - "bench/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+      - ".clang-format"
+      - ".clang-tidy"
+      - ".github/workflows/cmake.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "include/**"
+      - "src/**"
+      - "tests/**"
+      - "bench/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+      - ".clang-format"
+      - ".clang-tidy"
+      - ".github/workflows/cmake.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cmake-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build-test:
+    name: ${{ matrix.preset }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            preset: linux-clang-rel
+            cc: clang
+            cxx: clang++
+          - os: ubuntu-24.04
+            preset: linux-clang-debug
+            cc: clang
+            cxx: clang++
+          - os: ubuntu-24.04
+            preset: linux-gcc-rel
+            cc: gcc
+            cxx: g++
+          - os: ubuntu-24.04
+            preset: linux-gcc-debug
+            cc: gcc
+            cxx: g++
+          - os: ubuntu-24.04
+            preset: linux-clang-asan
+            cc: clang
+            cxx: clang++
+          - os: ubuntu-24.04
+            preset: linux-clang-tsan
+            cc: clang
+            cxx: clang++
+          - os: macos-14
+            preset: macos-clang-rel
+            cc: clang
+            cxx: clang++
+          - os: macos-14
+            preset: macos-clang-debug
+            cc: clang
+            cxx: clang++
+    steps:
+      - name: Harden runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Export GitHub Actions cache vars
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v6
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+        with:
+          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+          runVcpkgInstall: false
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }} --parallel
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }} --output-on-failure
+
+  iwyu:
+    name: include-what-you-use
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: build-test
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install iwyu
+        run: sudo apt-get update && sudo apt-get install -y iwyu
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v6
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+        with:
+          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+
+      - name: Configure compile_commands.json
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: cmake --preset linux-clang-rel -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="iwyu"
+
+      - name: Build to surface IWYU advice
+        run: cmake --build --preset linux-clang-rel --parallel
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: build-test
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy-18
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v6
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+        with:
+          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+
+      - name: Configure
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: cmake --preset linux-clang-rel
+
+      - name: Run clang-tidy on changed files
+        run: |
+          set -euo pipefail
+          base="$(git merge-base origin/${{ github.base_ref }} HEAD)"
+          changed=$(git diff --name-only --diff-filter=ACMR "${base}"...HEAD -- '*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hxx' '*.h' | tr '\n' ' ')
+          if [ -z "${changed}" ]; then
+            echo "No C++ files changed."
+            exit 0
+          fi
+          clang-tidy-18 -p build/linux-clang-rel ${changed}
+
+  format-check:
+    name: clang-format check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18
+
+      - name: Verify formatting
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hxx' '*.h' '*.cu' '*.cuh' || true)
+          if [ -z "${files}" ]; then
+            echo "No C++ files."
+            exit 0
+          fi
+          # shellcheck disable=SC2086
+          clang-format-18 --dry-run --Werror --style=file ${files}
