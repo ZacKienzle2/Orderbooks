@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.30)
 
 # Toolchain pre-set via CMakePresets.json (vcpkg manifest mode).
 project(
@@ -45,25 +45,5 @@ if(LOB_BUILD_BENCH)
   add_subdirectory(bench)
 endif()
 
-include(CMakePackageConfigHelpers)
-install(
-  TARGETS lob_core
-  EXPORT  lobTargets
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-install(DIRECTORY include/lob DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(
-  EXPORT lobTargets
-  NAMESPACE lob::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lob
-)
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/lobConfigVersion.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lobConfigVersion.cmake"
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lob)
+# Install rules deferred until the engine ABI is settled; consumers should
+# currently embed the project via add_subdirectory or FetchContent.
