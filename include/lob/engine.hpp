@@ -75,8 +75,15 @@ public:
             return;
         }
         // price change: cancel + resubmit at new price (loses time priority)
+        const auto acct = o->account_id;
         on_cancel(cancel_msg{.id = m.id});
-        on_submit(submit_msg{.id = m.id, .px = m.new_px, .qty = m.new_qty, .s = s, .t = t});
+        on_submit(submit_msg{.id = m.id,
+                             .px = m.new_px,
+                             .qty = m.new_qty,
+                             .s = s,
+                             .t = t,
+                             ._pad = 0,
+                             .account_id = acct});
     }
 
     [[nodiscard]] book<Ticks, MaxOrders> const& book_view() const noexcept { return book_; }
@@ -163,12 +170,14 @@ private:
     void rest_(submit_msg const& m, qty_t remaining) noexcept {
         auto* o = book_.arena().allocate();
         if (o == nullptr) return;  // arena exhausted; gateway-side concern
-        o->id        = m.id;
-        o->remaining = remaining;
-        o->px        = m.px;
-        o->s         = Side;
-        o->t         = m.t;
-        o->level_idx = m.px;
+        o->id         = m.id;
+        o->remaining  = remaining;
+        o->px         = m.px;
+        o->s          = Side;
+        o->t          = m.t;
+        o->_pad0      = 0;
+        o->level_idx  = m.px;
+        o->account_id = m.account_id;
         side_<Side>().add(*o);
         book_.index().insert(m.id, o);
     }

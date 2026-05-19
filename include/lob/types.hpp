@@ -6,10 +6,11 @@
 
 namespace lob {
 
-using tick_t     = std::uint32_t;
-using qty_t      = std::uint64_t;
-using order_id_t = std::uint64_t;
-using seq_t      = std::uint64_t;
+using tick_t       = std::uint32_t;
+using qty_t        = std::uint64_t;
+using order_id_t   = std::uint64_t;
+using seq_t        = std::uint64_t;
+using account_id_t = std::uint32_t;
 
 enum class side : std::uint8_t { bid = 0, ask = 1 };
 enum class tif  : std::uint8_t { gtc = 0, ioc = 1, fok = 2 };
