@@ -12,7 +12,6 @@ from pathlib import Path
 
 import matplotlib.animation as anim
 import matplotlib.pyplot as plt
-import pandas as pd
 
 from .event_log import EventLog
 
