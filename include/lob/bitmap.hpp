@@ -141,6 +141,48 @@ public:
         if constexpr (L3_W > 0) l3_.fill(0);
     }
 
+    // Lowest set bit with position >= start. Uses a masked load on the first
+    // word, then linear-scans L0 (O(L0_W) worst case) when the local word is
+    // empty. Used by the matching engine for FOK precheck and for advancing
+    // the cursor when an aggressor exhausts the current best level.
+    [[nodiscard]] constexpr std::optional<std::size_t>
+    next_set_at_or_after(std::size_t start) const noexcept {
+        if (start >= Ticks) return std::nullopt;
+        const auto first_word    = start / W;
+        const auto first_bit_off = start % W;
+        const auto masked        = l0_[first_word] & (~std::uint64_t{0} << first_bit_off);
+        if (masked != 0) {
+            return first_word * W + static_cast<std::size_t>(std::countr_zero(masked));
+        }
+        for (auto w = first_word + 1; w < L0_W; ++w) {
+            if (l0_[w] != 0) {
+                return w * W + static_cast<std::size_t>(std::countr_zero(l0_[w]));
+            }
+        }
+        return std::nullopt;
+    }
+
+    // Highest set bit with position <= start. Mirror of next_set_at_or_after.
+    [[nodiscard]] constexpr std::optional<std::size_t>
+    prev_set_at_or_before(std::size_t start) const noexcept {
+        if (start >= Ticks) start = Ticks - 1;
+        const auto first_word    = start / W;
+        const auto first_bit_off = start % W;
+        const auto keep_mask     = (first_bit_off == W - 1)
+                                   ? ~std::uint64_t{0}
+                                   : ((std::uint64_t{1} << (first_bit_off + 1)) - 1);
+        const auto masked        = l0_[first_word] & keep_mask;
+        if (masked != 0) {
+            return first_word * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(masked)));
+        }
+        for (std::size_t w = first_word; w-- > 0;) {
+            if (l0_[w] != 0) {
+                return w * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[w])));
+            }
+        }
+        return std::nullopt;
+    }
+
 private:
     [[nodiscard]] static constexpr std::uint64_t mask(std::size_t bit) noexcept {
         return std::uint64_t{1} << (bit % W);
