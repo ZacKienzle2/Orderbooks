@@ -69,6 +69,22 @@ public:
         return (*levels_)[px];
     }
 
+    // The matching engine drains a level FIFO directly during a cross and
+    // needs to inform the bitmap when the level emptied as a result.
+    void notify_level_emptied(tick_t px) noexcept { bm_.clear(px); }
+
+    // Inspect the bitmap for FOK precheck without exposing internals.
+    [[nodiscard]] std::optional<tick_t> next_populated_at_or_after(tick_t px) const noexcept {
+        const auto v = bm_.next_set_at_or_after(px);
+        if (!v.has_value()) return std::nullopt;
+        return static_cast<tick_t>(*v);
+    }
+    [[nodiscard]] std::optional<tick_t> prev_populated_at_or_before(tick_t px) const noexcept {
+        const auto v = bm_.prev_set_at_or_before(px);
+        if (!v.has_value()) return std::nullopt;
+        return static_cast<tick_t>(*v);
+    }
+
     [[nodiscard]] bool empty() const noexcept { return bm_.empty(); }
 
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Ticks; }
