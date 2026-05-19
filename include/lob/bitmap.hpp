@@ -36,14 +36,13 @@ class hier_bitmap {
     static constexpr std::size_t L3_W = (L2_W > 1) ? ceildiv(L2_W, W) : 0;
 
     static_assert(Ticks > 0, "hier_bitmap: Ticks must be positive");
-    static_assert(L3_W <= 1,
-                  "hier_bitmap supports at most four tiers (Ticks <= 16'777'216)");
+    static_assert(L3_W <= 1, "hier_bitmap supports at most four tiers (Ticks <= 16'777'216)");
 
     static constexpr std::size_t L1_alloc = (L1_W > 0) ? L1_W : 1;
     static constexpr std::size_t L2_alloc = (L2_W > 0) ? L2_W : 1;
     static constexpr std::size_t L3_alloc = (L3_W > 0) ? L3_W : 1;
 
-public:
+  public:
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Ticks; }
 
     constexpr void set(std::size_t bit) noexcept {
@@ -68,18 +67,21 @@ public:
         const auto l0_word = bit / W;
         l0_[l0_word] &= ~mask(bit);
         if constexpr (L1_W > 0) {
-            if (l0_[l0_word] != 0) return;
-            const auto l1_bit  = l0_word;
+            if (l0_[l0_word] != 0)
+                return;
+            const auto l1_bit = l0_word;
             const auto l1_word = l1_bit / W;
             l1_[l1_word] &= ~mask(l1_bit);
             if constexpr (L2_W > 0) {
-                if (l1_[l1_word] != 0) return;
-                const auto l2_bit  = l1_word;
+                if (l1_[l1_word] != 0)
+                    return;
+                const auto l2_bit = l1_word;
                 const auto l2_word = l2_bit / W;
                 l2_[l2_word] &= ~mask(l2_bit);
                 if constexpr (L3_W > 0) {
-                    if (l2_[l2_word] != 0) return;
-                    const auto l3_bit  = l2_word;
+                    if (l2_[l2_word] != 0)
+                        return;
+                    const auto l3_bit = l2_word;
                     const auto l3_word = l3_bit / W;
                     l3_[l3_word] &= ~mask(l3_bit);
                 }
@@ -105,7 +107,8 @@ public:
     }
 
     [[nodiscard]] constexpr std::optional<std::size_t> lowest_set() const noexcept {
-        if (empty()) return std::nullopt;
+        if (empty())
+            return std::nullopt;
         std::size_t idx = 0;
         if constexpr (L3_W > 0) {
             idx = static_cast<std::size_t>(std::countr_zero(l3_[0]));
@@ -120,7 +123,8 @@ public:
     }
 
     [[nodiscard]] constexpr std::optional<std::size_t> highest_set() const noexcept {
-        if (empty()) return std::nullopt;
+        if (empty())
+            return std::nullopt;
         std::size_t idx = 0;
         if constexpr (L3_W > 0) {
             idx = (W - 1) - static_cast<std::size_t>(std::countl_zero(l3_[0]));
@@ -136,9 +140,12 @@ public:
 
     constexpr void clear_all() noexcept {
         l0_.fill(0);
-        if constexpr (L1_W > 0) l1_.fill(0);
-        if constexpr (L2_W > 0) l2_.fill(0);
-        if constexpr (L3_W > 0) l3_.fill(0);
+        if constexpr (L1_W > 0)
+            l1_.fill(0);
+        if constexpr (L2_W > 0)
+            l2_.fill(0);
+        if constexpr (L3_W > 0)
+            l3_.fill(0);
     }
 
     // Lowest set bit with position >= start. Uses a masked load on the first
@@ -147,10 +154,11 @@ public:
     // the cursor when an aggressor exhausts the current best level.
     [[nodiscard]] constexpr std::optional<std::size_t>
     next_set_at_or_after(std::size_t start) const noexcept {
-        if (start >= Ticks) return std::nullopt;
-        const auto first_word    = start / W;
+        if (start >= Ticks)
+            return std::nullopt;
+        const auto first_word = start / W;
         const auto first_bit_off = start % W;
-        const auto masked        = l0_[first_word] & (~std::uint64_t{0} << first_bit_off);
+        const auto masked = l0_[first_word] & (~std::uint64_t{0} << first_bit_off);
         if (masked != 0) {
             return first_word * W + static_cast<std::size_t>(std::countr_zero(masked));
         }
@@ -165,13 +173,14 @@ public:
     // Highest set bit with position <= start. Mirror of next_set_at_or_after.
     [[nodiscard]] constexpr std::optional<std::size_t>
     prev_set_at_or_before(std::size_t start) const noexcept {
-        if (start >= Ticks) start = Ticks - 1;
-        const auto first_word    = start / W;
+        if (start >= Ticks)
+            start = Ticks - 1;
+        const auto first_word = start / W;
         const auto first_bit_off = start % W;
-        const auto keep_mask     = (first_bit_off == W - 1)
+        const auto keep_mask = (first_bit_off == W - 1)
                                    ? ~std::uint64_t{0}
                                    : ((std::uint64_t{1} << (first_bit_off + 1)) - 1);
-        const auto masked        = l0_[first_word] & keep_mask;
+        const auto masked = l0_[first_word] & keep_mask;
         if (masked != 0) {
             return first_word * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(masked)));
         }
@@ -183,12 +192,12 @@ public:
         return std::nullopt;
     }
 
-private:
+  private:
     [[nodiscard]] static constexpr std::uint64_t mask(std::size_t bit) noexcept {
         return std::uint64_t{1} << (bit % W);
     }
 
-    alignas(64) std::array<std::uint64_t, L0_W>     l0_{};
+    alignas(64) std::array<std::uint64_t, L0_W> l0_{};
     alignas(64) std::array<std::uint64_t, L1_alloc> l1_{};
     alignas(64) std::array<std::uint64_t, L2_alloc> l2_{};
     alignas(64) std::array<std::uint64_t, L3_alloc> l3_{};

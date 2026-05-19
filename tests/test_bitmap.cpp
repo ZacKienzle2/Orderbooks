@@ -1,14 +1,14 @@
 #include <lob/bitmap.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_all.hpp>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <random>
 #include <set>
 #include <vector>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
 
 using lob::hier_bitmap;
 
@@ -51,7 +51,8 @@ TEST_CASE("hier_bitmap clear of an unset bit is a no-op", "[bitmap]") {
 
 TEST_CASE("hier_bitmap lowest_set + highest_set with multiple bits", "[bitmap]") {
     hier_bitmap<4096> bm;
-    for (auto b : {17U, 65U, 128U, 4095U, 1024U}) bm.set(b);
+    for (auto b : {17U, 65U, 128U, 4095U, 1024U})
+        bm.set(b);
     REQUIRE(bm.lowest_set() == 17);
     REQUIRE(bm.highest_set() == 4095);
     bm.clear(4095);
@@ -63,10 +64,12 @@ TEST_CASE("hier_bitmap lowest_set + highest_set with multiple bits", "[bitmap]")
 TEST_CASE("hier_bitmap saturate-and-drain across word boundaries", "[bitmap]") {
     constexpr std::size_t cap = 256;
     hier_bitmap<cap> bm;
-    for (std::size_t i = 0; i < cap; ++i) bm.set(i);
+    for (std::size_t i = 0; i < cap; ++i)
+        bm.set(i);
     REQUIRE(bm.lowest_set() == 0);
     REQUIRE(bm.highest_set() == cap - 1);
-    for (std::size_t i = 0; i < cap; ++i) bm.clear(i);
+    for (std::size_t i = 0; i < cap; ++i)
+        bm.clear(i);
     REQUIRE(bm.empty());
 }
 
@@ -116,13 +119,13 @@ TEST_CASE("hier_bitmap four-tier capacity round-trip", "[bitmap]") {
 }
 
 TEST_CASE("hier_bitmap differential against std::set on random workloads", "[bitmap][property]") {
-    constexpr std::size_t cap   = 4096;
+    constexpr std::size_t cap = 4096;
     constexpr std::size_t draws = 4'000;
 
     auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL, 0x1234567890ABCDEFULL);
     std::mt19937_64 rng{seed};
     std::uniform_int_distribution<std::size_t> bit_dist{0, cap - 1};
-    std::uniform_int_distribution<int>         op_dist{0, 2};
+    std::uniform_int_distribution<int> op_dist{0, 2};
 
     hier_bitmap<cap> bm;
     std::set<std::size_t> oracle;
@@ -130,19 +133,19 @@ TEST_CASE("hier_bitmap differential against std::set on random workloads", "[bit
     for (std::size_t step = 0; step < draws; ++step) {
         const auto bit = bit_dist(rng);
         switch (op_dist(rng)) {
-            case 0:
-                bm.set(bit);
-                oracle.insert(bit);
-                break;
-            case 1:
-                bm.clear(bit);
-                oracle.erase(bit);
-                break;
-            case 2:
-                REQUIRE(bm.test(bit) == (oracle.count(bit) > 0));
-                break;
-            default:
-                break;
+        case 0:
+            bm.set(bit);
+            oracle.insert(bit);
+            break;
+        case 1:
+            bm.clear(bit);
+            oracle.erase(bit);
+            break;
+        case 2:
+            REQUIRE(bm.test(bit) == (oracle.count(bit) > 0));
+            break;
+        default:
+            break;
         }
         REQUIRE(bm.empty() == oracle.empty());
         if (!oracle.empty()) {
@@ -154,7 +157,8 @@ TEST_CASE("hier_bitmap differential against std::set on random workloads", "[bit
 
 TEST_CASE("hier_bitmap clear_all wipes every tier", "[bitmap]") {
     hier_bitmap<4096> bm;
-    for (std::size_t b = 0; b < 4096; b += 7) bm.set(b);
+    for (std::size_t b = 0; b < 4096; b += 7)
+        bm.set(b);
     REQUIRE(!bm.empty());
     bm.clear_all();
     REQUIRE(bm.empty());

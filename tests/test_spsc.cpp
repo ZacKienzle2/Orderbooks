@@ -1,12 +1,12 @@
 #include <lob/spsc_ring.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_all.hpp>
-
 #include <atomic>
 #include <cstdint>
 #include <thread>
 #include <vector>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
 
 using lob::spsc_ring;
 
@@ -28,7 +28,8 @@ TEST_CASE("spsc_ring try_pop on empty returns false", "[spsc]") {
 TEST_CASE("spsc_ring fill and drain in single thread", "[spsc]") {
     constexpr std::size_t cap = 16;
     spsc_ring<std::uint64_t, cap> ring;
-    for (std::uint64_t i = 0; i < cap; ++i) REQUIRE(ring.try_push(i));
+    for (std::uint64_t i = 0; i < cap; ++i)
+        REQUIRE(ring.try_push(i));
     REQUIRE(ring.full());
     REQUIRE(ring.size() == cap);
 
@@ -46,10 +47,11 @@ TEST_CASE("spsc_ring honours FIFO across multiple wrap-arounds", "[spsc]") {
     constexpr std::size_t cap = 8;
     spsc_ring<std::uint64_t, cap> ring;
     std::uint64_t next_push = 0;
-    std::uint64_t next_pop  = 0;
+    std::uint64_t next_pop = 0;
 
     for (int cycle = 0; cycle < 100; ++cycle) {
-        while (ring.try_push(next_push)) ++next_push;
+        while (ring.try_push(next_push))
+            ++next_push;
         std::uint64_t out{};
         while (ring.try_pop(out)) {
             REQUIRE(out == next_pop);
@@ -59,8 +61,9 @@ TEST_CASE("spsc_ring honours FIFO across multiple wrap-arounds", "[spsc]") {
     REQUIRE(next_push == next_pop);
 }
 
-TEST_CASE("spsc_ring producer / consumer thread pair preserves order and count", "[spsc][threading]") {
-    constexpr std::size_t cap   = 1024;
+TEST_CASE("spsc_ring producer / consumer thread pair preserves order and count",
+          "[spsc][threading]") {
+    constexpr std::size_t cap = 1024;
     constexpr std::size_t items = 250'000;
     spsc_ring<std::uint64_t, cap> ring;
     std::atomic<bool> stop{false};
@@ -105,6 +108,7 @@ TEST_CASE("spsc_ring with non-trivial-sized POD preserves bytes", "[spsc]") {
         std::uint64_t b;
         std::uint64_t c;
     };
+
     static_assert(std::is_trivially_copyable_v<payload>);
 
     spsc_ring<payload, 32> ring;

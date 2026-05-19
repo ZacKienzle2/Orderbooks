@@ -11,26 +11,29 @@ namespace lob {
 // ---------- Inbound commands ----------
 
 struct submit_msg {
-    order_id_t   id;
-    tick_t       px;
-    qty_t        qty;
-    side         s;
-    tif          t;
+    order_id_t id;
+    tick_t px;
+    qty_t qty;
+    side s;
+    tif t;
     std::uint16_t _pad{0};
     account_id_t account_id{0};
 };
+
 static_assert(std::is_trivially_copyable_v<submit_msg>);
 
 struct cancel_msg {
     order_id_t id;
 };
+
 static_assert(std::is_trivially_copyable_v<cancel_msg>);
 
 struct modify_msg {
     order_id_t id;
-    tick_t     new_px;
-    qty_t      new_qty;
+    tick_t new_px;
+    qty_t new_qty;
 };
+
 static_assert(std::is_trivially_copyable_v<modify_msg>);
 
 // ---------- Outbound events ----------
@@ -38,26 +41,29 @@ static_assert(std::is_trivially_copyable_v<modify_msg>);
 struct fill_msg {
     order_id_t maker;
     order_id_t taker;
-    tick_t     px;
-    qty_t      qty;
-    seq_t      seq;
+    tick_t px;
+    qty_t qty;
+    seq_t seq;
 };
+
 static_assert(std::is_trivially_copyable_v<fill_msg>);
 
 struct top_msg {
     tick_t bid_px;
     tick_t ask_px;
-    qty_t  bid_qty;
-    qty_t  ask_qty;
-    seq_t  seq;
+    qty_t bid_qty;
+    qty_t ask_qty;
+    seq_t seq;
 };
+
 static_assert(std::is_trivially_copyable_v<top_msg>);
 
 struct trade_msg {
     tick_t px;
-    qty_t  qty;
-    seq_t  seq;
+    qty_t qty;
+    seq_t seq;
 };
+
 static_assert(std::is_trivially_copyable_v<trade_msg>);
 
 // Emitted when the engine's self_cross_policy is decrement_trade and an
@@ -66,13 +72,14 @@ static_assert(std::is_trivially_copyable_v<trade_msg>);
 // no fill_msg or trade_msg is published; downstream risk consumes this
 // event instead.
 struct self_trade_msg {
-    order_id_t   aggressor;
-    order_id_t   resting;
+    order_id_t aggressor;
+    order_id_t resting;
     account_id_t account;
-    tick_t       px;
-    qty_t        qty;
-    seq_t        seq;
+    tick_t px;
+    qty_t qty;
+    seq_t seq;
 };
+
 static_assert(std::is_trivially_copyable_v<self_trade_msg>);
 
 // ---------- Tagged unions for ring transport ----------
@@ -86,28 +93,32 @@ struct command {
         submit_msg submit;
         cancel_msg cancel;
         modify_msg modify;
+
         body_t() noexcept : submit{} {}
     } body;
 
     [[nodiscard]] static command make_submit(submit_msg m) noexcept {
         command c;
-        c.k          = kind::submit;
+        c.k = kind::submit;
         c.body.submit = m;
         return c;
     }
+
     [[nodiscard]] static command make_cancel(cancel_msg m) noexcept {
         command c;
-        c.k          = kind::cancel;
+        c.k = kind::cancel;
         c.body.cancel = m;
         return c;
     }
+
     [[nodiscard]] static command make_modify(modify_msg m) noexcept {
         command c;
-        c.k          = kind::modify;
+        c.k = kind::modify;
         c.body.modify = m;
         return c;
     }
 };
+
 static_assert(std::is_trivially_copyable_v<command>);
 
 struct event {
@@ -116,38 +127,43 @@ struct event {
     kind k;
 
     union body_t {
-        fill_msg       fill;
-        top_msg        top;
-        trade_msg      trade;
+        fill_msg fill;
+        top_msg top;
+        trade_msg trade;
         self_trade_msg self_trade;
+
         body_t() noexcept : fill{} {}
     } body;
 
     [[nodiscard]] static event make_fill(fill_msg m) noexcept {
         event e;
-        e.k         = kind::fill;
+        e.k = kind::fill;
         e.body.fill = m;
         return e;
     }
+
     [[nodiscard]] static event make_top(top_msg m) noexcept {
         event e;
-        e.k        = kind::top;
+        e.k = kind::top;
         e.body.top = m;
         return e;
     }
+
     [[nodiscard]] static event make_trade(trade_msg m) noexcept {
         event e;
-        e.k          = kind::trade;
+        e.k = kind::trade;
         e.body.trade = m;
         return e;
     }
+
     [[nodiscard]] static event make_self_trade(self_trade_msg m) noexcept {
         event e;
-        e.k               = kind::self_trade;
+        e.k = kind::self_trade;
         e.body.self_trade = m;
         return e;
     }
 };
+
 static_assert(std::is_trivially_copyable_v<event>);
 
 }  // namespace lob
