@@ -23,7 +23,7 @@ Each ADR carries a `Status` field:
 - **Proposed** - drafted, under review, not yet adopted.
 - **Accepted** - the decision is in force.
 - **Deprecated** - no longer recommended; retained for historical context.
-- **Superseded by [ADR-NNNN](NNNN-foo.md)** - replaced by a later decision.
+- **Superseded by ADR-NNNN** (link to the replacing ADR) - replaced by a later decision.
 
 Never edit an Accepted ADR to change its outcome. Write a new ADR that supersedes it and update the old one's status. This preserves the decision history.
 
@@ -60,6 +60,6 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 
 ## References
 
-- Nygard, M. (2011). *Documenting Architecture Decisions*. https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
-- MADR project. https://adr.github.io/madr/
-- ThoughtWorks Tech Radar - ADRs. https://www.thoughtworks.com/radar/techniques/lightweight-architecture-decision-records
+- Nygard, M. (2011). *Documenting Architecture Decisions*. <https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions>
+- MADR project. <https://adr.github.io/madr/>
+- ThoughtWorks Tech Radar - ADRs. <https://www.thoughtworks.com/radar/techniques/lightweight-architecture-decision-records>

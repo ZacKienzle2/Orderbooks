@@ -86,7 +86,7 @@ that the flat variant exhibits under bursts.
 
 ## More Information
 
-- ankerl::unordered_dense: https://github.com/martinus/unordered_dense
-- wyhash: https://github.com/wangyi-fudan/wyhash
+- ankerl::unordered_dense: <https://github.com/martinus/unordered_dense>
+- wyhash: <https://github.com/wangyi-fudan/wyhash>
 - Related: [ADR-0006](0006-slab-arena-intrusive-fifo.md) (the `order*`
   values returned by this map live in the slab arena).
