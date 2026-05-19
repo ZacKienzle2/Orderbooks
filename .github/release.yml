@@ -1,0 +1,45 @@
+changelog:
+  exclude:
+    labels:
+      - "skip-changelog"
+      - "duplicate"
+      - "invalid"
+      - "wontfix"
+      - "question"
+  categories:
+    - title: "Breaking Changes"
+      labels:
+        - "breaking"
+        - "major"
+    - title: "New Features"
+      labels:
+        - "enhancement"
+        - "feature"
+        - "minor"
+    - title: "Bug Fixes"
+      labels:
+        - "bug"
+        - "fix"
+        - "patch"
+    - title: "Performance"
+      labels:
+        - "perf"
+        - "performance"
+    - title: "Security"
+      labels:
+        - "security"
+    - title: "Documentation"
+      labels:
+        - "documentation"
+        - "docs"
+    - title: "Maintenance"
+      labels:
+        - "chore"
+        - "refactor"
+        - "build"
+        - "ci"
+        - "test"
+        - "dependencies"
+    - title: "Other Changes"
+      labels:
+        - "*"

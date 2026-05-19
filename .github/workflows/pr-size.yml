@@ -1,0 +1,50 @@
+name: PR Size
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  size:
+    name: Label PR by lines changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Apply size label
+        uses: codelytv/pr-size-labeler@095a41fca88b8764fd9e008ad269bcdb82bb38b9 # v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: "size/xs"
+          xs_max_size: "10"
+          s_label: "size/s"
+          s_max_size: "100"
+          m_label: "size/m"
+          m_max_size: "500"
+          l_label: "size/l"
+          l_max_size: "1000"
+          xl_label: "size/xl"
+          fail_if_xl: "false"
+          message_if_xl: >
+            PR exceeds 1000 lines. Split into smaller pieces. See CONTRIBUTING.md.
+          files_to_ignore: |
+            "*.lock"
+            "package-lock.json"
+            "yarn.lock"
+            "pnpm-lock.yaml"
+            "poetry.lock"
+            "uv.lock"
+            "Cargo.lock"
+            "go.sum"

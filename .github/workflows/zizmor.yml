@@ -1,0 +1,79 @@
+name: Zizmor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - ".zizmor.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - ".zizmor.yml"
+  schedule:
+    - cron: "37 4 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zizmor-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: Static analysis on workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.repository.private == false
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        env:
+          ZIZMOR_VERSION: "1.5.2"
+        run: |
+          set -euo pipefail
+          targets=(.github/workflows)
+          if [ -d .github/actions ]; then targets+=(.github/actions); fi
+          # zizmor exits 14 when findings are present and 0 when clean; we
+          # want SARIF emitted either way and the workflow to fail only on
+          # genuine errors. Save status, treat 14 as "had findings, ok".
+          set +e
+          pipx run --spec "zizmor==${ZIZMOR_VERSION}" zizmor \
+            --format sarif \
+            --config .zizmor.yml \
+            "${targets[@]}" \
+            > zizmor.sarif
+          status=$?
+          set -e
+          if [ "${status}" -ne 0 ] && [ "${status}" -ne 14 ]; then
+            echo "::error::zizmor exited ${status}"
+            exit "${status}"
+          fi
+          if [ ! -s zizmor.sarif ]; then
+            echo '{"version":"2.1.0","runs":[]}' > zizmor.sarif
+          fi
+
+      - name: Upload SARIF
+        if: always() && hashFiles('zizmor.sarif') != ''
+        uses: github/codeql-action/upload-sarif@458d36d7d4f47d0dd16ca424c1d3cda0060f1360 # v3
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor

@@ -1,0 +1,33 @@
+name: OSV-Scanner
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "13 6 * * 3"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osv-scanner-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan dependencies via OSV
+    if: github.event.repository.private == false
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@19ec1116569a47416e11a45848722b1af31a857b # v1.9.0
+    with:
+      scan-args: |-
+        --recursive
+        --skip-git
+        ./
+      results-file-name: osv-results.sarif
+    permissions:
+      contents: read
+      security-events: write
+      actions: read

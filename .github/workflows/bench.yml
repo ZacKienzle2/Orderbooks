@@ -1,0 +1,102 @@
+name: Bench
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "include/**"
+      - "src/**"
+      - "bench/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+      - ".github/workflows/bench.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "include/**"
+      - "src/**"
+      - "bench/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+      - ".github/workflows/bench.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  microbench:
+    name: Google Benchmark microbench
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v6
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+        with:
+          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+
+      - name: Configure release
+        env:
+          CC: clang
+          CXX: clang++
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: cmake --preset linux-clang-rel
+
+      - name: Build bench
+        run: cmake --build --preset linux-clang-rel --target lob_bench --parallel
+
+      - name: Run bench
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          ./build/linux-clang-rel/bench/lob_bench \
+            --benchmark_format=json \
+            --benchmark_min_time=0.5s \
+            --benchmark_repetitions=5 \
+            --benchmark_report_aggregates_only=true \
+            --benchmark_out=artifacts/bench.json \
+            --benchmark_out_format=json
+
+      - name: Upload bench artefact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: bench-json
+          path: artifacts/bench.json
+          retention-days: 30
+
+      - name: Compare against baseline
+        if: hashFiles('bench/baseline.json') != ''
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user 'benchmark-tools>=0.0.1' || true
+          if command -v compare.py >/dev/null 2>&1; then
+            compare.py benchmarks bench/baseline.json artifacts/bench.json | tee artifacts/bench-compare.txt
+          else
+            echo "compare.py not available; skipping regression diff."
+          fi
