@@ -54,7 +54,7 @@ jobs:
         run: uv pip compile pyproject.toml --all-extras -o requirements.txt
 
       - name: Audit with pip-audit
-        uses: pypa/gh-action-pip-audit@1f7af30c4d7c1b6f24e57e85f3e16f6d8e234a18 # v1
+        uses: pypa/gh-action-pip-audit@v1
         with:
           inputs: requirements.txt
           summary: true
