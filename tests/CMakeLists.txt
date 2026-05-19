@@ -1,6 +1,6 @@
 include(Catch)
 
-add_executable(lob_tests test_types.cpp test_version.cpp)
+add_executable(lob_tests test_types.cpp test_version.cpp test_bitmap.cpp)
 target_link_libraries(
   lob_tests
   PRIVATE lob::core
