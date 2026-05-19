@@ -53,6 +53,7 @@ public:
         else                   book_.asks().remove(*o);
         book_.index().erase(o->id);
         book_.arena().deallocate(o);
+        state_.top_dirty = true;
         publish_top_if_changed_();
     }
 
@@ -62,6 +63,7 @@ public:
         const auto s = o->s;
         const auto t = o->t;
         if (m.new_px == o->px) {
+            if (m.new_qty == o->remaining) return;  // genuine no-op
             // qty-only fast path: mutate aggregate in place
             if (s == side::bid) {
                 auto& lvl = book_.bids().level_at(o->px);
@@ -71,6 +73,7 @@ public:
                 lvl.aggregate = lvl.aggregate - o->remaining + m.new_qty;
             }
             o->remaining = m.new_qty;
+            state_.top_dirty = true;
             publish_top_if_changed_();
             return;
         }
@@ -158,9 +161,10 @@ private:
                 });
                 pub_.publish(trade_msg{.px = best_px, .qty = trade_qty, .seq = state_.seq});
 
-                maker.remaining -= trade_qty;
-                lvl.aggregate   -= trade_qty;
-                remaining       -= trade_qty;
+                maker.remaining   -= trade_qty;
+                lvl.aggregate     -= trade_qty;
+                remaining         -= trade_qty;
+                state_.top_dirty   = true;
 
                 if (maker.remaining == 0) {
                     auto*      victim    = &maker;
@@ -196,6 +200,7 @@ private:
                 lvl.fifo.pop_front();
                 book_.index().erase(victim_id);
                 book_.arena().deallocate(victim);
+                state_.top_dirty = true;
                 return false;
             }
             case self_cross_policy::decrement_trade: {
@@ -212,6 +217,7 @@ private:
                 maker.remaining -= trade_qty;
                 lvl.aggregate   -= trade_qty;
                 remaining       -= trade_qty;
+                state_.top_dirty = true;
                 if (maker.remaining == 0) {
                     auto*      victim    = &maker;
                     const auto victim_id = victim->id;
@@ -239,6 +245,7 @@ private:
         o->account_id = m.account_id;
         side_<Side>().add(*o);
         book_.index().insert(m.id, o);
+        state_.top_dirty = true;
     }
 
     template <side Opp>
@@ -270,6 +277,9 @@ private:
     }
 
     void publish_top_if_changed_() noexcept {
+        if (!state_.top_dirty) return;
+        state_.top_dirty = false;
+
         const auto bb = book_.bids().best();
         const auto ba = book_.asks().best();
 
@@ -317,6 +327,7 @@ private:
         qty_t  last_bid_qty{0};
         qty_t  last_ask_qty{0};
         bool   have_top{false};
+        bool   top_dirty{false};
     };
 
     P&                       pub_;
