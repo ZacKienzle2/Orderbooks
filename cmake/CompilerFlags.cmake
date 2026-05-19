@@ -6,36 +6,34 @@ add_library(lob::compiler_flags ALIAS lob_compiler_flags)
 
 target_compile_features(lob_compiler_flags INTERFACE cxx_std_20)
 
-# Probe each candidate flag with -Werror so that compilers which accept the
-# flag with a warning (e.g. Apple Clang on -fno-semantic-interposition) are
-# correctly detected as "unsupported".
+# Probe each candidate flag with -Werror so that compilers which accept the flag
+# with a warning (e.g. Apple Clang on -fno-semantic-interposition) are correctly
+# detected as "unsupported".
 function(_lob_probe_flag flag out_var)
   set(_old "${CMAKE_REQUIRED_FLAGS}")
   set(CMAKE_REQUIRED_FLAGS "${flag} -Werror")
   string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${flag}" _id)
   check_cxx_compiler_flag("${flag}" ${_id})
   set(CMAKE_REQUIRED_FLAGS "${_old}")
-  set(${out_var} "${${_id}}" PARENT_SCOPE)
+  set(${out_var}
+      "${${_id}}"
+      PARENT_SCOPE)
 endfunction()
 
 if(MSVC)
-  target_compile_options(lob_compiler_flags INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor /utf-8)
+  target_compile_options(
+    lob_compiler_flags INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor
+                                 /utf-8)
 else()
   target_compile_options(
     lob_compiler_flags
-    INTERFACE
-      -fno-omit-frame-pointer
-      -fdiagnostics-color=always
-      -fvisibility=hidden
-      -fvisibility-inlines-hidden
-  )
+    INTERFACE -fno-omit-frame-pointer -fdiagnostics-color=always
+              -fvisibility=hidden -fvisibility-inlines-hidden)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(_lob_perf_candidates
-        -fno-plt
-        -fno-semantic-interposition
-        -fstrict-aliasing
-    )
+  if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL
+                                            "RelWithDebInfo")
+    set(_lob_perf_candidates -fno-plt -fno-semantic-interposition
+                             -fstrict-aliasing)
     set(_lob_perf_compile "")
     foreach(_flag IN LISTS _lob_perf_candidates)
       _lob_probe_flag("${_flag}" _ok)
@@ -48,7 +46,8 @@ else()
 endif()
 
 if(LOB_ENABLE_NATIVE AND NOT MSVC)
-  target_compile_options(lob_compiler_flags INTERFACE -march=native -mtune=native)
+  target_compile_options(lob_compiler_flags INTERFACE -march=native
+                                                      -mtune=native)
 elseif(NOT MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
   target_compile_options(lob_compiler_flags INTERFACE -march=x86-64-v3)
 endif()
