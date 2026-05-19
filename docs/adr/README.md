@@ -56,6 +56,7 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0010](0010-conventional-commits-git-cliff-changelog.md) | Accepted | Conventional Commits with git-cliff-generated CHANGELOG |
 | [0011](0011-tif-coverage-gtc-ioc-fok.md) | Accepted | Time-in-force coverage: GTC, IOC, FOK |
 | [0012](0012-self-cross-policy-configurable.md) | Accepted | Self-cross policy is a construction-time configuration |
+| [0013](0013-account-aware-self-cross.md) | Accepted | Account-aware self-cross detection and enforcement |
 
 ## References
 
