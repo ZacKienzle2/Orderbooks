@@ -109,7 +109,6 @@ jobs:
       - name: Install vcpkg
         uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
         with:
-          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
           runVcpkgInstall: false
 
       - name: Configure
@@ -150,8 +149,6 @@ jobs:
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-        with:
-          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
 
       - name: Configure compile_commands.json
         env:
@@ -187,8 +184,6 @@ jobs:
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-        with:
-          vcpkgGitCommitId: "fba75d09065fcc76a25dcf386b1d00d33f5175af"
 
       - name: Configure
         env:
