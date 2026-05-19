@@ -10,6 +10,8 @@ add_executable(lob_tests
   test_messages.cpp
   test_order.cpp
   test_id_index.cpp
+  test_level.cpp
+  test_book.cpp
 )
 find_package(Threads REQUIRED)
 target_link_libraries(
