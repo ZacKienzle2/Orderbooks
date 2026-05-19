@@ -165,3 +165,115 @@ TEST_CASE("hier_bitmap clear_all wipes every tier", "[bitmap]") {
     REQUIRE(!bm.lowest_set().has_value());
     REQUIRE(!bm.highest_set().has_value());
 }
+
+TEST_CASE("hier_bitmap next_set_at_or_after edge cases", "[bitmap]") {
+    hier_bitmap<4096> bm;
+    REQUIRE(!bm.next_set_at_or_after(0).has_value());
+    REQUIRE(!bm.next_set_at_or_after(4095).has_value());
+    REQUIRE(!bm.next_set_at_or_after(4096).has_value());
+
+    bm.set(0);
+    REQUIRE(bm.next_set_at_or_after(0) == 0);
+    REQUIRE(!bm.next_set_at_or_after(1).has_value());
+
+    bm.clear(0);
+    bm.set(4095);
+    REQUIRE(bm.next_set_at_or_after(0) == 4095);
+    REQUIRE(bm.next_set_at_or_after(4095) == 4095);
+}
+
+TEST_CASE("hier_bitmap prev_set_at_or_before edge cases", "[bitmap]") {
+    hier_bitmap<4096> bm;
+    REQUIRE(!bm.prev_set_at_or_before(4095).has_value());
+    REQUIRE(!bm.prev_set_at_or_before(0).has_value());
+
+    bm.set(4095);
+    REQUIRE(bm.prev_set_at_or_before(4095) == 4095);
+    REQUIRE(!bm.prev_set_at_or_before(4094).has_value());
+
+    bm.clear(4095);
+    bm.set(0);
+    REQUIRE(bm.prev_set_at_or_before(4095) == 0);
+    REQUIRE(bm.prev_set_at_or_before(0) == 0);
+}
+
+TEST_CASE("hier_bitmap next / prev walk monotonically across a four-tier configuration", "[bitmap]") {
+    constexpr std::size_t cap = 1U << 20;
+    hier_bitmap<cap> bm;
+
+    // Set bits across L0 word boundaries and tier transitions.
+    const std::array<std::size_t, 6> bits{
+        0, 63, 64, 4096, 262'143, cap - 1,
+    };
+    for (auto b : bits)
+        bm.set(b);
+
+    // Walk forward via next_set_at_or_after from 0.
+    std::size_t cursor = 0;
+    std::vector<std::size_t> walked_forward;
+    while (true) {
+        auto next = bm.next_set_at_or_after(cursor);
+        if (!next.has_value())
+            break;
+        walked_forward.push_back(*next);
+        if (*next == cap - 1)
+            break;
+        cursor = *next + 1;
+    }
+    REQUIRE(walked_forward.size() == bits.size());
+    for (std::size_t i = 0; i < bits.size(); ++i) {
+        REQUIRE(walked_forward[i] == bits[i]);
+    }
+
+    // Walk backward via prev_set_at_or_before from cap-1.
+    cursor = cap - 1;
+    std::vector<std::size_t> walked_backward;
+    while (true) {
+        auto prev = bm.prev_set_at_or_before(cursor);
+        if (!prev.has_value())
+            break;
+        walked_backward.push_back(*prev);
+        if (*prev == 0)
+            break;
+        cursor = *prev - 1;
+    }
+    REQUIRE(walked_backward.size() == bits.size());
+    for (std::size_t i = 0; i < bits.size(); ++i) {
+        REQUIRE(walked_backward[i] == bits[bits.size() - 1 - i]);
+    }
+}
+
+TEST_CASE("hier_bitmap next / prev differential against std::set", "[bitmap][property]") {
+    constexpr std::size_t cap = 4096;
+    constexpr std::size_t draws = 1'000;
+
+    auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
+    std::mt19937_64 rng{seed};
+    std::uniform_int_distribution<std::size_t> bit_dist{0, cap - 1};
+
+    hier_bitmap<cap> bm;
+    std::set<std::size_t> oracle;
+    for (std::size_t i = 0; i < 200; ++i) {
+        const auto b = bit_dist(rng);
+        bm.set(b);
+        oracle.insert(b);
+    }
+
+    for (std::size_t step = 0; step < draws; ++step) {
+        const auto q = bit_dist(rng);
+
+        const auto next_actual = bm.next_set_at_or_after(q);
+        const auto it_next = oracle.lower_bound(q);
+        const auto next_expected = (it_next == oracle.end())
+                                       ? std::nullopt
+                                       : std::optional<std::size_t>{*it_next};
+        REQUIRE(next_actual == next_expected);
+
+        const auto prev_actual = bm.prev_set_at_or_before(q);
+        const auto it_prev = oracle.upper_bound(q);
+        const auto prev_expected = (it_prev == oracle.begin())
+                                       ? std::nullopt
+                                       : std::optional<std::size_t>{*std::prev(it_prev)};
+        REQUIRE(prev_actual == prev_expected);
+    }
+}
