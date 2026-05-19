@@ -60,6 +60,21 @@ struct trade_msg {
 };
 static_assert(std::is_trivially_copyable_v<trade_msg>);
 
+// Emitted when the engine's self_cross_policy is decrement_trade and an
+// incoming aggressor would have crossed a resting order belonging to the
+// same account_id. Both orders are decremented by the trade quantity but
+// no fill_msg or trade_msg is published; downstream risk consumes this
+// event instead.
+struct self_trade_msg {
+    order_id_t   aggressor;
+    order_id_t   resting;
+    account_id_t account;
+    tick_t       px;
+    qty_t        qty;
+    seq_t        seq;
+};
+static_assert(std::is_trivially_copyable_v<self_trade_msg>);
+
 // ---------- Tagged unions for ring transport ----------
 
 struct command {
@@ -96,33 +111,40 @@ struct command {
 static_assert(std::is_trivially_copyable_v<command>);
 
 struct event {
-    enum class kind : std::uint8_t { fill = 0, top = 1, trade = 2 };
+    enum class kind : std::uint8_t { fill = 0, top = 1, trade = 2, self_trade = 3 };
 
     kind k;
 
     union body_t {
-        fill_msg  fill;
-        top_msg   top;
-        trade_msg trade;
+        fill_msg       fill;
+        top_msg        top;
+        trade_msg      trade;
+        self_trade_msg self_trade;
         body_t() noexcept : fill{} {}
     } body;
 
     [[nodiscard]] static event make_fill(fill_msg m) noexcept {
         event e;
-        e.k        = kind::fill;
+        e.k         = kind::fill;
         e.body.fill = m;
         return e;
     }
     [[nodiscard]] static event make_top(top_msg m) noexcept {
         event e;
-        e.k       = kind::top;
+        e.k        = kind::top;
         e.body.top = m;
         return e;
     }
     [[nodiscard]] static event make_trade(trade_msg m) noexcept {
         event e;
-        e.k         = kind::trade;
+        e.k          = kind::trade;
         e.body.trade = m;
+        return e;
+    }
+    [[nodiscard]] static event make_self_trade(self_trade_msg m) noexcept {
+        event e;
+        e.k               = kind::self_trade;
+        e.body.self_trade = m;
         return e;
     }
 };

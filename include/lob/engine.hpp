@@ -136,7 +136,16 @@ private:
 
             auto& lvl = opp.level_at(best_px);
             while (remaining > 0 && !lvl.empty()) {
-                auto&      maker     = lvl.fifo.front();
+                auto& maker = lvl.fifo.front();
+
+                if (m.account_id != 0 && maker.account_id == m.account_id) {
+                    if (handle_self_cross_(m, maker, lvl, best_px, remaining)) {
+                        if (lvl.empty()) opp.notify_level_emptied(best_px);
+                        return;  // cancel_newest path: abort the aggressor entirely
+                    }
+                    continue;  // cancel_oldest / decrement_trade: re-check loop guard
+                }
+
                 const auto trade_qty = std::min(remaining, maker.remaining);
 
                 ++seq_;
@@ -164,6 +173,56 @@ private:
 
             if (lvl.empty()) opp.notify_level_emptied(best_px);
         }
+    }
+
+    // Dispatches the configured self_cross_policy when the aggressor would
+    // match against a maker from the same account. Returns true when the
+    // aggressor itself must abort (cancel_newest); returns false when the
+    // outer match loop should re-evaluate the level (cancel_oldest after
+    // removing the maker; decrement_trade after netting both sides).
+    bool handle_self_cross_(submit_msg const& m,
+                            order&            maker,
+                            level&            lvl,
+                            tick_t            best_px,
+                            qty_t&            remaining) noexcept {
+        switch (cfg_.self_cross) {
+            case self_cross_policy::cancel_newest:
+                remaining = 0;
+                return true;
+            case self_cross_policy::cancel_oldest: {
+                auto*      victim    = &maker;
+                const auto victim_id = victim->id;
+                lvl.aggregate -= maker.remaining;
+                lvl.fifo.pop_front();
+                book_.index().erase(victim_id);
+                book_.arena().deallocate(victim);
+                return false;
+            }
+            case self_cross_policy::decrement_trade: {
+                const auto trade_qty = std::min(remaining, maker.remaining);
+                ++seq_;
+                pub_.publish(self_trade_msg{
+                    .aggressor = m.id,
+                    .resting   = maker.id,
+                    .account   = m.account_id,
+                    .px        = best_px,
+                    .qty       = trade_qty,
+                    .seq       = seq_,
+                });
+                maker.remaining -= trade_qty;
+                lvl.aggregate   -= trade_qty;
+                remaining       -= trade_qty;
+                if (maker.remaining == 0) {
+                    auto*      victim    = &maker;
+                    const auto victim_id = victim->id;
+                    lvl.fifo.pop_front();
+                    book_.index().erase(victim_id);
+                    book_.arena().deallocate(victim);
+                }
+                return false;
+            }
+        }
+        return false;
     }
 
     template <side Side>
