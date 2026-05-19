@@ -39,7 +39,7 @@ class shard_router {
 
     static constexpr std::uint64_t mask = NumShards - 1;
 
-public:
+  public:
     using engine_type = engine<P, Ticks, MaxOrders>;
 
     shard_router(P& pub, engine_config cfg) {
@@ -48,26 +48,23 @@ public:
         }
     }
 
-    shard_router(shard_router const&)            = delete;
-    shard_router(shard_router&&)                 = delete;
-    shard_router& operator=(shard_router const&) = delete;
-    shard_router& operator=(shard_router&&)      = delete;
-    ~shard_router()                              = default;
+    shard_router(const shard_router&) = delete;
+    shard_router(shard_router&&) = delete;
+    shard_router& operator=(const shard_router&) = delete;
+    shard_router& operator=(shard_router&&) = delete;
+    ~shard_router() = default;
 
-    void on_submit(symbol_id_t sym, submit_msg const& m) noexcept {
-        shard_for(sym).on_submit(m);
+    void on_submit(symbol_id_t sym, const submit_msg& m) noexcept { shard_for(sym).on_submit(m); }
+
+    void on_cancel(symbol_id_t sym, const cancel_msg& m) noexcept { shard_for(sym).on_cancel(m); }
+
+    void on_modify(symbol_id_t sym, const modify_msg& m) noexcept { shard_for(sym).on_modify(m); }
+
+    [[nodiscard]] engine_type& shard(std::size_t idx) noexcept { return *engines_[idx]; }
+
+    [[nodiscard]] const engine_type& shard(std::size_t idx) const noexcept {
+        return *engines_[idx];
     }
-
-    void on_cancel(symbol_id_t sym, cancel_msg const& m) noexcept {
-        shard_for(sym).on_cancel(m);
-    }
-
-    void on_modify(symbol_id_t sym, modify_msg const& m) noexcept {
-        shard_for(sym).on_modify(m);
-    }
-
-    [[nodiscard]] engine_type&       shard(std::size_t idx) noexcept       { return *engines_[idx]; }
-    [[nodiscard]] engine_type const& shard(std::size_t idx) const noexcept { return *engines_[idx]; }
 
     [[nodiscard]] std::size_t shard_index_for(symbol_id_t sym) const noexcept {
         return static_cast<std::size_t>(splitmix64(sym) & mask);
@@ -75,7 +72,7 @@ public:
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
 
-private:
+  private:
     [[nodiscard]] engine_type& shard_for(symbol_id_t sym) noexcept {
         return *engines_[shard_index_for(sym)];
     }

@@ -4,22 +4,22 @@
 
 #include "recording_publisher.hpp"
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_all.hpp>
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <random>
 #include <unordered_set>
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
+
 namespace {
 
-constexpr std::size_t ticks   = 256;
+constexpr std::size_t ticks = 256;
 constexpr std::size_t max_ord = 64;
-constexpr std::size_t shards  = 4;
+constexpr std::size_t shards = 4;
 
-using pub_t    = lob::test::recording_publisher;
+using pub_t = lob::test::recording_publisher;
 using router_t = lob::shard_router<pub_t, ticks, max_ord, shards>;
 
 lob::submit_msg sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s) {
@@ -107,24 +107,25 @@ TEST_CASE("shard_router cancel and modify reach the same shard as submit", "[sha
     auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
     std::mt19937_64 rng{seed};
     std::uniform_int_distribution<lob::symbol_id_t> sym_dist{1, 16};
-    std::uniform_int_distribution<lob::tick_t>      px{0, ticks - 1};
-    std::uniform_int_distribution<lob::qty_t>       qty{1, 20};
+    std::uniform_int_distribution<lob::tick_t> px{0, ticks - 1};
+    std::uniform_int_distribution<lob::qty_t> qty{1, 20};
 
     struct entry {
         lob::symbol_id_t sym;
-        lob::order_id_t  id;
+        lob::order_id_t id;
     };
+
     std::vector<entry> live;
-    lob::order_id_t    next_id = 1;
+    lob::order_id_t next_id = 1;
 
     for (std::size_t step = 0; step < 200; ++step) {
         const auto sym = sym_dist(rng);
-        const auto id  = next_id++;
+        const auto id = next_id++;
         r.on_submit(sym, sub(id, px(rng), qty(rng), lob::side::bid));
         live.push_back({sym, id});
     }
 
-    for (auto const& e : live) {
+    for (const auto& e : live) {
         r.on_modify(e.sym, lob::modify_msg{.id = e.id, .new_px = px(rng), .new_qty = qty(rng)});
         r.on_cancel(e.sym, lob::cancel_msg{.id = e.id});
     }

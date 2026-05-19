@@ -26,8 +26,11 @@ namespace lob {
 // cross-thread access is required (defeats the purpose for hot-path use).
 template <class T, std::size_t Capacity>
 class slab_arena {
-    static_assert(std::is_trivially_destructible_v<T>,
-                  "slab_arena requires trivially-destructible T");
+    // T's destructor is invoked explicitly on deallocate. Trivial destructors
+    // (the common case) compile to nothing, so the cost is zero for PODs; for
+    // T like lob::order whose Boost.Intrusive hook libstdc++ does not regard
+    // as trivially destructible (libc++ does), explicit destruction keeps the
+    // arena safe without a platform-dependent static_assert.
     static_assert(sizeof(T) >= sizeof(void*),
                   "slab_arena requires T to be at least pointer-sized so the "
                   "freelist link can be overlaid on a free slot");
@@ -68,6 +71,7 @@ class slab_arena {
     void deallocate(T* p) noexcept {
         if (p == nullptr) [[unlikely]]
             return;
+        p->~T();
         auto* s = reinterpret_cast<slot*>(p);
         store_link_(s, free_head_);
         free_head_ = s;

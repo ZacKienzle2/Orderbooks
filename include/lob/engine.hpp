@@ -109,17 +109,17 @@ class engine {
     template <snapshot_sink S>
     void snapshot(S& sink) const noexcept {
         snapshot_header hdr{};
-        hdr.ticks        = Ticks;
-        hdr.max_orders   = MaxOrders;
-        hdr.self_cross   = static_cast<std::uint8_t>(cfg_.self_cross);
+        hdr.ticks = Ticks;
+        hdr.max_orders = MaxOrders;
+        hdr.self_cross = static_cast<std::uint8_t>(cfg_.self_cross);
         hdr.top_throttle = cfg_.top_throttle ? std::uint8_t{1} : std::uint8_t{0};
-        hdr.seq          = state_.seq;
-        hdr.last_bid_px  = state_.last_bid_px;
-        hdr.last_ask_px  = state_.last_ask_px;
+        hdr.seq = state_.seq;
+        hdr.last_bid_px = state_.last_bid_px;
+        hdr.last_ask_px = state_.last_ask_px;
         hdr.last_bid_qty = state_.last_bid_qty;
         hdr.last_ask_qty = state_.last_ask_qty;
-        hdr.have_top     = state_.have_top ? std::uint8_t{1} : std::uint8_t{0};
-        hdr.num_orders   = count_resting_();
+        hdr.have_top = state_.have_top ? std::uint8_t{1} : std::uint8_t{0};
+        hdr.num_orders = count_resting_();
         emit_bytes_(sink, &hdr, sizeof(hdr));
 
         emit_side_<side::bid>(sink);
@@ -137,21 +137,25 @@ class engine {
             clear_state_();
             return false;
         }
-        if (hdr.magic != snapshot_header::magic_bytes)         return clear_state_and_fail_();
-        if (hdr.version != snapshot_header::wire_version)      return clear_state_and_fail_();
-        if (hdr.ticks != Ticks)                                return clear_state_and_fail_();
-        if (hdr.max_orders != MaxOrders)                       return clear_state_and_fail_();
+        if (hdr.magic != snapshot_header::magic_bytes)
+            return clear_state_and_fail_();
+        if (hdr.version != snapshot_header::wire_version)
+            return clear_state_and_fail_();
+        if (hdr.ticks != Ticks)
+            return clear_state_and_fail_();
+        if (hdr.max_orders != MaxOrders)
+            return clear_state_and_fail_();
 
         clear_state_();
-        cfg_.self_cross   = static_cast<self_cross_policy>(hdr.self_cross);
+        cfg_.self_cross = static_cast<self_cross_policy>(hdr.self_cross);
         cfg_.top_throttle = hdr.top_throttle != 0;
-        state_.seq          = hdr.seq;
-        state_.last_bid_px  = hdr.last_bid_px;
-        state_.last_ask_px  = hdr.last_ask_px;
+        state_.seq = hdr.seq;
+        state_.last_bid_px = hdr.last_bid_px;
+        state_.last_ask_px = hdr.last_ask_px;
         state_.last_bid_qty = hdr.last_bid_qty;
         state_.last_ask_qty = hdr.last_ask_qty;
-        state_.have_top     = hdr.have_top != 0;
-        state_.top_dirty    = false;
+        state_.have_top = hdr.have_top != 0;
+        state_.top_dirty = false;
 
         for (std::uint64_t i = 0; i < hdr.num_orders; ++i) {
             snapshot_order_record rec{};
@@ -408,11 +412,11 @@ class engine {
     [[nodiscard]] std::uint64_t count_resting_() const noexcept {
         std::uint64_t count = 0;
         for (tick_t px = 0; px < Ticks; ++px) {
-            for (auto const& o : book_.bids().level_at(px).fifo) {
+            for (const auto& o : book_.bids().level_at(px).fifo) {
                 (void)o;
                 ++count;
             }
-            for (auto const& o : book_.asks().level_at(px).fifo) {
+            for (const auto& o : book_.asks().level_at(px).fifo) {
                 (void)o;
                 ++count;
             }
@@ -421,8 +425,8 @@ class engine {
     }
 
     template <snapshot_sink S>
-    static void emit_bytes_(S& sink, void const* p, std::size_t n) noexcept {
-        sink.write(std::span<std::byte const>{static_cast<std::byte const*>(p), n});
+    static void emit_bytes_(S& sink, const void* p, std::size_t n) noexcept {
+        sink.write(std::span<const std::byte>{static_cast<const std::byte*>(p), n});
     }
 
     template <snapshot_source R>
@@ -433,15 +437,15 @@ class engine {
     template <side Side, snapshot_sink S>
     void emit_side_(S& sink) const noexcept {
         for (tick_t px = 0; px < Ticks; ++px) {
-            auto const& lvl = (Side == side::bid) ? book_.bids().level_at(px)
-                                                  : book_.asks().level_at(px);
-            for (auto const& o : lvl.fifo) {
+            const auto& lvl =
+                (Side == side::bid) ? book_.bids().level_at(px) : book_.asks().level_at(px);
+            for (const auto& o : lvl.fifo) {
                 snapshot_order_record rec{};
-                rec.id         = o.id;
-                rec.remaining  = o.remaining;
-                rec.px         = o.px;
-                rec.s          = static_cast<std::uint8_t>(Side);
-                rec.t          = static_cast<std::uint8_t>(o.t);
+                rec.id = o.id;
+                rec.remaining = o.remaining;
+                rec.px = o.px;
+                rec.s = static_cast<std::uint8_t>(Side);
+                rec.t = static_cast<std::uint8_t>(o.t);
                 rec.account_id = o.account_id;
                 emit_bytes_(sink, &rec, sizeof(rec));
             }
@@ -474,19 +478,19 @@ class engine {
         state_ = hot_state{};
     }
 
-    bool replay_record_(snapshot_order_record const& rec) noexcept {
+    bool replay_record_(const snapshot_order_record& rec) noexcept {
         if (rec.px >= Ticks)
             return false;
         auto* o = book_.arena().allocate();
         if (o == nullptr)
             return false;
-        o->id         = rec.id;
-        o->remaining  = rec.remaining;
-        o->px         = rec.px;
-        o->s          = static_cast<side>(rec.s);
-        o->t          = static_cast<tif>(rec.t);
-        o->_pad0      = 0;
-        o->level_idx  = rec.px;
+        o->id = rec.id;
+        o->remaining = rec.remaining;
+        o->px = rec.px;
+        o->s = static_cast<side>(rec.s);
+        o->t = static_cast<tif>(rec.t);
+        o->_pad0 = 0;
+        o->level_idx = rec.px;
         o->account_id = rec.account_id;
         if (o->s == side::bid)
             book_.bids().add(*o);

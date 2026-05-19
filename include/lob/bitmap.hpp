@@ -179,7 +179,8 @@ class hier_bitmap {
             const auto l1_off = l1_pos % W;
             const auto l1_masked = l1_[l1_word] & high_mask(l1_off);
             if (l1_masked != 0) {
-                const auto l0_idx = l1_word * W + static_cast<std::size_t>(std::countr_zero(l1_masked));
+                const auto l0_idx =
+                    l1_word * W + static_cast<std::size_t>(std::countr_zero(l1_masked));
                 return l0_idx * W + static_cast<std::size_t>(std::countr_zero(l0_[l0_idx]));
             }
 
@@ -191,8 +192,10 @@ class hier_bitmap {
                 const auto l2_off = l2_pos % W;
                 const auto l2_masked = l2_[l2_word] & high_mask(l2_off);
                 if (l2_masked != 0) {
-                    const auto l1_idx = l2_word * W + static_cast<std::size_t>(std::countr_zero(l2_masked));
-                    const auto l0_idx = l1_idx * W + static_cast<std::size_t>(std::countr_zero(l1_[l1_idx]));
+                    const auto l1_idx =
+                        l2_word * W + static_cast<std::size_t>(std::countr_zero(l2_masked));
+                    const auto l0_idx =
+                        l1_idx * W + static_cast<std::size_t>(std::countr_zero(l1_[l1_idx]));
                     return l0_idx * W + static_cast<std::size_t>(std::countr_zero(l0_[l0_idx]));
                 }
 
@@ -204,8 +207,10 @@ class hier_bitmap {
                     if (l3_masked == 0)
                         return std::nullopt;
                     const auto l2_idx = static_cast<std::size_t>(std::countr_zero(l3_masked));
-                    const auto l1_idx = l2_idx * W + static_cast<std::size_t>(std::countr_zero(l2_[l2_idx]));
-                    const auto l0_idx = l1_idx * W + static_cast<std::size_t>(std::countr_zero(l1_[l1_idx]));
+                    const auto l1_idx =
+                        l2_idx * W + static_cast<std::size_t>(std::countr_zero(l2_[l2_idx]));
+                    const auto l0_idx =
+                        l1_idx * W + static_cast<std::size_t>(std::countr_zero(l1_[l1_idx]));
                     return l0_idx * W + static_cast<std::size_t>(std::countr_zero(l0_[l0_idx]));
                 }
             }
@@ -235,8 +240,10 @@ class hier_bitmap {
             const auto l1_off = l1_pos % W;
             const auto l1_masked = l1_[l1_word] & low_mask_inclusive(l1_off);
             if (l1_masked != 0) {
-                const auto l0_idx = l1_word * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l1_masked)));
-                return l0_idx * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[l0_idx])));
+                const auto l0_idx =
+                    l1_word * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l1_masked)));
+                return l0_idx * W +
+                       (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[l0_idx])));
             }
 
             if constexpr (L2_W > 0) {
@@ -247,9 +254,14 @@ class hier_bitmap {
                 const auto l2_off = l2_pos % W;
                 const auto l2_masked = l2_[l2_word] & low_mask_inclusive(l2_off);
                 if (l2_masked != 0) {
-                    const auto l1_idx = l2_word * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l2_masked)));
-                    const auto l0_idx = l1_idx * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l1_[l1_idx])));
-                    return l0_idx * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[l0_idx])));
+                    const auto l1_idx =
+                        l2_word * W +
+                        (W - 1 - static_cast<std::size_t>(std::countl_zero(l2_masked)));
+                    const auto l0_idx =
+                        l1_idx * W +
+                        (W - 1 - static_cast<std::size_t>(std::countl_zero(l1_[l1_idx])));
+                    return l0_idx * W +
+                           (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[l0_idx])));
                 }
 
                 if constexpr (L3_W > 0) {
@@ -259,10 +271,16 @@ class hier_bitmap {
                     const auto l3_masked = l3_[0] & low_mask_inclusive(l3_pos);
                     if (l3_masked == 0)
                         return std::nullopt;
-                    const auto l2_idx = W - 1 - static_cast<std::size_t>(std::countl_zero(l3_masked));
-                    const auto l1_idx = l2_idx * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l2_[l2_idx])));
-                    const auto l0_idx = l1_idx * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l1_[l1_idx])));
-                    return l0_idx * W + (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[l0_idx])));
+                    const auto l2_idx =
+                        W - 1 - static_cast<std::size_t>(std::countl_zero(l3_masked));
+                    const auto l1_idx =
+                        l2_idx * W +
+                        (W - 1 - static_cast<std::size_t>(std::countl_zero(l2_[l2_idx])));
+                    const auto l0_idx =
+                        l1_idx * W +
+                        (W - 1 - static_cast<std::size_t>(std::countl_zero(l1_[l1_idx])));
+                    return l0_idx * W +
+                           (W - 1 - static_cast<std::size_t>(std::countl_zero(l0_[l0_idx])));
                 }
             }
         }
@@ -281,8 +299,7 @@ class hier_bitmap {
 
     // Bits at position `off` and below within a 64-bit word (inclusive of off).
     [[nodiscard]] static constexpr std::uint64_t low_mask_inclusive(std::size_t off) noexcept {
-        return (off == W - 1) ? ~std::uint64_t{0}
-                              : ((std::uint64_t{1} << (off + 1)) - 1);
+        return (off == W - 1) ? ~std::uint64_t{0} : ((std::uint64_t{1} << (off + 1)) - 1);
     }
 
     alignas(64) std::array<std::uint64_t, L0_W> l0_{};
