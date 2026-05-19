@@ -42,7 +42,7 @@ shopt -s nullglob
 for f in "${adr_dir}"/[0-9][0-9][0-9][0-9]-*.md; do
   base="$(basename "$f")"
   candidate="${base:0:4}"
-  if [ "${candidate}" \> "${last_num}" ]; then
+  if [ "$((10#${candidate}))" -gt "$((10#${last_num}))" ]; then
     last_num="${candidate}"
   fi
 done

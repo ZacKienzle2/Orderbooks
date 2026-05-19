@@ -59,7 +59,9 @@ jobs:
           commit-message: "chore(changelog): regenerate from conventional commits"
           title: "chore(changelog): regenerate from conventional commits"
           body: |
-            Automated changelog regeneration from `git-cliff`. Reviewer just needs to confirm the rendering looks right; merging this PR is purely a documentation refresh.
+            Automated changelog regeneration from `git-cliff`. Reviewer just needs
+            to confirm the rendering looks right; merging this PR is purely a
+            documentation refresh.
           labels: |
             chore
             docs
