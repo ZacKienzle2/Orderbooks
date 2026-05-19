@@ -22,7 +22,11 @@ struct level {
     qty_t      aggregate{0};
     order_fifo fifo{};
 
-    [[nodiscard]] bool        empty() const noexcept { return fifo.empty(); }
+    [[nodiscard]] bool empty() const noexcept { return fifo.empty(); }
+
+    // order_count is O(orders-at-this-level); the engine never calls it on
+    // the hot path. Use aggregate for the durable quantity signal; this
+    // exists only for tests and diagnostics.
     [[nodiscard]] std::size_t order_count() const noexcept { return fifo.size(); }
 
     void push_back(order& o) noexcept {
