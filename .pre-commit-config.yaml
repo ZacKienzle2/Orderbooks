@@ -10,6 +10,15 @@ minimum_pre_commit_version: "3.5.0"
 
 fail_fast: false
 
+# Hooks come in two flavours:
+#
+#   1. Pure-Python or pure-Node hooks pulled directly from upstream repos.
+#      Pre-commit installs them in isolated envs at first run.
+#   2. Local hooks that shell out to system binaries installed via
+#      `scripts/bootstrap.sh`. Used for any tool that would otherwise
+#      download a binary at install time (and so depend on the host
+#      Python's SSL CA chain being healthy).
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -52,46 +61,6 @@ repos:
       - id: markdownlint-cli2
         args: ["--config", ".markdownlint.yaml"]
 
-  - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
-    rev: 3.0.3
-    hooks:
-      - id: editorconfig-checker
-
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
-    hooks:
-      - id: shellcheck
-
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.24.6
-    hooks:
-      - id: typos
-
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.4
-    hooks:
-      - id: gitleaks
-
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.1
-    hooks:
-      - id: actionlint
-
-  - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v18.1.8
-    hooks:
-      - id: clang-format
-        types_or: [c++, c, cuda]
-        args: ["--style=file"]
-
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: v0.6.13
-    hooks:
-      - id: cmake-format
-        args: ["--in-place"]
-        additional_dependencies: ["pyyaml"]
-      - id: cmake-lint
-
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.4.0
     hooks:
@@ -111,3 +80,59 @@ repos:
           - chore
           - style
           - revert
+
+  - repo: local
+    hooks:
+      - id: clang-format
+        name: clang-format
+        description: Format C/C++/CUDA sources via the system clang-format.
+        entry: clang-format
+        language: system
+        types_or: [c++, c, cuda]
+        args: ["-i", "--style=file"]
+
+      - id: cmake-format
+        name: cmake-format
+        description: Format CMake sources via the system cmake-format.
+        entry: cmake-format
+        language: system
+        files: '(CMakeLists\.txt|\.cmake)$'
+        args: ["--in-place"]
+
+      - id: cmake-lint
+        name: cmake-lint
+        description: Lint CMake sources via the system cmake-lint.
+        entry: cmake-lint
+        language: system
+        files: '(CMakeLists\.txt|\.cmake)$'
+
+      - id: shellcheck
+        name: shellcheck
+        description: Lint shell scripts via the system shellcheck.
+        entry: shellcheck
+        language: system
+        types: [shell]
+        require_serial: false
+        args: ["--severity=warning", "--exclude=SC2310"]
+
+      - id: typos
+        name: typos
+        description: Spell-check repo via the system typos binary.
+        entry: typos
+        language: system
+        pass_filenames: false
+
+      - id: gitleaks
+        name: gitleaks
+        description: Scan filesystem for leaked secrets via the system gitleaks binary.
+        entry: gitleaks detect --no-git --redact --verbose --exit-code=1
+        language: system
+        pass_filenames: false
+
+      - id: actionlint
+        name: actionlint
+        description: Lint GitHub Actions workflows via the system actionlint binary.
+        entry: actionlint
+        language: system
+        files: '^\.github/workflows/.*\.ya?ml$'
+        types: [yaml]
