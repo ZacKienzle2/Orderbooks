@@ -15,7 +15,8 @@ add_executable(
   test_book.cpp
   test_engine.cpp
   test_engine_differential.cpp
-  test_engine_invariants.cpp)
+  test_engine_invariants.cpp
+  test_engine_snapshot.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(
   lob_tests

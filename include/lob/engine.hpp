@@ -6,6 +6,7 @@
 #include <lob/config.hpp>
 #include <lob/messages.hpp>
 #include <lob/order.hpp>
+#include <lob/snapshot.hpp>
 #include <lob/types.hpp>
 
 #include <algorithm>
@@ -94,6 +95,76 @@ class engine {
                              .t = t,
                              ._pad = 0,
                              .account_id = acct});
+    }
+
+    // Serialise the engine's complete state into a snapshot_sink.
+    //
+    // Layout: a snapshot_header followed by num_orders snapshot_order_records.
+    // Records are emitted in (price ascending, FIFO front-to-back) order per
+    // side, bids before asks. That order is the same order restore() needs
+    // to replay them in to reproduce the FIFO time priority at each level.
+    //
+    // Throwing is not part of the contract: the sink's write() is required
+    // to be noexcept by the snapshot_sink concept.
+    template <snapshot_sink S>
+    void snapshot(S& sink) const noexcept {
+        snapshot_header hdr{};
+        hdr.ticks        = Ticks;
+        hdr.max_orders   = MaxOrders;
+        hdr.self_cross   = static_cast<std::uint8_t>(cfg_.self_cross);
+        hdr.top_throttle = cfg_.top_throttle ? std::uint8_t{1} : std::uint8_t{0};
+        hdr.seq          = state_.seq;
+        hdr.last_bid_px  = state_.last_bid_px;
+        hdr.last_ask_px  = state_.last_ask_px;
+        hdr.last_bid_qty = state_.last_bid_qty;
+        hdr.last_ask_qty = state_.last_ask_qty;
+        hdr.have_top     = state_.have_top ? std::uint8_t{1} : std::uint8_t{0};
+        hdr.num_orders   = count_resting_();
+        emit_bytes_(sink, &hdr, sizeof(hdr));
+
+        emit_side_<side::bid>(sink);
+        emit_side_<side::ask>(sink);
+    }
+
+    // Restore engine state from a snapshot_source. Clears any existing
+    // state first. Returns false if the header magic / version / template
+    // parameters do not match the engine instance, leaving the engine in a
+    // freshly cleared state.
+    template <snapshot_source R>
+    [[nodiscard]] bool restore(R& src) noexcept {
+        snapshot_header hdr{};
+        if (!read_bytes_(src, &hdr, sizeof(hdr))) {
+            clear_state_();
+            return false;
+        }
+        if (hdr.magic != snapshot_header::magic_bytes)         return clear_state_and_fail_();
+        if (hdr.version != snapshot_header::wire_version)      return clear_state_and_fail_();
+        if (hdr.ticks != Ticks)                                return clear_state_and_fail_();
+        if (hdr.max_orders != MaxOrders)                       return clear_state_and_fail_();
+
+        clear_state_();
+        cfg_.self_cross   = static_cast<self_cross_policy>(hdr.self_cross);
+        cfg_.top_throttle = hdr.top_throttle != 0;
+        state_.seq          = hdr.seq;
+        state_.last_bid_px  = hdr.last_bid_px;
+        state_.last_ask_px  = hdr.last_ask_px;
+        state_.last_bid_qty = hdr.last_bid_qty;
+        state_.last_ask_qty = hdr.last_ask_qty;
+        state_.have_top     = hdr.have_top != 0;
+        state_.top_dirty    = false;
+
+        for (std::uint64_t i = 0; i < hdr.num_orders; ++i) {
+            snapshot_order_record rec{};
+            if (!read_bytes_(src, &rec, sizeof(rec))) {
+                clear_state_();
+                return false;
+            }
+            if (!replay_record_(rec)) {
+                clear_state_();
+                return false;
+            }
+        }
+        return true;
     }
 
     [[nodiscard]] const book<Ticks, MaxOrders>& book_view() const noexcept { return book_; }
@@ -332,6 +403,97 @@ class engine {
             return book_.bids();
         else
             return book_.asks();
+    }
+
+    [[nodiscard]] std::uint64_t count_resting_() const noexcept {
+        std::uint64_t count = 0;
+        for (tick_t px = 0; px < Ticks; ++px) {
+            for (auto const& o : book_.bids().level_at(px).fifo) {
+                (void)o;
+                ++count;
+            }
+            for (auto const& o : book_.asks().level_at(px).fifo) {
+                (void)o;
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    template <snapshot_sink S>
+    static void emit_bytes_(S& sink, void const* p, std::size_t n) noexcept {
+        sink.write(std::span<std::byte const>{static_cast<std::byte const*>(p), n});
+    }
+
+    template <snapshot_source R>
+    static bool read_bytes_(R& src, void* p, std::size_t n) noexcept {
+        return src.read(std::span<std::byte>{static_cast<std::byte*>(p), n});
+    }
+
+    template <side Side, snapshot_sink S>
+    void emit_side_(S& sink) const noexcept {
+        for (tick_t px = 0; px < Ticks; ++px) {
+            auto const& lvl = (Side == side::bid) ? book_.bids().level_at(px)
+                                                  : book_.asks().level_at(px);
+            for (auto const& o : lvl.fifo) {
+                snapshot_order_record rec{};
+                rec.id         = o.id;
+                rec.remaining  = o.remaining;
+                rec.px         = o.px;
+                rec.s          = static_cast<std::uint8_t>(Side);
+                rec.t          = static_cast<std::uint8_t>(o.t);
+                rec.account_id = o.account_id;
+                emit_bytes_(sink, &rec, sizeof(rec));
+            }
+        }
+    }
+
+    bool clear_state_and_fail_() noexcept {
+        clear_state_();
+        return false;
+    }
+
+    void clear_state_() noexcept {
+        // Drain both sides, releasing every live order back to the arena.
+        for (tick_t px = 0; px < Ticks; ++px) {
+            while (!book_.bids().level_at(px).fifo.empty()) {
+                auto& o = book_.bids().level_at(px).fifo.front();
+                auto* victim = &o;
+                book_.bids().remove(o);
+                book_.index().erase(victim->id);
+                book_.arena().deallocate(victim);
+            }
+            while (!book_.asks().level_at(px).fifo.empty()) {
+                auto& o = book_.asks().level_at(px).fifo.front();
+                auto* victim = &o;
+                book_.asks().remove(o);
+                book_.index().erase(victim->id);
+                book_.arena().deallocate(victim);
+            }
+        }
+        state_ = hot_state{};
+    }
+
+    bool replay_record_(snapshot_order_record const& rec) noexcept {
+        if (rec.px >= Ticks)
+            return false;
+        auto* o = book_.arena().allocate();
+        if (o == nullptr)
+            return false;
+        o->id         = rec.id;
+        o->remaining  = rec.remaining;
+        o->px         = rec.px;
+        o->s          = static_cast<side>(rec.s);
+        o->t          = static_cast<tif>(rec.t);
+        o->_pad0      = 0;
+        o->level_idx  = rec.px;
+        o->account_id = rec.account_id;
+        if (o->s == side::bid)
+            book_.bids().add(*o);
+        else
+            book_.asks().add(*o);
+        book_.index().insert(rec.id, o);
+        return true;
     }
 
     // Hot state on its own cache line. seq_ + last_* + have_top are touched

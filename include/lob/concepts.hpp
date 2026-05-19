@@ -5,8 +5,6 @@
 #include <lob/types.hpp>
 
 #include <concepts>
-#include <cstddef>
-#include <span>
 
 namespace lob {
 
@@ -29,11 +27,8 @@ concept clock_source = requires(C c) {
     { c.now() } noexcept -> std::same_as<seq_t>;
 };
 
-// snapshot_sink: byte-oriented sink for serialised engine state.
-template <class S>
-concept snapshot_sink = requires(S s, std::span<const std::byte> buf) {
-    { s.write(buf) } noexcept -> std::same_as<void>;
-};
+// snapshot_sink / snapshot_source live in <lob/snapshot.hpp> alongside the
+// wire format they describe.
 
 }  // namespace lob
 
