@@ -11,11 +11,13 @@ namespace lob {
 // ---------- Inbound commands ----------
 
 struct submit_msg {
-    order_id_t id;
-    tick_t     px;
-    qty_t      qty;
-    side       s;
-    tif        t;
+    order_id_t   id;
+    tick_t       px;
+    qty_t        qty;
+    side         s;
+    tif          t;
+    std::uint16_t _pad{0};
+    account_id_t account_id{0};
 };
 static_assert(std::is_trivially_copyable_v<submit_msg>);
 
