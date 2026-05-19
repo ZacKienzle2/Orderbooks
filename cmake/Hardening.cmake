@@ -34,8 +34,12 @@ set(_lob_hard_candidate_link
     -Wl,-z,relro
     -Wl,-z,now
     -Wl,-z,noexecstack
-    -pie
 )
+if(NOT APPLE)
+  # ld64 ignores -pie at link time and emits an "argument unused" warning
+  # under -Werror; the resulting binary is already PIE-by-default on macOS.
+  list(APPEND _lob_hard_candidate_link -pie)
+endif()
 
 set(_lob_hard_compile "")
 foreach(_flag IN LISTS _lob_hard_candidate_compile)
