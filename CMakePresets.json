@@ -1,0 +1,190 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "_base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_COLOR_DIAGNOSTICS": "ON",
+        "VCPKG_MANIFEST_MODE": "ON",
+        "VCPKG_MANIFEST_INSTALL": "ON"
+      }
+    },
+    {
+      "name": "_linux",
+      "hidden": true,
+      "inherits": "_base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux-release"
+      }
+    },
+    {
+      "name": "_macos",
+      "hidden": true,
+      "inherits": "_base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx-release"
+      }
+    },
+    {
+      "name": "linux-clang-rel",
+      "displayName": "Linux Clang Release",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_ENABLE_LTO": "ON"
+      }
+    },
+    {
+      "name": "linux-clang-relwithdebinfo",
+      "displayName": "Linux Clang RelWithDebInfo",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "linux-clang-debug",
+      "displayName": "Linux Clang Debug",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "linux-gcc-rel",
+      "displayName": "Linux GCC Release",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "displayName": "Linux GCC Debug",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "linux-clang-asan",
+      "displayName": "Linux Clang AddressSanitizer + UndefinedBehaviorSanitizer",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_SANITIZER": "address,undefined"
+      }
+    },
+    {
+      "name": "linux-clang-tsan",
+      "displayName": "Linux Clang ThreadSanitizer",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_SANITIZER": "thread"
+      }
+    },
+    {
+      "name": "linux-clang-msan",
+      "displayName": "Linux Clang MemorySanitizer",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_SANITIZER": "memory"
+      }
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "displayName": "Linux Clang libFuzzer",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_BUILD_FUZZ": "ON",
+        "LOB_SANITIZER": "fuzzer,address,undefined"
+      }
+    },
+    {
+      "name": "macos-clang-dev",
+      "displayName": "macOS Apple Clang Dev",
+      "inherits": "_macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "macos-clang-rel",
+      "displayName": "macOS Apple Clang Release",
+      "inherits": "_macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "macos-clang-debug",
+      "displayName": "macOS Apple Clang Debug",
+      "inherits": "_macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "linux-clang-rel",           "configurePreset": "linux-clang-rel" },
+    { "name": "linux-clang-relwithdebinfo","configurePreset": "linux-clang-relwithdebinfo" },
+    { "name": "linux-clang-debug",         "configurePreset": "linux-clang-debug" },
+    { "name": "linux-gcc-rel",             "configurePreset": "linux-gcc-rel" },
+    { "name": "linux-gcc-debug",           "configurePreset": "linux-gcc-debug" },
+    { "name": "linux-clang-asan",          "configurePreset": "linux-clang-asan" },
+    { "name": "linux-clang-tsan",          "configurePreset": "linux-clang-tsan" },
+    { "name": "linux-clang-msan",          "configurePreset": "linux-clang-msan" },
+    { "name": "linux-clang-fuzz",          "configurePreset": "linux-clang-fuzz" },
+    { "name": "macos-clang-dev",           "configurePreset": "macos-clang-dev" },
+    { "name": "macos-clang-rel",           "configurePreset": "macos-clang-rel" },
+    { "name": "macos-clang-debug",         "configurePreset": "macos-clang-debug" }
+  ],
+  "testPresets": [
+    {
+      "name": "_test_base",
+      "hidden": true,
+      "output": { "outputOnFailure": true, "verbosity": "default" },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false, "jobs": 0 }
+    },
+    { "name": "linux-clang-rel",  "configurePreset": "linux-clang-rel",  "inherits": "_test_base" },
+    { "name": "linux-clang-debug","configurePreset": "linux-clang-debug","inherits": "_test_base" },
+    { "name": "linux-gcc-rel",    "configurePreset": "linux-gcc-rel",    "inherits": "_test_base" },
+    { "name": "linux-gcc-debug",  "configurePreset": "linux-gcc-debug",  "inherits": "_test_base" },
+    { "name": "linux-clang-asan", "configurePreset": "linux-clang-asan", "inherits": "_test_base" },
+    { "name": "linux-clang-tsan", "configurePreset": "linux-clang-tsan", "inherits": "_test_base" },
+    { "name": "linux-clang-msan", "configurePreset": "linux-clang-msan", "inherits": "_test_base" },
+    { "name": "macos-clang-dev",  "configurePreset": "macos-clang-dev",  "inherits": "_test_base" },
+    { "name": "macos-clang-rel",  "configurePreset": "macos-clang-rel",  "inherits": "_test_base" },
+    { "name": "macos-clang-debug","configurePreset": "macos-clang-debug","inherits": "_test_base" }
+  ]
+}

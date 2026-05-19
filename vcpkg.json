@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "orderbooks",
+  "version-string": "0.1.0",
+  "description": "Low-latency limit order book and matching engine.",
+  "homepage": "https://github.com/ZacKienzle2/Orderbooks",
+  "license": "MIT",
+  "dependencies": [
+    {
+      "name": "boost-intrusive",
+      "version>=": "1.85.0"
+    },
+    {
+      "name": "fmt",
+      "version>=": "11.0.0"
+    },
+    {
+      "name": "unordered-dense",
+      "version>=": "4.4.0"
+    }
+  ],
+  "features": {
+    "tests": {
+      "description": "Catch2 v3 + RapidCheck property tests + reference engine.",
+      "dependencies": [
+        { "name": "catch2", "version>=": "3.6.0" },
+        { "name": "rapidcheck" }
+      ]
+    },
+    "bench": {
+      "description": "Google Benchmark microbenches + nanobench tail reports.",
+      "dependencies": [
+        { "name": "benchmark", "version>=": "1.8.5" },
+        { "name": "nanobench", "version>=": "4.3.11" }
+      ]
+    }
+  },
+  "default-features": ["tests", "bench"],
+  "builtin-baseline": "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+}
