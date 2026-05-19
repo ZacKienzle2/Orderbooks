@@ -87,7 +87,7 @@ public:
     }
 
     [[nodiscard]] book<Ticks, MaxOrders> const& book_view() const noexcept { return book_; }
-    [[nodiscard]] seq_t                          last_seq()  const noexcept { return seq_; }
+    [[nodiscard]] seq_t                          last_seq()  const noexcept { return state_.seq; }
 
 private:
     template <side Side>
@@ -148,15 +148,15 @@ private:
 
                 const auto trade_qty = std::min(remaining, maker.remaining);
 
-                ++seq_;
+                ++state_.seq;
                 pub_.publish(fill_msg{
                     .maker = maker.id,
                     .taker = m.id,
                     .px    = best_px,
                     .qty   = trade_qty,
-                    .seq   = seq_,
+                    .seq   = state_.seq,
                 });
-                pub_.publish(trade_msg{.px = best_px, .qty = trade_qty, .seq = seq_});
+                pub_.publish(trade_msg{.px = best_px, .qty = trade_qty, .seq = state_.seq});
 
                 maker.remaining -= trade_qty;
                 lvl.aggregate   -= trade_qty;
@@ -200,14 +200,14 @@ private:
             }
             case self_cross_policy::decrement_trade: {
                 const auto trade_qty = std::min(remaining, maker.remaining);
-                ++seq_;
+                ++state_.seq;
                 pub_.publish(self_trade_msg{
                     .aggressor = m.id,
                     .resting   = maker.id,
                     .account   = m.account_id,
                     .px        = best_px,
                     .qty       = trade_qty,
-                    .seq       = seq_,
+                    .seq       = state_.seq,
                 });
                 maker.remaining -= trade_qty;
                 lvl.aggregate   -= trade_qty;
@@ -278,25 +278,25 @@ private:
         const qty_t  bid_qty = bb.has_value() ? book_.bids().aggregate_at(*bb) : qty_t{0};
         const qty_t  ask_qty = ba.has_value() ? book_.asks().aggregate_at(*ba) : qty_t{0};
 
-        if (cfg_.top_throttle && have_top_ &&
-            bid_px == last_bid_px_ && ask_px == last_ask_px_ &&
-            bid_qty == last_bid_qty_ && ask_qty == last_ask_qty_) {
+        if (cfg_.top_throttle && state_.have_top &&
+            bid_px == state_.last_bid_px && ask_px == state_.last_ask_px &&
+            bid_qty == state_.last_bid_qty && ask_qty == state_.last_ask_qty) {
             return;
         }
 
-        ++seq_;
+        ++state_.seq;
         pub_.publish(top_msg{
-            .bid_px = bid_px,
-            .ask_px = ask_px,
+            .bid_px  = bid_px,
+            .ask_px  = ask_px,
             .bid_qty = bid_qty,
             .ask_qty = ask_qty,
-            .seq = seq_,
+            .seq     = state_.seq,
         });
-        last_bid_px_  = bid_px;
-        last_ask_px_  = ask_px;
-        last_bid_qty_ = bid_qty;
-        last_ask_qty_ = ask_qty;
-        have_top_     = true;
+        state_.last_bid_px  = bid_px;
+        state_.last_ask_px  = ask_px;
+        state_.last_bid_qty = bid_qty;
+        state_.last_ask_qty = ask_qty;
+        state_.have_top     = true;
     }
 
     template <side S>
@@ -305,15 +305,24 @@ private:
         else                          return book_.asks();
     }
 
+    // Hot state on its own cache line. seq_ + last_* + have_top are touched
+    // by every fill / cancel / modify; pub_ and cfg_ are read-mostly. Packing
+    // the mutable cluster into a dedicated 64-byte line keeps prefetchers
+    // happy and prevents publisher / engine writes from competing for the
+    // same cache line under a producer / consumer split.
+    struct alignas(64) hot_state {
+        seq_t  seq{0};
+        tick_t last_bid_px{0};
+        tick_t last_ask_px{0};
+        qty_t  last_bid_qty{0};
+        qty_t  last_ask_qty{0};
+        bool   have_top{false};
+    };
+
     P&                       pub_;
     engine_config            cfg_;
     book<Ticks, MaxOrders>   book_{};
-    seq_t                    seq_{0};
-    tick_t                   last_bid_px_{0};
-    tick_t                   last_ask_px_{0};
-    qty_t                    last_bid_qty_{0};
-    qty_t                    last_ask_qty_{0};
-    bool                     have_top_{false};
+    hot_state                state_{};
 };
 
 }  // namespace lob
