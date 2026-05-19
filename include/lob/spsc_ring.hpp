@@ -63,7 +63,7 @@ class spsc_ring {
     [[nodiscard]] std::size_t size() const noexcept {
         const auto h = head_.load(std::memory_order_acquire);
         const auto t = tail_.load(std::memory_order_acquire);
-        return static_cast<std::size_t>(h - t);
+        return h - t;  // std::uint64_t -> std::size_t is a no-op on 64-bit targets
     }
 
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
