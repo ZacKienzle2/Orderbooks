@@ -26,6 +26,7 @@ from orderbooks_viz import (  # noqa: E402
     depth,
     event_log,
     flow_heatmap,
+    replay_anim,
     top_series,
 )
 
@@ -89,3 +90,10 @@ def test_flow_heatmap_renders(log, tmp_path) -> None:
     assert out.exists()
     assert out.stat().st_size > 1024
     fig.clear()
+
+
+def test_replay_anim_renders_gif(log, tmp_path) -> None:
+    out = tmp_path / "replay.gif"
+    replay_anim.render(log, output=out, stride=1, fps=4)
+    assert out.exists()
+    assert out.stat().st_size > 1024
