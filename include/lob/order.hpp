@@ -45,10 +45,14 @@ static_assert(sizeof(order) == 64);
 static_assert(alignof(order) == 64);
 static_assert(std::is_trivially_destructible_v<order>);
 
+// constant_time_size<false>: the engine drains a level via the empty() guard
+// and front() iteration, never via size(). Skipping the per-link bookkeeping
+// shaves a counter update off every push_back / pop_front on the hot path.
+// The level aggregate (lob::level::aggregate) is the durable size signal.
 using order_fifo = boost::intrusive::list<
     order,
     boost::intrusive::member_hook<order, decltype(order::fifo_hook), &order::fifo_hook>,
-    boost::intrusive::constant_time_size<true>>;
+    boost::intrusive::constant_time_size<false>>;
 
 }  // namespace lob
 
