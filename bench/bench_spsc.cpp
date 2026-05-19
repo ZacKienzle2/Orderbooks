@@ -17,7 +17,7 @@ void bench_push_pop_single_threaded(benchmark::State& state) {
         benchmark::DoNotOptimize(ring.try_push(v));
         benchmark::DoNotOptimize(ring.try_pop(v));
     }
-    state.SetItemsProcessed(state.iterations());
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()));
 }
 BENCHMARK(bench_push_pop_single_threaded);
 
@@ -29,7 +29,8 @@ void bench_burst_then_drain(benchmark::State& state) {
         std::uint64_t out{};
         while (ring.try_pop(out)) benchmark::DoNotOptimize(out);
     }
-    state.SetItemsProcessed(state.iterations() * n);
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(n));
 }
 BENCHMARK(bench_burst_then_drain)->Range(64, 32'768);
 
