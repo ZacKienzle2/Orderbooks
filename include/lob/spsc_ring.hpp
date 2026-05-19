@@ -32,18 +32,19 @@ class spsc_ring {
 
     static constexpr std::uint64_t mask = Capacity - 1;
 
-public:
-    spsc_ring() noexcept            = default;
-    ~spsc_ring()                    = default;
-    spsc_ring(spsc_ring const&)     = delete;
-    spsc_ring(spsc_ring&&)          = delete;
-    spsc_ring& operator=(spsc_ring const&) = delete;
-    spsc_ring& operator=(spsc_ring&&)      = delete;
+  public:
+    spsc_ring() noexcept = default;
+    ~spsc_ring() = default;
+    spsc_ring(const spsc_ring&) = delete;
+    spsc_ring(spsc_ring&&) = delete;
+    spsc_ring& operator=(const spsc_ring&) = delete;
+    spsc_ring& operator=(spsc_ring&&) = delete;
 
-    [[nodiscard]] bool try_push(T const& value) noexcept {
+    [[nodiscard]] bool try_push(const T& value) noexcept {
         const auto head = head_.load(std::memory_order_relaxed);
         const auto tail = tail_.load(std::memory_order_acquire);
-        if (head - tail >= Capacity) [[unlikely]] return false;
+        if (head - tail >= Capacity) [[unlikely]]
+            return false;
         buf_[head & mask] = value;
         head_.store(head + 1, std::memory_order_release);
         return true;
@@ -52,7 +53,8 @@ public:
     [[nodiscard]] bool try_pop(T& out) noexcept {
         const auto tail = tail_.load(std::memory_order_relaxed);
         const auto head = head_.load(std::memory_order_acquire);
-        if (head == tail) [[unlikely]] return false;
+        if (head == tail) [[unlikely]]
+            return false;
         out = buf_[tail & mask];
         tail_.store(tail + 1, std::memory_order_release);
         return true;
@@ -65,13 +67,15 @@ public:
     }
 
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
-    [[nodiscard]] bool full()  const noexcept { return size() == Capacity; }
+
+    [[nodiscard]] bool full() const noexcept { return size() == Capacity; }
+
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Capacity; }
 
-private:
+  private:
     alignas(64) std::atomic<std::uint64_t> head_{0};
     alignas(64) std::atomic<std::uint64_t> tail_{0};
-    alignas(64) std::array<T, Capacity>    buf_{};
+    alignas(64) std::array<T, Capacity> buf_{};
 };
 
 }  // namespace lob

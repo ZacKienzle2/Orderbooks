@@ -29,16 +29,16 @@ namespace lob {
 // a non-trivial destructor that would force a per-order teardown loop in
 // the arena.
 struct alignas(64) order {
-    order_id_t                                                              id;
-    qty_t                                                                   remaining;
-    tick_t                                                                  px;
-    side                                                                    s;
-    tif                                                                     t;
-    std::uint16_t                                                           _pad0;
-    std::uint32_t                                                           level_idx;
-    account_id_t                                                            account_id;
-    boost::intrusive::list_member_hook<
-        boost::intrusive::link_mode<boost::intrusive::normal_link>>         fifo_hook;
+    order_id_t id;
+    qty_t remaining;
+    tick_t px;
+    side s;
+    tif t;
+    std::uint16_t _pad0;
+    std::uint32_t level_idx;
+    account_id_t account_id;
+    boost::intrusive::list_member_hook<boost::intrusive::link_mode<boost::intrusive::normal_link>>
+        fifo_hook;
 };
 
 static_assert(sizeof(order) == 64);

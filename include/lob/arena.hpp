@@ -32,10 +32,13 @@ class slab_arena {
                   "freelist link can be overlaid on a free slot");
     static_assert(Capacity > 0, "slab_arena requires positive Capacity");
 
-    struct alignas(T) slot { std::byte bytes[sizeof(T)]; };  // NOLINT
+    struct alignas(T) slot {
+        std::byte bytes[sizeof(T)];
+    };  // NOLINT
+
     using slot_array = std::array<slot, Capacity>;
 
-public:
+  public:
     slab_arena() {
         storage_ = std::make_unique<slot_array>();
         // Initialise freelist: each slot's first word points to the next slot.
@@ -46,43 +49,49 @@ public:
         free_head_ = &(*storage_)[0];
     }
 
-    slab_arena(slab_arena&&) noexcept            = default;
+    slab_arena(slab_arena&&) noexcept = default;
     slab_arena& operator=(slab_arena&&) noexcept = default;
-    slab_arena(slab_arena const&)                = delete;
-    slab_arena& operator=(slab_arena const&)     = delete;
-    ~slab_arena()                                = default;
+    slab_arena(const slab_arena&) = delete;
+    slab_arena& operator=(const slab_arena&) = delete;
+    ~slab_arena() = default;
 
     [[nodiscard]] T* allocate() noexcept {
-        if (free_head_ == nullptr) [[unlikely]] return nullptr;
-        slot* s    = free_head_;
+        if (free_head_ == nullptr) [[unlikely]]
+            return nullptr;
+        slot* s = free_head_;
         free_head_ = load_link_(s);
         ++in_use_;
         return std::launder(reinterpret_cast<T*>(s));
     }
 
     void deallocate(T* p) noexcept {
-        if (p == nullptr) [[unlikely]] return;
+        if (p == nullptr) [[unlikely]]
+            return;
         auto* s = reinterpret_cast<slot*>(p);
         store_link_(s, free_head_);
         free_head_ = s;
         --in_use_;
     }
 
-    [[nodiscard]] std::size_t in_use()   const noexcept { return in_use_; }
-    [[nodiscard]] std::size_t capacity() const noexcept { return Capacity; }
-    [[nodiscard]] bool        empty()    const noexcept { return in_use_ == 0; }
-    [[nodiscard]] bool        full()     const noexcept { return in_use_ == Capacity; }
+    [[nodiscard]] std::size_t in_use() const noexcept { return in_use_; }
 
-    [[nodiscard]] bool owns(T const* p) const noexcept {
-        auto const* s    = reinterpret_cast<slot const*>(p);
-        auto const* base = (*storage_).data();
+    [[nodiscard]] std::size_t capacity() const noexcept { return Capacity; }
+
+    [[nodiscard]] bool empty() const noexcept { return in_use_ == 0; }
+
+    [[nodiscard]] bool full() const noexcept { return in_use_ == Capacity; }
+
+    [[nodiscard]] bool owns(const T* p) const noexcept {
+        const auto* s = reinterpret_cast<const slot*>(p);
+        const auto* base = (*storage_).data();
         return s >= base && s < base + Capacity;
     }
 
-private:
+  private:
     static void store_link_(slot* s, slot* next) noexcept {
         std::memcpy(s->bytes, &next, sizeof(next));
     }
+
     static slot* load_link_(slot* s) noexcept {
         slot* next{nullptr};
         std::memcpy(&next, s->bytes, sizeof(next));
@@ -90,7 +99,7 @@ private:
     }
 
     alignas(64) std::unique_ptr<slot_array> storage_;
-    slot*       free_head_{nullptr};
+    slot* free_head_{nullptr};
     std::size_t in_use_{0};
 };
 

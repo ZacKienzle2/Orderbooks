@@ -4,25 +4,26 @@
 
 #include "recording_publisher.hpp"
 
-#include <catch2/catch_test_macros.hpp>
-
 #include <cstdint>
+
+#include <catch2/catch_test_macros.hpp>
 
 namespace {
 
-using pub_t      = lob::test::recording_publisher;
+using pub_t = lob::test::recording_publisher;
 using test_eng_t = lob::engine<pub_t, 256, 64>;
 
-lob::submit_msg sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s, lob::tif t = lob::tif::gtc) {
+lob::submit_msg
+sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s, lob::tif t = lob::tif::gtc) {
     return {.id = id, .px = px, .qty = qty, .s = s, .t = t};
 }
 
-lob::submit_msg sub_with_account(lob::order_id_t   id,
-                                 lob::tick_t       px,
-                                 lob::qty_t        qty,
-                                 lob::side         s,
+lob::submit_msg sub_with_account(lob::order_id_t id,
+                                 lob::tick_t px,
+                                 lob::qty_t qty,
+                                 lob::side s,
                                  lob::account_id_t acct,
-                                 lob::tif          t = lob::tif::gtc) {
+                                 lob::tif t = lob::tif::gtc) {
     return {.id = id, .px = px, .qty = qty, .s = s, .t = t, ._pad = 0, .account_id = acct};
 }
 
@@ -47,14 +48,14 @@ TEST_CASE("engine submit matches a crossing taker against a resting maker", "[en
     pub_t pub;
     test_eng_t eng{pub, lob::engine_config{}};
 
-    eng.on_submit(sub(1, 100, 10, lob::side::ask));     // maker rests
-    eng.on_submit(sub(2, 100, 6, lob::side::bid));      // taker partially fills
+    eng.on_submit(sub(1, 100, 10, lob::side::ask));  // maker rests
+    eng.on_submit(sub(2, 100, 6, lob::side::bid));   // taker partially fills
 
     REQUIRE(pub.fills.size() == 1);
     REQUIRE(pub.fills[0].maker == 1);
     REQUIRE(pub.fills[0].taker == 2);
-    REQUIRE(pub.fills[0].qty   == 6);
-    REQUIRE(pub.fills[0].px    == 100);
+    REQUIRE(pub.fills[0].qty == 6);
+    REQUIRE(pub.fills[0].px == 100);
 
     REQUIRE(eng.book_view().asks().best() == 100);
     REQUIRE(eng.book_view().asks().aggregate_at(100) == 4);
@@ -74,11 +75,11 @@ TEST_CASE("engine matches across multiple makers at the same level (FIFO)", "[en
 
     REQUIRE(pub.fills.size() == 3);
     REQUIRE(pub.fills[0].maker == 1);
-    REQUIRE(pub.fills[0].qty   == 5);
+    REQUIRE(pub.fills[0].qty == 5);
     REQUIRE(pub.fills[1].maker == 2);
-    REQUIRE(pub.fills[1].qty   == 5);
+    REQUIRE(pub.fills[1].qty == 5);
     REQUIRE(pub.fills[2].maker == 3);
-    REQUIRE(pub.fills[2].qty   == 2);
+    REQUIRE(pub.fills[2].qty == 2);
 
     REQUIRE(eng.book_view().asks().best() == 100);
     REQUIRE(eng.book_view().asks().aggregate_at(100) == 3);
@@ -157,7 +158,7 @@ TEST_CASE("engine cancel removes a resting order and emits top change", "[engine
     test_eng_t eng{pub, lob::engine_config{}};
 
     eng.on_submit(sub(1, 100, 10, lob::side::bid));
-    eng.on_submit(sub(2, 99,  10, lob::side::bid));
+    eng.on_submit(sub(2, 99, 10, lob::side::bid));
     pub.clear();
 
     eng.on_cancel({.id = 1});
@@ -198,7 +199,7 @@ TEST_CASE("engine modify with price change loses time priority", "[engine][modif
 
     REQUIRE(eng.book_view().bids().best() == 100);
     REQUIRE(eng.book_view().bids().aggregate_at(100) == 10);
-    REQUIRE(eng.book_view().bids().aggregate_at(99)  == 10);
+    REQUIRE(eng.book_view().bids().aggregate_at(99) == 10);
 }
 
 TEST_CASE("engine top throttle suppresses identical tops", "[engine][top]") {
@@ -234,7 +235,8 @@ TEST_CASE("engine self-cross policy cancel_newest aborts the aggressor", "[engin
     REQUIRE(!eng.book_view().bids().best().has_value());
 }
 
-TEST_CASE("engine self-cross policy cancel_oldest removes the resting order", "[engine][self-cross]") {
+TEST_CASE("engine self-cross policy cancel_oldest removes the resting order",
+          "[engine][self-cross]") {
     pub_t pub;
     test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
 
@@ -248,12 +250,13 @@ TEST_CASE("engine self-cross policy cancel_oldest removes the resting order", "[
     REQUIRE(pub.fills.size() == 1);
     REQUIRE(pub.fills[0].maker == 2);
     REQUIRE(pub.fills[0].taker == 99);
-    REQUIRE(pub.fills[0].qty   == 6);
+    REQUIRE(pub.fills[0].qty == 6);
     REQUIRE(eng.book_view().bids().best() == 100);
     REQUIRE(eng.book_view().bids().aggregate_at(100) == 2);
 }
 
-TEST_CASE("engine self-cross policy decrement_trade emits self_trade and nets both sides", "[engine][self-cross]") {
+TEST_CASE("engine self-cross policy decrement_trade emits self_trade and nets both sides",
+          "[engine][self-cross]") {
     pub_t pub;
     test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
 
@@ -266,9 +269,9 @@ TEST_CASE("engine self-cross policy decrement_trade emits self_trade and nets bo
     REQUIRE(pub.trades.empty());
     REQUIRE(pub.self_trades.size() == 1);
     REQUIRE(pub.self_trades[0].aggressor == 99);
-    REQUIRE(pub.self_trades[0].resting   == 1);
-    REQUIRE(pub.self_trades[0].account   == 7);
-    REQUIRE(pub.self_trades[0].qty       == 4);
+    REQUIRE(pub.self_trades[0].resting == 1);
+    REQUIRE(pub.self_trades[0].account == 7);
+    REQUIRE(pub.self_trades[0].qty == 4);
     REQUIRE(eng.book_view().asks().best() == 100);
     REQUIRE(eng.book_view().asks().aggregate_at(100) == 6);
 }
@@ -297,7 +300,7 @@ TEST_CASE("engine sequence numbers are monotonic across events", "[engine][seq]"
     REQUIRE(pub.fills.size() == 1);
     REQUIRE(pub.tops.size() >= 2);
     lob::seq_t last_seq = 0;
-    for (auto const& t : pub.tops) {
+    for (const auto& t : pub.tops) {
         REQUIRE(t.seq > last_seq);
         last_seq = t.seq;
     }

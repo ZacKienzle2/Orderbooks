@@ -1,13 +1,13 @@
 #include <lob/arena.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_all.hpp>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <random>
 #include <vector>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
 
 namespace {
 
@@ -16,8 +16,9 @@ struct alignas(64) cell {
     std::uint64_t b;
     std::uint64_t c;
     std::uint64_t d;
-    std::byte     pad[32];
+    std::byte pad[32];
 };
+
 static_assert(sizeof(cell) == 64);
 
 }  // namespace
@@ -59,7 +60,8 @@ TEST_CASE("slab_arena saturates at capacity and rejects further allocations", "[
     REQUIRE(arena.full());
     REQUIRE(arena.in_use() == n);
     REQUIRE(arena.allocate() == nullptr);
-    for (auto* p : live) arena.deallocate(p);
+    for (auto* p : live)
+        arena.deallocate(p);
     REQUIRE(arena.empty());
 }
 
@@ -113,8 +115,9 @@ TEST_CASE("slab_arena preserves writes across alloc / dealloc / realloc", "[aren
     REQUIRE(q->b == 0x2222222222222222ULL);
 }
 
-TEST_CASE("slab_arena differential against std::vector<bool> on random workloads", "[arena][property]") {
-    constexpr std::size_t cap   = 256;
+TEST_CASE("slab_arena differential against std::vector<bool> on random workloads",
+          "[arena][property]") {
+    constexpr std::size_t cap = 256;
     constexpr std::size_t draws = 2'000;
 
     auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);

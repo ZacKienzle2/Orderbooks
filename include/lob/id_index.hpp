@@ -4,9 +4,9 @@
 #include <lob/order.hpp>
 #include <lob/types.hpp>
 
-#include <ankerl/unordered_dense.h>
-
 #include <cstddef>
+
+#include <ankerl/unordered_dense.h>
 
 namespace lob {
 
@@ -18,35 +18,30 @@ namespace lob {
 // it never owns the storage. Insert / erase are O(1) amortised, lookup is
 // one or two cache-line probes typical.
 class id_index {
-    using map_type =
-        ankerl::unordered_dense::segmented_map<order_id_t, order*,
-                                               ankerl::unordered_dense::hash<order_id_t>>;
+    using map_type = ankerl::unordered_dense::
+        segmented_map<order_id_t, order*, ankerl::unordered_dense::hash<order_id_t>>;
 
-public:
+  public:
     id_index() = default;
 
-    explicit id_index(std::size_t initial_capacity) {
-        map_.reserve(initial_capacity);
-    }
+    explicit id_index(std::size_t initial_capacity) { map_.reserve(initial_capacity); }
 
-    void insert(order_id_t id, order* p) noexcept {
-        map_.emplace(id, p);
-    }
+    void insert(order_id_t id, order* p) noexcept { map_.emplace(id, p); }
 
     [[nodiscard]] order* lookup(order_id_t id) const noexcept {
         const auto it = map_.find(id);
         return (it == map_.end()) ? nullptr : it->second;
     }
 
-    void erase(order_id_t id) noexcept {
-        map_.erase(id);
-    }
+    void erase(order_id_t id) noexcept { map_.erase(id); }
 
     [[nodiscard]] std::size_t size() const noexcept { return map_.size(); }
-    [[nodiscard]] bool        empty() const noexcept { return map_.empty(); }
-    void                       clear() noexcept { map_.clear(); }
 
-private:
+    [[nodiscard]] bool empty() const noexcept { return map_.empty(); }
+
+    void clear() noexcept { map_.clear(); }
+
+  private:
     map_type map_;
 };
 
