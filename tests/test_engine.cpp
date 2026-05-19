@@ -17,6 +17,15 @@ lob::submit_msg sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::sid
     return {.id = id, .px = px, .qty = qty, .s = s, .t = t};
 }
 
+lob::submit_msg sub_with_account(lob::order_id_t   id,
+                                 lob::tick_t       px,
+                                 lob::qty_t        qty,
+                                 lob::side         s,
+                                 lob::account_id_t acct,
+                                 lob::tif          t = lob::tif::gtc) {
+    return {.id = id, .px = px, .qty = qty, .s = s, .t = t, ._pad = 0, .account_id = acct};
+}
+
 }  // namespace
 
 TEST_CASE("engine submit rests GTC when book is empty", "[engine][submit]") {
@@ -207,6 +216,75 @@ TEST_CASE("engine top throttle suppresses identical tops", "[engine][top]") {
     REQUIRE(pub.tops.size() == 2);  // one from cancel (now empty top), one from re-submit
     REQUIRE(pub.tops[0].bid_qty == 0);
     REQUIRE(pub.tops[1].bid_qty == 10);
+}
+
+TEST_CASE("engine self-cross policy cancel_newest aborts the aggressor", "[engine][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 7));
+    pub.clear();
+
+    eng.on_submit(sub_with_account(2, 100, 5, lob::side::bid, 7));
+
+    REQUIRE(pub.fills.empty());
+    REQUIRE(pub.self_trades.empty());
+    REQUIRE(eng.book_view().asks().best() == 100);
+    REQUIRE(eng.book_view().asks().aggregate_at(100) == 10);
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine self-cross policy cancel_oldest removes the resting order", "[engine][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+
+    eng.on_submit(sub_with_account(1, 100, 4, lob::side::ask, 7));
+    eng.on_submit(sub_with_account(2, 100, 6, lob::side::ask, 9));  // different account
+    pub.clear();
+
+    eng.on_submit(sub_with_account(99, 100, 8, lob::side::bid, 7));
+
+    REQUIRE(pub.self_trades.empty());
+    REQUIRE(pub.fills.size() == 1);
+    REQUIRE(pub.fills[0].maker == 2);
+    REQUIRE(pub.fills[0].taker == 99);
+    REQUIRE(pub.fills[0].qty   == 6);
+    REQUIRE(eng.book_view().bids().best() == 100);
+    REQUIRE(eng.book_view().bids().aggregate_at(100) == 2);
+}
+
+TEST_CASE("engine self-cross policy decrement_trade emits self_trade and nets both sides", "[engine][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 7));
+    pub.clear();
+
+    eng.on_submit(sub_with_account(99, 100, 4, lob::side::bid, 7));
+
+    REQUIRE(pub.fills.empty());
+    REQUIRE(pub.trades.empty());
+    REQUIRE(pub.self_trades.size() == 1);
+    REQUIRE(pub.self_trades[0].aggressor == 99);
+    REQUIRE(pub.self_trades[0].resting   == 1);
+    REQUIRE(pub.self_trades[0].account   == 7);
+    REQUIRE(pub.self_trades[0].qty       == 4);
+    REQUIRE(eng.book_view().asks().best() == 100);
+    REQUIRE(eng.book_view().asks().aggregate_at(100) == 6);
+}
+
+TEST_CASE("engine self-cross policy skipped when account ids differ", "[engine][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 7));
+    pub.clear();
+
+    eng.on_submit(sub_with_account(99, 100, 4, lob::side::bid, 8));  // different account
+
+    REQUIRE(pub.fills.size() == 1);
+    REQUIRE(pub.fills[0].qty == 4);
+    REQUIRE(eng.book_view().asks().aggregate_at(100) == 6);
 }
 
 TEST_CASE("engine sequence numbers are monotonic across events", "[engine][seq]") {
