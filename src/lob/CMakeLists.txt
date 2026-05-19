@@ -27,6 +27,7 @@ target_sources(
                "${CMAKE_SOURCE_DIR}/include/lob/bitmap.hpp"
                "${CMAKE_SOURCE_DIR}/include/lob/arena.hpp"
                "${CMAKE_SOURCE_DIR}/include/lob/spsc_ring.hpp"
+               "${CMAKE_SOURCE_DIR}/include/lob/json_recorder.hpp"
 )
 
 target_include_directories(
