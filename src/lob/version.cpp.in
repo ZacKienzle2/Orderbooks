@@ -1,0 +1,25 @@
+#include <lob/version.hpp>
+
+namespace lob::version {
+
+std::uint32_t major() noexcept {
+    return @PROJECT_VERSION_MAJOR@U;
+}
+
+std::uint32_t minor() noexcept {
+    return @PROJECT_VERSION_MINOR@U;
+}
+
+std::uint32_t patch() noexcept {
+    return @PROJECT_VERSION_PATCH@U;
+}
+
+std::string_view string() noexcept {
+    return std::string_view{"@PROJECT_VERSION@"};
+}
+
+std::string_view git_sha() noexcept {
+    return std::string_view{"@LOB_GIT_SHA@"};
+}
+
+}  // namespace lob::version
