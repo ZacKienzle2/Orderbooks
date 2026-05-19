@@ -1,4 +1,8 @@
-add_executable(lob_bench bench_smoke.cpp bench_bitmap.cpp)
+add_executable(lob_bench
+  bench_smoke.cpp
+  bench_bitmap.cpp
+  bench_arena.cpp
+)
 target_link_libraries(
   lob_bench
   PRIVATE lob::core
