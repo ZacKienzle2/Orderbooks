@@ -1,4 +1,5 @@
-include(Catch)
+# Catch2 ships its CTest integration as Catch.cmake under its install share dir.
+include("${Catch2_DIR}/Catch.cmake")
 
 add_executable(lob_tests
   test_types.cpp
@@ -6,6 +7,9 @@ add_executable(lob_tests
   test_bitmap.cpp
   test_arena.cpp
   test_spsc.cpp
+  test_messages.cpp
+  test_order.cpp
+  test_id_index.cpp
 )
 find_package(Threads REQUIRED)
 target_link_libraries(
