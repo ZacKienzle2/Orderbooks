@@ -2,19 +2,23 @@
 
 ## Prerequisites
 
-CMake 3.28+, a C++20 compiler (Clang 17+, GCC 13+, Apple Clang 15+), Ninja, vcpkg (with `VCPKG_ROOT` exported), `uv`.
+CMake 3.28+, a C++20 compiler (Clang 17+, GCC 13+, Apple Clang 15+), Ninja, vcpkg (with `VCPKG_ROOT` exported), `uv`. macOS contributors get everything through `scripts/bootstrap.sh` (Homebrew).
 
 ## First-time setup
 
 ```bash
 git clone https://github.com/ZacKienzle2/Orderbooks
 cd Orderbooks
+
+./scripts/bootstrap.sh       # brew + uv sync + pre-commit install
+
 export VCPKG_ROOT="$HOME/code/vcpkg"
 "$VCPKG_ROOT/bootstrap-vcpkg.sh"
-
-uv sync --frozen
-uv run pre-commit install --install-hooks
 ```
+
+`bootstrap.sh` installs the system binaries the pre-commit local hooks shell out to (`clang-format`, `cmake-format`, `shellcheck`, `typos`, `gitleaks`, `actionlint`). Local hooks avoid the SSL/CA pitfalls of pip-installed binary wrappers and keep the hook envs lean.
+
+Linux contributors: install equivalents via `apt-get`, `dnf`, or your distro package manager, then run `uv sync` and `uv run pre-commit install --install-hooks` manually.
 
 ## Presets
 
