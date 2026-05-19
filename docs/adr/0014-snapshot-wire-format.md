@@ -35,8 +35,8 @@ every future code change has to honour.
 - Fixed-layout POD header plus packed-record body, little-endian native.
 - Protobuf / Cap'n Proto for the snapshot blob.
 - JSON Lines (one record per line, same shape as the event recorder).
-- Direct memcpy of the engine's internal representation (book + arena
-  + bitmap + id_index) as opaque bytes.
+- Direct memcpy of the engine's internal representation (book, arena,
+  bitmap, id_index) as opaque bytes.
 
 ## Decision Outcome
 
