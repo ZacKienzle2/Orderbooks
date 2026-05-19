@@ -38,9 +38,7 @@ jobs:
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: --verbose --unreleased --prepend CHANGELOG.md
-        env:
-          OUTPUT: CHANGELOG.md
+          args: --verbose --output CHANGELOG.md
 
       - name: Detect drift
         id: drift

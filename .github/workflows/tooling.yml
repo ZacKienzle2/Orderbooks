@@ -67,9 +67,16 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Pytest harness suite
-        run: uv run pytest -q tests/harness
+        run: |
+          set -euo pipefail
+          if [ -d tests/harness ]; then
+            uv run pytest -q tests/harness
+          else
+            echo "tests/harness not present yet; skipping pytest"
+          fi
 
       - name: cmake-format check
         run: |
           set -euo pipefail
+          # shellcheck disable=SC2046
           uv run cmake-format --check $(git ls-files '*.cmake' 'CMakeLists.txt' '**/CMakeLists.txt')
