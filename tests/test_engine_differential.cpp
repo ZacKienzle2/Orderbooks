@@ -175,7 +175,7 @@ TEST_CASE("engine matches reference on random streams (no self-cross)", "[engine
     fast_t fast{pub, lob::engine_config{}};
     ref_t ref{lob::engine_config{}};
 
-    gen_state g{.rng = std::mt19937_64{seed}};
+    gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/0);  // account_id == 0 => engine skips self-cross dispatch
 
     compare_fills(pub.fills, ref.fills);
@@ -193,7 +193,7 @@ TEST_CASE("engine matches reference under self_cross cancel_newest",
     fast_t fast{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
     ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
 
-    gen_state g{.rng = std::mt19937_64{seed}};
+    gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/4);
 
     compare_fills(pub.fills, ref.fills);
@@ -211,7 +211,7 @@ TEST_CASE("engine matches reference under self_cross decrement_trade",
     fast_t fast{pub, lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
     ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
 
-    gen_state g{.rng = std::mt19937_64{seed}};
+    gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/4);
 
     compare_fills(pub.fills, ref.fills);
