@@ -102,8 +102,11 @@ class engine {
             publish_top_if_changed_();
             return;
         }
-        // price change: cancel + resubmit at new price (loses time priority)
+        // price change: cancel + resubmit at new price (loses time priority).
+        // Suppress nested top_msg emission so the modify appears as a single
+        // coalesced top change rather than one per sub-step.
         const auto acct = o->account_id;
+        ++state_.suppress_top_depth;
         on_cancel(cancel_msg{.id = m.id});
         on_submit(submit_msg{.id = m.id,
                              .px = m.new_px,
@@ -112,6 +115,8 @@ class engine {
                              .t = t,
                              ._pad = 0,
                              .account_id = acct});
+        --state_.suppress_top_depth;
+        publish_top_if_changed_();
     }
 
     // Serialise the engine's complete state into a snapshot_sink.
@@ -390,6 +395,11 @@ class engine {
     void publish_top_if_changed_() noexcept {
         if (!state_.top_dirty)
             return;
+        // Honour suppression set by composite operations; keep top_dirty
+        // set so the outermost publish (after the composite completes)
+        // observes the cumulative state change and emits once.
+        if (state_.suppress_top_depth != 0)
+            return;
         state_.top_dirty = false;
 
         const auto bb = book_.bids().best();
@@ -533,6 +543,12 @@ class engine {
         qty_t last_ask_qty{0};
         bool have_top{false};
         bool top_dirty{false};
+        // Suppresses nested top_msg emission from publish_top_if_changed_.
+        // Composite operations that perform multiple book mutations (e.g.
+        // a price-change modify dispatched as cancel + submit) bump this
+        // depth around the sub-calls so callers see a single coalesced
+        // top_msg rather than one per sub-step.
+        std::uint8_t suppress_top_depth{0};
     };
 
     P& pub_;
