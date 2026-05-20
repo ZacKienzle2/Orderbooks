@@ -33,7 +33,7 @@ void bench_alloc_only(benchmark::State& state) {
         live.clear();
         state.ResumeTiming();
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<std::int64_t>(n));
 }
 
@@ -54,7 +54,7 @@ void bench_dealloc_only(benchmark::State& state) {
         live.clear();
         benchmark::ClobberMemory();
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<std::int64_t>(n));
 }
 
