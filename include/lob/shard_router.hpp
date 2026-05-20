@@ -13,6 +13,11 @@
 #include <cstdint>
 #include <memory>
 
+#ifndef NDEBUG
+    #include <cassert>
+    #include <thread>
+#endif
+
 namespace lob {
 
 // Per-symbol shard router over a fixed number of engine instances.
@@ -54,11 +59,20 @@ class shard_router {
     shard_router& operator=(shard_router&&) = delete;
     ~shard_router() = default;
 
-    void on_submit(symbol_id_t sym, const submit_msg& m) noexcept { shard_for(sym).on_submit(m); }
+    void on_submit(symbol_id_t sym, const submit_msg& m) noexcept {
+        check_owner_thread_();
+        shard_for(sym).on_submit(m);
+    }
 
-    void on_cancel(symbol_id_t sym, const cancel_msg& m) noexcept { shard_for(sym).on_cancel(m); }
+    void on_cancel(symbol_id_t sym, const cancel_msg& m) noexcept {
+        check_owner_thread_();
+        shard_for(sym).on_cancel(m);
+    }
 
-    void on_modify(symbol_id_t sym, const modify_msg& m) noexcept { shard_for(sym).on_modify(m); }
+    void on_modify(symbol_id_t sym, const modify_msg& m) noexcept {
+        check_owner_thread_();
+        shard_for(sym).on_modify(m);
+    }
 
     [[nodiscard]] engine_type& shard(std::size_t idx) noexcept { return *engines_[idx]; }
 
@@ -85,7 +99,25 @@ class shard_router {
         return x ^ (x >> 31);
     }
 
+    // Records the thread id of the first dispatch call and asserts every
+    // subsequent dispatch comes from the same thread. Debug-only: the
+    // router is single-threaded by contract, but nothing else enforces it.
+    // No cost in release builds; the member and the call collapse to nothing.
+    void check_owner_thread_() noexcept {
+#ifndef NDEBUG
+        const auto self = std::this_thread::get_id();
+        if (owner_ == std::thread::id{}) {
+            owner_ = self;
+            return;
+        }
+        assert(owner_ == self && "shard_router accessed from multiple threads");
+#endif
+    }
+
     std::array<std::unique_ptr<engine_type>, NumShards> engines_{};
+#ifndef NDEBUG
+    std::thread::id owner_{};
+#endif
 };
 
 }  // namespace lob
