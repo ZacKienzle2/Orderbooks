@@ -35,6 +35,9 @@ class slab_arena {
                   "slab_arena requires T to be at least pointer-sized so the "
                   "freelist link can be overlaid on a free slot");
     static_assert(Capacity > 0, "slab_arena requires positive Capacity");
+    static_assert(std::is_nothrow_destructible_v<T>,
+                  "slab_arena::deallocate is noexcept and invokes ~T(); the contract "
+                  "requires T's destructor to be noexcept to prevent std::terminate");
 
     struct alignas(T) slot {
         std::byte bytes[sizeof(T)];
