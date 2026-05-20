@@ -125,7 +125,7 @@ repos:
       - id: gitleaks
         name: gitleaks
         description: Scan filesystem for leaked secrets via the system gitleaks binary.
-        entry: gitleaks detect --no-git --redact --verbose --exit-code=1
+        entry: gitleaks detect --config=.gitleaks.toml --no-git --redact --verbose --exit-code=1
         language: system
         pass_filenames: false
 
