@@ -41,10 +41,17 @@ class spsc_ring {
     spsc_ring& operator=(spsc_ring&&) = delete;
 
     [[nodiscard]] bool try_push(const T& value) noexcept {
+        // LMAX cache trick: the producer caches its last-seen value of
+        // the consumer's tail. The common case is "there is room" and the
+        // cache satisfies the predicate without crossing the cache line
+        // owned by the consumer's core. Only when the cache says full do
+        // we pay the acquire load of the remote cursor.
         const auto head = head_.load(std::memory_order_relaxed);
-        const auto tail = tail_.load(std::memory_order_acquire);
-        if (head - tail >= Capacity) [[unlikely]]
-            return false;
+        if (head - tail_cache_ >= Capacity) [[unlikely]] {
+            tail_cache_ = tail_.load(std::memory_order_acquire);
+            if (head - tail_cache_ >= Capacity) [[unlikely]]
+                return false;
+        }
         buf_[head & mask] = value;
         head_.store(head + 1, std::memory_order_release);
         return true;
@@ -52,9 +59,11 @@ class spsc_ring {
 
     [[nodiscard]] bool try_pop(T& out) noexcept {
         const auto tail = tail_.load(std::memory_order_relaxed);
-        const auto head = head_.load(std::memory_order_acquire);
-        if (head == tail) [[unlikely]]
-            return false;
+        if (head_cache_ == tail) [[unlikely]] {
+            head_cache_ = head_.load(std::memory_order_acquire);
+            if (head_cache_ == tail) [[unlikely]]
+                return false;
+        }
         out = buf_[tail & mask];
         tail_.store(tail + 1, std::memory_order_release);
         return true;
@@ -73,8 +82,15 @@ class spsc_ring {
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Capacity; }
 
   private:
+    // Layout: head_ + tail_cache_ share the producer's cache line so the
+    // cache check is a same-line read; tail_ + head_cache_ share the
+    // consumer's cache line. Lines are 64-byte aligned to prevent false
+    // sharing between producer and consumer cores. buf_ lives on its
+    // own line so slot writes never invalidate the cursor lines.
     alignas(64) std::atomic<std::uint64_t> head_{0};
+    std::uint64_t tail_cache_{0};
     alignas(64) std::atomic<std::uint64_t> tail_{0};
+    std::uint64_t head_cache_{0};
     alignas(64) std::array<T, Capacity> buf_{};
 };
 
