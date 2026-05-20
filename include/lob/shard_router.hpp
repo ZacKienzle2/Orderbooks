@@ -67,7 +67,7 @@ class shard_router {
     }
 
     [[nodiscard]] std::size_t shard_index_for(symbol_id_t sym) const noexcept {
-        return static_cast<std::size_t>(splitmix64(sym) & mask);
+        return splitmix64(sym) & mask;
     }
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
