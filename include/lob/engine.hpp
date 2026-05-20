@@ -104,10 +104,13 @@ class engine {
     // side, bids before asks. That order is the same order restore() needs
     // to replay them in to reproduce the FIFO time priority at each level.
     //
-    // Throwing is not part of the contract: the sink's write() is required
-    // to be noexcept by the snapshot_sink concept.
+    // Throwing: snapshot() propagates any exception thrown by the sink's
+    // write(). Production sinks (fixed buffers, mmap-backed files, ring
+    // publishers) should mark write() noexcept; growable sinks like
+    // vector_snapshot_buffer can throw std::bad_alloc on memory pressure
+    // and the engine state is unaffected because snapshot() never mutates.
     template <snapshot_sink S>
-    void snapshot(S& sink) const noexcept {
+    void snapshot(S& sink) const {
         snapshot_header hdr{};
         hdr.ticks = Ticks;
         hdr.max_orders = MaxOrders;
@@ -425,7 +428,7 @@ class engine {
     }
 
     template <snapshot_sink S>
-    static void emit_bytes_(S& sink, const void* p, std::size_t n) noexcept {
+    static void emit_bytes_(S& sink, const void* p, std::size_t n) {
         sink.write(std::span<const std::byte>{static_cast<const std::byte*>(p), n});
     }
 
@@ -435,7 +438,7 @@ class engine {
     }
 
     template <side Side, snapshot_sink S>
-    void emit_side_(S& sink) const noexcept {
+    void emit_side_(S& sink) const {
         for (tick_t px = 0; px < Ticks; ++px) {
             const auto& lvl =
                 (Side == side::bid) ? book_.bids().level_at(px) : book_.asks().level_at(px);
