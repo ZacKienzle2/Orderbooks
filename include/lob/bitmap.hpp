@@ -78,21 +78,21 @@ class hier_bitmap {
             const auto l0_empty = std::uint64_t{l0_post == 0};
             const auto l1_bit = l0_word;
             const auto l1_word = l1_bit / W;
-            const auto l1_clear_mask = mask(l1_bit) & static_cast<std::uint64_t>(-l0_empty);
+            const auto l1_clear_mask = mask(l1_bit) & (0 - l0_empty);
             const auto l1_post = l1_[l1_word] & ~l1_clear_mask;
             l1_[l1_word] = l1_post;
             if constexpr (L2_W > 0) {
                 const auto l1_empty = std::uint64_t{l1_post == 0} & l0_empty;
                 const auto l2_bit = l1_word;
                 const auto l2_word = l2_bit / W;
-                const auto l2_clear_mask = mask(l2_bit) & static_cast<std::uint64_t>(-l1_empty);
+                const auto l2_clear_mask = mask(l2_bit) & (0 - l1_empty);
                 const auto l2_post = l2_[l2_word] & ~l2_clear_mask;
                 l2_[l2_word] = l2_post;
                 if constexpr (L3_W > 0) {
                     const auto l2_empty = std::uint64_t{l2_post == 0} & l1_empty;
                     const auto l3_bit = l2_word;
                     const auto l3_word = l3_bit / W;
-                    const auto l3_clear_mask = mask(l3_bit) & static_cast<std::uint64_t>(-l2_empty);
+                    const auto l3_clear_mask = mask(l3_bit) & (0 - l2_empty);
                     l3_[l3_word] &= ~l3_clear_mask;
                 }
             }
