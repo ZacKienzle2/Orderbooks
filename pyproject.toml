@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
 [project]
 name = "orderbooks-harness"
 version = "0.0.0"
@@ -55,8 +59,14 @@ Issues = "https://github.com/ZacKienzle2/Orderbooks/issues"
 Changelog = "https://github.com/ZacKienzle2/Orderbooks/blob/main/CHANGELOG.md"
 
 [tool.uv]
-package = false
+package = true
 default-groups = ["dev"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["scripts/orderbooks_viz"]
+
+[tool.hatch.build.targets.sdist]
+include = ["scripts/orderbooks_viz", "README.md", "LICENSE"]
 
 [tool.ruff]
 line-length = 100
@@ -96,6 +106,7 @@ reportMissingTypeStubs = "warning"
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests/harness"]
+pythonpath = ["scripts"]
 addopts = "-ra --strict-markers --strict-config"
 xfail_strict = true
 filterwarnings = ["error"]
