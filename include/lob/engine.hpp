@@ -70,6 +70,12 @@ class engine {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
+        // The order's hot fields (s, px, remaining, account_id) live on the
+        // same cache line as the FIFO hook; touching them straight after a
+        // hash lookup costs a full miss latency. Issue a T0 prefetch the
+        // moment the pointer is known so the line is in flight while the
+        // branch below resolves.
+        __builtin_prefetch(o, 0, 3);
         if (o->s == side::bid)
             book_.bids().remove(*o);
         else
@@ -84,6 +90,7 @@ class engine {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
+        __builtin_prefetch(o, 0, 3);
         const auto s = o->s;
         const auto t = o->t;
         if (m.new_px == o->px) {
