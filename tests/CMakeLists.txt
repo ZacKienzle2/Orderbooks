@@ -17,6 +17,7 @@ add_executable(
   test_engine_differential.cpp
   test_engine_invariants.cpp
   test_engine_snapshot.cpp
+  test_json_recorder.cpp
   test_shard_router.cpp
   test_affinity.cpp)
 find_package(Threads REQUIRED)
