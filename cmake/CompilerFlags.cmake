@@ -1,3 +1,4 @@
+# cmake-lint: disable=C0103
 include_guard(GLOBAL)
 include(CheckCXXCompilerFlag)
 
@@ -32,8 +33,14 @@ else()
 
   if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL
                                             "RelWithDebInfo")
-    set(_lob_perf_candidates -fno-plt -fno-semantic-interposition
-                             -fstrict-aliasing)
+    set(_lob_perf_candidates
+        -fno-plt
+        -fno-semantic-interposition
+        -fstrict-aliasing
+        -falign-functions=64
+        -falign-loops=32
+        -fno-trapping-math
+        -ffp-contract=fast)
     set(_lob_perf_compile "")
     foreach(_flag IN LISTS _lob_perf_candidates)
       _lob_probe_flag("${_flag}" _ok)
