@@ -5,6 +5,7 @@
 #include <lob/types.hpp>
 
 #include <bit>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -23,6 +24,13 @@ namespace lob {
 // Hash: SplitMix64 of the id, masked by (capacity - 1). Linear probing
 // resolves collisions. Erase uses backward-shift deletion to keep probe
 // sequences tight without tombstones.
+//
+// Thread safety: single-threaded by contract. insert, lookup, erase, and
+// clear share mutable storage with no synchronisation. The engine drives
+// the index on a single shard thread; cross-thread access is undefined.
+//
+// insert with a key already present overwrites the stored pointer. The
+// engine never inserts duplicates; the overwrite path is defensive only.
 //
 // All operations are noexcept and allocation-free on the hot path; the
 // only allocation occurs in the constructor when the storage vectors
@@ -55,6 +63,8 @@ class id_index {
     }
 
     void insert(order_id_t id, order* p) noexcept {
+        assert(id != empty_key && "id_index: sentinel id is reserved");
+        assert(size_ < (mask_ + 1) / 2 && "id_index: load factor invariant violated");
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
             const auto k = keys_[i];
@@ -85,6 +95,7 @@ class id_index {
     }
 
     void erase(order_id_t id) noexcept {
+        assert(id != empty_key && "id_index: sentinel id is reserved");
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
             const auto k = keys_[i];
