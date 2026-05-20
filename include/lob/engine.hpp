@@ -447,13 +447,23 @@ class engine {
     }
 
     [[nodiscard]] std::uint64_t count_resting_() const noexcept {
+        // Drive the walk from the bitmap so empty tiers cost nothing.
+        // count_resting_ is cold (called once per snapshot()), but the
+        // linear O(Ticks) scan was wasteful on sparse books with large
+        // Ticks. Bitmap descent collapses the empty bulk to a tier walk.
         std::uint64_t count = 0;
-        for (tick_t px = 0; px < Ticks; ++px) {
-            for (const auto& o : book_.bids().level_at(px).fifo) {
+        for (auto px = book_.bids().next_populated_at_or_after(0); px.has_value();
+             px = (*px == Ticks - 1) ? std::nullopt
+                                     : book_.bids().next_populated_at_or_after(*px + 1)) {
+            for (const auto& o : book_.bids().level_at(*px).fifo) {
                 (void)o;
                 ++count;
             }
-            for (const auto& o : book_.asks().level_at(px).fifo) {
+        }
+        for (auto px = book_.asks().next_populated_at_or_after(0); px.has_value();
+             px = (*px == Ticks - 1) ? std::nullopt
+                                     : book_.asks().next_populated_at_or_after(*px + 1)) {
+            for (const auto& o : book_.asks().level_at(*px).fifo) {
                 (void)o;
                 ++count;
             }
@@ -473,20 +483,32 @@ class engine {
 
     template <side Side, snapshot_sink S>
     void emit_side_(S& sink) const {
-        for (tick_t px = 0; px < Ticks; ++px) {
-            const auto& lvl =
-                (Side == side::bid) ? book_.bids().level_at(px) : book_.asks().level_at(px);
-            for (const auto& o : lvl.fifo) {
-                snapshot_order_record rec{};
-                rec.id = o.id;
-                rec.remaining = o.remaining;
-                rec.px = o.px;
-                rec.s = static_cast<std::uint8_t>(Side);
-                rec.t = static_cast<std::uint8_t>(o.t);
-                rec.account_id = o.account_id;
-                emit_bytes_(sink, &rec, sizeof(rec));
+        // Snapshot contract: records are emitted in (price ascending,
+        // FIFO front-to-back) order so restore() replays them in the
+        // same order and reproduces FIFO time priority at each level.
+        // The iteration is driven by the bitmap (always ascending via
+        // next_populated_at_or_after) regardless of which side is best
+        // at the high or low end of the ladder.
+        auto emit_from = [&](auto& side) {
+            for (auto px = side.next_populated_at_or_after(0); px.has_value();
+                 px = (*px == Ticks - 1) ? std::nullopt
+                                         : side.next_populated_at_or_after(*px + 1)) {
+                for (const auto& o : side.level_at(*px).fifo) {
+                    snapshot_order_record rec{};
+                    rec.id = o.id;
+                    rec.remaining = o.remaining;
+                    rec.px = o.px;
+                    rec.s = static_cast<std::uint8_t>(Side);
+                    rec.t = static_cast<std::uint8_t>(o.t);
+                    rec.account_id = o.account_id;
+                    emit_bytes_(sink, &rec, sizeof(rec));
+                }
             }
-        }
+        };
+        if constexpr (Side == side::bid)
+            emit_from(book_.bids());
+        else
+            emit_from(book_.asks());
     }
 
     bool clear_state_and_fail_() noexcept {
@@ -496,16 +518,24 @@ class engine {
 
     void clear_state_() noexcept {
         // Drain both sides, releasing every live order back to the arena.
-        for (tick_t px = 0; px < Ticks; ++px) {
-            while (!book_.bids().level_at(px).fifo.empty()) {
-                auto& o = book_.bids().level_at(px).fifo.front();
+        // Drive the iteration from the bitmap so empty tiers cost nothing.
+        // remove() updates the bitmap as it goes, so re-querying best()
+        // each outer iteration is the cheapest way to keep up with the
+        // shrinking populated set.
+        while (auto px = book_.bids().best()) {
+            auto& lvl = book_.bids().level_at(*px);
+            while (!lvl.fifo.empty()) {
+                auto& o = lvl.fifo.front();
                 auto* victim = &o;
                 book_.bids().remove(o);
                 book_.index().erase(victim->id);
                 book_.arena().deallocate(victim);
             }
-            while (!book_.asks().level_at(px).fifo.empty()) {
-                auto& o = book_.asks().level_at(px).fifo.front();
+        }
+        while (auto px = book_.asks().best()) {
+            auto& lvl = book_.asks().level_at(*px);
+            while (!lvl.fifo.empty()) {
+                auto& o = lvl.fifo.front();
                 auto* victim = &o;
                 book_.asks().remove(o);
                 book_.index().erase(victim->id);
