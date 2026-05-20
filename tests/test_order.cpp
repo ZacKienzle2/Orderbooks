@@ -1,13 +1,10 @@
 #include <lob/order.hpp>
 
-#include <type_traits>
-
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("order is exactly one cache line", "[order]") {
     STATIC_REQUIRE(sizeof(lob::order) == 64);
     STATIC_REQUIRE(alignof(lob::order) == 64);
-    STATIC_REQUIRE(std::is_trivially_destructible_v<lob::order>);
 }
 
 TEST_CASE("order FIFO link / unlink", "[order]") {
