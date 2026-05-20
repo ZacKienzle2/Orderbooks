@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 namespace lob {
 
@@ -32,6 +33,22 @@ namespace lob {
 // changes emit a top_msg subject to engine_config::top_throttle.
 template <publisher P, std::size_t Ticks, std::size_t MaxOrders>
 class engine {
+    // Belt-and-suspenders enforcement of the publisher::publish noexcept
+    // contract. The publisher concept already constrains these overloads,
+    // but the static_asserts make the assumption explicit at the engine's
+    // own instantiation point so any future relaxation of the concept (or
+    // a non-concept-checked instantiation, e.g. through type erasure) fails
+    // here rather than silently terminating mid-match if a publish ever
+    // throws while the book is in a transient state.
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const fill_msg&>())),
+                  "publisher::publish(fill_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const top_msg&>())),
+                  "publisher::publish(top_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const trade_msg&>())),
+                  "publisher::publish(trade_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const self_trade_msg&>())),
+                  "publisher::publish(self_trade_msg) must be noexcept");
+
   public:
     engine(P& pub, engine_config cfg) noexcept : pub_(pub), cfg_(cfg) {}
 
