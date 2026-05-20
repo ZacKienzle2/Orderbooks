@@ -6,9 +6,15 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
+import numpy as np
 import pandas as pd
+
+try:
+    import orjson as _orjson
+except ImportError:
+    _orjson = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -28,31 +34,65 @@ class EventLog:
     self_trades: pd.DataFrame
 
 
-def _stream(records: Iterable[str]) -> Iterable[dict]:
+_FILL_COLS = ("seq", "maker", "taker", "px", "qty")
+_TOP_COLS = ("seq", "bid_px", "ask_px", "bid_qty", "ask_qty")
+_TRADE_COLS = ("seq", "px", "qty")
+_SELF_TRADE_COLS = ("seq", "aggressor", "resting", "account", "px", "qty")
+
+
+def _loads(line: bytes | str) -> Any:
+    if _orjson is not None:
+        return _orjson.loads(line)
+    return json.loads(line)
+
+
+def _columnar(rows: list[dict], cols: tuple[str, ...]) -> dict[str, np.ndarray]:
+    """Project a list of homogeneous dicts into a column-major dict of int64 arrays."""
+    if not rows:
+        return {c: np.empty(0, dtype=np.int64) for c in cols}
+    out: dict[str, np.ndarray] = {c: np.empty(len(rows), dtype=np.int64) for c in cols}
+    for i, r in enumerate(rows):
+        for c in cols:
+            out[c][i] = r.get(c, 0)
+    return out
+
+
+def _stream(records: Iterable[str | bytes]) -> Iterable[dict]:
     for raw in records:
-        line = raw.strip()
-        if not line:
+        if isinstance(raw, bytes):
+            if not raw.strip():
+                continue
+        elif not raw.strip():
             continue
-        yield json.loads(line)
+        yield _loads(raw)
 
 
 def _split(records: Iterable[dict]) -> EventLog:
-    by_kind: dict[str, list[dict]] = {"fill": [], "top": [], "trade": [], "self_trade": []}
+    fills: list[dict] = []
+    tops: list[dict] = []
+    trades: list[dict] = []
+    self_trades: list[dict] = []
+    dispatch = {
+        "fill": fills.append,
+        "top": tops.append,
+        "trade": trades.append,
+        "self_trade": self_trades.append,
+    }
     for r in records:
-        kind = r.get("kind")
-        if kind in by_kind:
-            by_kind[kind].append(r)
+        handler = dispatch.get(r.get("kind"))
+        if handler is not None:
+            handler(r)
     return EventLog(
-        fills=pd.DataFrame(by_kind["fill"]),
-        tops=pd.DataFrame(by_kind["top"]),
-        trades=pd.DataFrame(by_kind["trade"]),
-        self_trades=pd.DataFrame(by_kind["self_trade"]),
+        fills=pd.DataFrame(_columnar(fills, _FILL_COLS)),
+        tops=pd.DataFrame(_columnar(tops, _TOP_COLS)),
+        trades=pd.DataFrame(_columnar(trades, _TRADE_COLS)),
+        self_trades=pd.DataFrame(_columnar(self_trades, _SELF_TRADE_COLS)),
     )
 
 
 def read_file(path: str | Path) -> EventLog:
     """Read a JSON-Lines event file and return partitioned DataFrames."""
-    with Path(path).open("r", encoding="utf-8") as handle:
+    with Path(path).open("rb") as handle:
         return _split(_stream(handle))
 
 

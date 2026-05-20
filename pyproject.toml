@@ -38,6 +38,7 @@ dependencies = [
   "pandas>=2.2",
   "matplotlib>=3.9",
   "pyarrow>=17.0",
+  "orjson>=3.11.9",
 ]
 
 [dependency-groups]
