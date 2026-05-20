@@ -13,7 +13,6 @@ import matplotlib
 matplotlib.use("Agg")
 
 import pytest
-
 from orderbooks_viz import (
     bitmap_occupancy,
     depth,
