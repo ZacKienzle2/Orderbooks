@@ -20,7 +20,7 @@ void bench_burst_then_drain(benchmark::State& state) {
         while (ring.try_pop(out))
             benchmark::DoNotOptimize(out);
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<std::int64_t>(n));
 }
 

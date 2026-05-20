@@ -36,7 +36,7 @@ void bench_set(benchmark::State& state) {
         benchmark::DoNotOptimize(bm);
         bm.clear_all();
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<std::int64_t>(bits.size()));
 }
 
@@ -54,7 +54,7 @@ void bench_set_clear_pair(benchmark::State& state) {
             bm.clear(b);
         benchmark::DoNotOptimize(bm);
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<std::int64_t>(bits.size()));
 }
 
