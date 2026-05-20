@@ -38,6 +38,31 @@ TEST_CASE("id_index insert / lookup / erase round-trip", "[id_index]") {
     REQUIRE(idx.empty());
 }
 
+TEST_CASE("id_index erase across a colliding-id chain shifts entries back", "[id_index]") {
+    // Construct a synthetic workload where many ids hash to the same starting
+    // bucket; ensure that erasing the head of the probe chain shifts the
+    // displaced tail entries back without breaking lookup.
+    lob::id_index idx{64};
+    std::array<lob::order, 16> pool{};
+    for (std::size_t i = 0; i < pool.size(); ++i) {
+        pool[i].id = static_cast<lob::order_id_t>(i + 1);
+        idx.insert(pool[i].id, &pool[i]);
+    }
+    // Erase head, middle, and tail of insertion order; survivors must remain
+    // reachable through their original probe sequences.
+    idx.erase(1);
+    idx.erase(8);
+    idx.erase(16);
+    for (lob::order_id_t id = 2; id <= 15; ++id) {
+        if (id == 8)
+            continue;
+        REQUIRE(idx.lookup(id) == &pool[id - 1]);
+    }
+    REQUIRE(idx.lookup(1) == nullptr);
+    REQUIRE(idx.lookup(8) == nullptr);
+    REQUIRE(idx.lookup(16) == nullptr);
+}
+
 TEST_CASE("id_index differential against std::unordered_map on random workloads",
           "[id_index][property]") {
     constexpr std::size_t cap = 256;
