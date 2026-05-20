@@ -20,8 +20,7 @@ void bench_burst_then_drain(benchmark::State& state) {
         while (ring.try_pop(out))
             benchmark::DoNotOptimize(out);
     }
-    state.SetItemsProcessed(state.iterations() *
-                            static_cast<std::int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
 }
 
 BENCHMARK(bench_burst_then_drain)->Range(64, 32'768)->MinTime(0.1);

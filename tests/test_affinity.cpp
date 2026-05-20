@@ -1,8 +1,8 @@
 #include <lob/affinity.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-
 #include <thread>
+
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("pin_this_thread_to_core accepts core 0 or reports failure", "[affinity]") {
     // The harness runs on shared CI runners and on developer laptops; the
@@ -22,10 +22,10 @@ TEST_CASE("set_this_thread_name accepts a short label", "[affinity]") {
 
 TEST_CASE("affinity helpers work from a worker thread", "[affinity]") {
     bool pinned_ok = false;
-    bool named_ok  = false;
+    bool named_ok = false;
     std::thread worker{[&] {
         pinned_ok = lob::pin_this_thread_to_core(0);
-        named_ok  = lob::set_this_thread_name("lob-wkr");
+        named_ok = lob::set_this_thread_name("lob-wkr");
     }};
     worker.join();
     (void)pinned_ok;
