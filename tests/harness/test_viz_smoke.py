@@ -8,20 +8,13 @@ correctness is by human inspection; these tests guard the renderer's plumbing
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import matplotlib
 
 matplotlib.use("Agg")
 
 import pytest
 
-# Make the package importable without a build-system install.
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
-
-from orderbooks_viz import (  # noqa: E402
+from orderbooks_viz import (
     bitmap_occupancy,
     depth,
     event_log,
