@@ -36,6 +36,6 @@ target_include_directories(
 
 target_link_libraries(
   lob_core
-  PUBLIC Boost::headers unordered_dense::unordered_dense
+  PUBLIC Boost::headers
   PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening
           fmt::fmt)
