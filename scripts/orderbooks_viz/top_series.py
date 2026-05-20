@@ -21,7 +21,7 @@ def render(log: EventLog, output: str | Path | None = None) -> plt.Figure:
     if log.tops.empty:
         raise ValueError("event log has no top events")
 
-    tops = log.tops.copy().sort_values("seq")
+    tops = log.tops.sort_values("seq")
 
     fig, (ax_px, ax_spread) = plt.subplots(
         2, 1, figsize=(10, 6), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
