@@ -46,15 +46,15 @@ class slab_arena {
     using slot_array = std::array<slot, Capacity>;
 
   public:
-    slab_arena() {
-        storage_ = std::make_unique<slot_array>();
-        // Initialise freelist: each slot's first word points to the next slot.
-        for (std::size_t i = 0; i + 1 < Capacity; ++i) {
-            store_link_(&(*storage_)[i], &(*storage_)[i + 1]);
-        }
-        store_link_(&(*storage_)[Capacity - 1], nullptr);
-        free_head_ = &(*storage_)[0];
-    }
+    // The constructor reserves the slab storage but deliberately leaves
+    // the intrusive freelist uninitialised. The first allocate() call
+    // builds the freelist on the consuming thread, which is the thread
+    // that pays the page-fault cost; Linux's first-touch NUMA policy
+    // then binds every slab page to that thread's NUMA node. Without
+    // this deferral the freelist would be built on the router thread
+    // and every subsequent allocate/deallocate on the consumer thread
+    // would pay a cross-socket access. See ADR-0016 for the rationale.
+    slab_arena() { storage_ = std::make_unique<slot_array>(); }
 
     slab_arena(slab_arena&&) noexcept = default;
     slab_arena& operator=(slab_arena&&) noexcept = default;
@@ -63,6 +63,8 @@ class slab_arena {
     ~slab_arena() = default;
 
     [[nodiscard]] T* allocate() noexcept {
+        if (!freelist_built_) [[unlikely]]
+            init_freelist_();
         if (free_head_ == nullptr) [[unlikely]]
             return nullptr;
         slot* s = free_head_;
@@ -106,9 +108,19 @@ class slab_arena {
         return next;
     }
 
+    void init_freelist_() noexcept {
+        for (std::size_t i = 0; i + 1 < Capacity; ++i) {
+            store_link_(&(*storage_)[i], &(*storage_)[i + 1]);
+        }
+        store_link_(&(*storage_)[Capacity - 1], nullptr);
+        free_head_ = &(*storage_)[0];
+        freelist_built_ = true;
+    }
+
     alignas(64) std::unique_ptr<slot_array> storage_;
     slot* free_head_{nullptr};
     std::size_t in_use_{0};
+    bool freelist_built_{false};
 };
 
 }  // namespace lob
