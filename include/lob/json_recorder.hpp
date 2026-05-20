@@ -40,7 +40,7 @@ class json_recorder {
     explicit json_recorder(std::ostream& out) noexcept : out_(out) {}
 
     void publish(const fill_msg& m) noexcept {
-        std::array<char, 256> buf{};
+        std::array<char, 384> buf{};
         char* p = buf.data();
         constexpr std::string_view head{R"({"kind":"fill","seq":)"};
         p = append_(p, head);
@@ -54,11 +54,11 @@ class json_recorder {
         p = append_(p, R"(,"qty":)");
         p = append_num_(p, buf.data() + buf.size(), m.qty);
         p = append_(p, "}\n");
-        out_.write(buf.data(), static_cast<std::streamsize>(p - buf.data()));
+        out_.write(buf.data(), p - buf.data());
     }
 
     void publish(const top_msg& m) noexcept {
-        std::array<char, 256> buf{};
+        std::array<char, 384> buf{};
         char* p = buf.data();
         constexpr std::string_view head{R"({"kind":"top","seq":)"};
         p = append_(p, head);
@@ -72,11 +72,11 @@ class json_recorder {
         p = append_(p, R"(,"ask_qty":)");
         p = append_num_(p, buf.data() + buf.size(), m.ask_qty);
         p = append_(p, "}\n");
-        out_.write(buf.data(), static_cast<std::streamsize>(p - buf.data()));
+        out_.write(buf.data(), p - buf.data());
     }
 
     void publish(const trade_msg& m) noexcept {
-        std::array<char, 256> buf{};
+        std::array<char, 384> buf{};
         char* p = buf.data();
         constexpr std::string_view head{R"({"kind":"trade","seq":)"};
         p = append_(p, head);
@@ -86,11 +86,11 @@ class json_recorder {
         p = append_(p, R"(,"qty":)");
         p = append_num_(p, buf.data() + buf.size(), m.qty);
         p = append_(p, "}\n");
-        out_.write(buf.data(), static_cast<std::streamsize>(p - buf.data()));
+        out_.write(buf.data(), p - buf.data());
     }
 
     void publish(const self_trade_msg& m) noexcept {
-        std::array<char, 256> buf{};
+        std::array<char, 384> buf{};
         char* p = buf.data();
         constexpr std::string_view head{R"({"kind":"self_trade","seq":)"};
         p = append_(p, head);
@@ -106,7 +106,7 @@ class json_recorder {
         p = append_(p, R"(,"qty":)");
         p = append_num_(p, buf.data() + buf.size(), m.qty);
         p = append_(p, "}\n");
-        out_.write(buf.data(), static_cast<std::streamsize>(p - buf.data()));
+        out_.write(buf.data(), p - buf.data());
     }
 
   private:
