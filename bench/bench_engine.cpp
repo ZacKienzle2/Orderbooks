@@ -150,7 +150,7 @@ void bench_modify_qty_only(benchmark::State& state) {
     lob::order_id_t id = 1;
     lob::qty_t qty = 50;
     for (auto _ : state) {
-        eng.on_modify(lob::modify_msg{.id = id, .new_qty = qty, .new_px = 0});
+        eng.on_modify(lob::modify_msg{.id = id, .new_px = 0, .new_qty = qty});
         // new_px = 0 collides with bench ladder midpoint shift, so the
         // engine's no-op-detection compares against the order's px; if
         // they match we get the qty-only fast path. The seed above places
