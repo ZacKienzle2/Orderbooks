@@ -4,6 +4,7 @@
 #include <lob/types.hpp>
 
 #include <array>
+#include <bit>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -12,6 +13,9 @@
 #include <vector>
 
 namespace lob {
+
+static_assert(std::endian::native == std::endian::little,
+              "lob::snapshot wire format assumes little-endian host (x86_64 / arm64).");
 
 // On-the-wire layout of a snapshot:
 //
@@ -66,7 +70,7 @@ static_assert(std::is_trivially_copyable_v<snapshot_order_record>);
 
 template <class S>
 concept snapshot_sink = requires(S s, std::span<const std::byte> bytes) {
-    { s.write(bytes) } noexcept -> std::same_as<void>;
+    { s.write(bytes) } -> std::same_as<void>;
 };
 
 template <class R>
@@ -76,11 +80,18 @@ concept snapshot_source = requires(R r, std::span<std::byte> bytes) {
 
 // In-memory byte vector that satisfies both snapshot_sink and
 // snapshot_source. Test fixtures and round-trip benchmarks use this.
+//
+// write() is intentionally not noexcept: the underlying vector grows
+// on demand and may throw std::bad_alloc on memory exhaustion. Producers
+// that need a guaranteed-no-throw sink should call reserve() with the
+// expected payload size before encoding, or wrap a fixed-buffer sink.
 class vector_snapshot_buffer {
   public:
-    void write(std::span<const std::byte> bytes) noexcept {
+    void write(std::span<const std::byte> bytes) {
         bytes_.insert(bytes_.end(), bytes.begin(), bytes.end());
     }
+
+    void reserve(std::size_t n) { bytes_.reserve(n); }
 
     [[nodiscard]] bool read(std::span<std::byte> bytes) noexcept {
         if (cursor_ + bytes.size() > bytes_.size())
