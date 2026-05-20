@@ -4,12 +4,12 @@
 #include <cstddef>
 
 #if defined(__linux__)
-#  include <pthread.h>
-#  include <sched.h>
+    #include <pthread.h>
+    #include <sched.h>
 #elif defined(__APPLE__)
-#  include <mach/mach.h>
-#  include <mach/thread_policy.h>
-#  include <pthread.h>
+    #include <mach/mach.h>
+    #include <mach/thread_policy.h>
+    #include <pthread.h>
 #endif
 
 namespace lob {
@@ -30,11 +30,10 @@ namespace lob {
     return pthread_setaffinity_np(pthread_self(), sizeof(set), &set) == 0;
 #elif defined(__APPLE__)
     thread_affinity_policy_data_t policy{static_cast<integer_t>(core) + 1};
-    const auto result = thread_policy_set(
-        pthread_mach_thread_np(pthread_self()),
-        THREAD_AFFINITY_POLICY,
-        reinterpret_cast<thread_policy_t>(&policy),
-        THREAD_AFFINITY_POLICY_COUNT);
+    const auto result = thread_policy_set(pthread_mach_thread_np(pthread_self()),
+                                          THREAD_AFFINITY_POLICY,
+                                          reinterpret_cast<thread_policy_t>(&policy),
+                                          THREAD_AFFINITY_POLICY_COUNT);
     return result == KERN_SUCCESS;
 #else
     (void)core;
