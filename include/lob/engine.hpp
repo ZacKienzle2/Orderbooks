@@ -58,7 +58,7 @@ class engine {
     engine& operator=(engine&&) = delete;
     ~engine() = default;
 
-    void on_submit(const submit_msg& m) noexcept {
+    [[gnu::hot]] void on_submit(const submit_msg& m) noexcept {
         if (m.s == side::bid)
             handle_submit_<side::bid>(m);
         else
@@ -66,7 +66,7 @@ class engine {
         publish_top_if_changed_();
     }
 
-    void on_cancel(const cancel_msg& m) noexcept {
+    [[gnu::hot]] void on_cancel(const cancel_msg& m) noexcept {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
@@ -86,7 +86,7 @@ class engine {
         publish_top_if_changed_();
     }
 
-    void on_modify(const modify_msg& m) noexcept {
+    [[gnu::hot]] void on_modify(const modify_msg& m) noexcept {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
@@ -139,7 +139,7 @@ class engine {
     // vector_snapshot_buffer can throw std::bad_alloc on memory pressure
     // and the engine state is unaffected because snapshot() never mutates.
     template <snapshot_sink S>
-    void snapshot(S& sink) const {
+    [[gnu::cold]] void snapshot(S& sink) const {
         snapshot_header hdr{};
         hdr.ticks = Ticks;
         hdr.max_orders = MaxOrders;
@@ -163,7 +163,7 @@ class engine {
     // parameters do not match the engine instance, leaving the engine in a
     // freshly cleared state.
     template <snapshot_source R>
-    [[nodiscard]] bool restore(R& src) noexcept {
+    [[nodiscard]] [[gnu::cold]] bool restore(R& src) noexcept {
         snapshot_header hdr{};
         if (!read_bytes_(src, &hdr, sizeof(hdr))) {
             clear_state_();
@@ -446,7 +446,7 @@ class engine {
             return book_.asks();
     }
 
-    [[nodiscard]] std::uint64_t count_resting_() const noexcept {
+    [[nodiscard]] [[gnu::cold]] std::uint64_t count_resting_() const noexcept {
         // Drive the walk from the bitmap so empty tiers cost nothing.
         // count_resting_ is cold (called once per snapshot()), but the
         // linear O(Ticks) scan was wasteful on sparse books with large
@@ -511,12 +511,12 @@ class engine {
             emit_from(book_.asks());
     }
 
-    bool clear_state_and_fail_() noexcept {
+    [[gnu::cold]] bool clear_state_and_fail_() noexcept {
         clear_state_();
         return false;
     }
 
-    void clear_state_() noexcept {
+    [[gnu::cold]] void clear_state_() noexcept {
         // Drain both sides, releasing every live order back to the arena.
         // Drive the iteration from the bitmap so empty tiers cost nothing.
         // remove() updates the bitmap as it goes, so re-querying best()
@@ -545,7 +545,7 @@ class engine {
         state_ = hot_state{};
     }
 
-    bool replay_record_(const snapshot_order_record& rec) noexcept {
+    [[gnu::cold]] bool replay_record_(const snapshot_order_record& rec) noexcept {
         if (rec.px >= Ticks)
             return false;
         auto* o = book_.arena().allocate();
