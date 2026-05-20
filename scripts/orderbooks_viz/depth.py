@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from .event_log import EventLog
 
@@ -28,13 +29,21 @@ class BookSnapshot:
 
 
 def at_seq(log: EventLog, seq: int) -> BookSnapshot:
-    """Return the top-of-book snapshot as of the latest top event with seq <= `seq`."""
+    """Return the top-of-book snapshot as of the latest top event with seq <= `seq`.
+
+    The engine emits top events in strictly increasing seq order, so the
+    seq column is monotonic; use np.searchsorted (O(log n)) instead of
+    a full boolean mask (O(n)) to find the right edge index. Dashboard
+    sliders move the cursor on every interaction, so this lookup runs
+    on the interactive path.
+    """
     if log.tops.empty:
         raise ValueError("event log has no top events")
-    candidates = log.tops[log.tops["seq"] <= seq]
-    if candidates.empty:
+    seqs = log.tops["seq"].to_numpy()
+    idx = int(np.searchsorted(seqs, seq, side="right")) - 1
+    if idx < 0:
         return BookSnapshot(seq=seq, bid_px=0, ask_px=0, bid_qty=0, ask_qty=0)
-    row = candidates.iloc[-1]
+    row = log.tops.iloc[idx]
     return BookSnapshot(
         seq=int(row["seq"]),
         bid_px=int(row["bid_px"]),
