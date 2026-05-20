@@ -50,7 +50,7 @@ lob::submit_msg make_submit(prng& g, lob::order_id_t id) noexcept {
     return {
         .id = id,
         .px = static_cast<lob::tick_t>(r % bench_ticks),
-        .qty = static_cast<lob::qty_t>(1 + (r >> 16) % 100),
+        .qty = 1 + (r >> 16) % 100,
         .s = (r & 1U) ? lob::side::bid : lob::side::ask,
         .t = lob::tif::gtc,
         ._pad = 0,
@@ -74,7 +74,7 @@ lob::order_id_t populate_book(engine_t& eng, std::size_t n, std::uint64_t seed) 
         eng.on_submit(lob::submit_msg{
             .id = id,
             .px = px,
-            .qty = static_cast<lob::qty_t>(1 + (r >> 16) % 100),
+            .qty = 1 + (r >> 16) % 100,
             .s = is_bid ? lob::side::bid : lob::side::ask,
             .t = lob::tif::gtc,
             ._pad = 0,
@@ -156,7 +156,7 @@ void bench_modify_qty_only(benchmark::State& state) {
         // they match we get the qty-only fast path. The seed above places
         // orders near mid +/- spread so px == 0 is not in the book.
         id = (id % n) + 1;
-        qty = static_cast<lob::qty_t>((qty + 1) % 100 + 1);
+        qty = (qty + 1) % 100 + 1;
         benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations());
@@ -179,7 +179,7 @@ void bench_match_crossing(benchmark::State& state) {
         eng.on_submit(lob::submit_msg{
             .id = taker_id++,
             .px = static_cast<lob::tick_t>(bench_ticks / 2),
-            .qty = static_cast<lob::qty_t>(1 + (r % 50)),
+            .qty = 1 + (r % 50),
             .s = (r & 1U) ? lob::side::bid : lob::side::ask,
             .t = lob::tif::ioc,
             ._pad = 0,
