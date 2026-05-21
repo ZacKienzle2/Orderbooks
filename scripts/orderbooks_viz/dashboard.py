@@ -14,14 +14,16 @@ import streamlit as st
 from orderbooks_viz import bitmap_occupancy, depth, event_log, flow_heatmap, top_series
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def _load(log_path: str, mtime_ns: int) -> event_log.EventLog:
     """Streamlit-cached read_file keyed on (path, mtime).
 
-    The dashboard re-runs every script body on every widget interaction.
-    Without caching, that re-parses the entire JSON-Lines log on each
-    slider tick. The mtime_ns key invalidates the cache whenever the
-    on-disk file changes so the dashboard still reflects fresh runs.
+    Uses cache_resource (by-reference) rather than cache_data (by-value):
+    EventLog is frozen with slots, so concurrent dashboard sessions can
+    safely share one instance. cache_data would pickle the four backing
+    DataFrames on every cache check, defeating the point on large logs.
+    The mtime_ns key invalidates the cache whenever the on-disk file
+    changes so the dashboard still reflects fresh runs.
     """
     del mtime_ns  # cache key only
     return event_log.read_file(log_path)
