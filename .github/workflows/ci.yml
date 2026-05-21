@@ -170,7 +170,7 @@ jobs:
           persist-credentials: false
 
       - name: Run typos
-        uses: crate-ci/typos@d01f29c66d1bf1a08730750f61d86c210b0d039d # v1.27.0
+        uses: crate-ci/typos@aca895bf05aec0cb7dffa6f94495e923224d9f17 # v1.46.2
         with:
           files: "."
 
