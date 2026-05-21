@@ -134,6 +134,13 @@ class book {
     alignas(64) book_side<Ticks, side::ask> asks_;
     alignas(64) slab_arena<order, MaxOrders> arena_;
     id_index idx_;
+
+    // Regression guard: if a future change strips one of the alignas(64)
+    // markers above the static_assert fires loudly at instantiation.
+    static_assert(alignof(book_side<Ticks, side::bid>) >= 64,
+                  "book::bids_ must be cache-line aligned");
+    static_assert(alignof(book_side<Ticks, side::ask>) >= 64,
+                  "book::asks_ must be cache-line aligned");
 };
 
 }  // namespace lob
