@@ -54,7 +54,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v6
+        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
@@ -82,7 +82,7 @@ jobs:
             --benchmark_out_format=json
 
       - name: Upload bench artefact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: bench-json
           path: artifacts/bench.json
@@ -111,7 +111,7 @@ jobs:
 
       - name: Upload comparison artefact
         if: hashFiles('bench/baseline.json') != ''
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: bench-compare
           path: |
