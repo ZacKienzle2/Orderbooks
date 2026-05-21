@@ -50,7 +50,7 @@ lob::submit_msg make_submit(prng& g, lob::order_id_t id) noexcept {
     return {
         .id = id,
         .px = static_cast<lob::tick_t>(r % bench_ticks),
-        .qty = static_cast<lob::qty_t>(1 + (r >> 16) % 100),
+        .qty = 1 + (r >> 16) % 100,
         .s = (r & 1U) ? lob::side::bid : lob::side::ask,
         .t = lob::tif::gtc,
         ._pad = 0,
@@ -74,7 +74,7 @@ lob::order_id_t populate_book(engine_t& eng, std::size_t n, std::uint64_t seed) 
         eng.on_submit(lob::submit_msg{
             .id = id,
             .px = px,
-            .qty = static_cast<lob::qty_t>(1 + (r >> 16) % 100),
+            .qty = 1 + (r >> 16) % 100,
             .s = is_bid ? lob::side::bid : lob::side::ask,
             .t = lob::tif::gtc,
             ._pad = 0,
@@ -150,13 +150,13 @@ void bench_modify_qty_only(benchmark::State& state) {
     lob::order_id_t id = 1;
     lob::qty_t qty = 50;
     for (auto _ : state) {
-        eng.on_modify(lob::modify_msg{.id = id, .new_qty = qty, .new_px = 0});
+        eng.on_modify(lob::modify_msg{.id = id, .new_px = 0, .new_qty = qty});
         // new_px = 0 collides with bench ladder midpoint shift, so the
         // engine's no-op-detection compares against the order's px; if
         // they match we get the qty-only fast path. The seed above places
         // orders near mid +/- spread so px == 0 is not in the book.
         id = (id % n) + 1;
-        qty = static_cast<lob::qty_t>((qty + 1) % 100 + 1);
+        qty = (qty + 1) % 100 + 1;
         benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations());
@@ -179,7 +179,7 @@ void bench_match_crossing(benchmark::State& state) {
         eng.on_submit(lob::submit_msg{
             .id = taker_id++,
             .px = static_cast<lob::tick_t>(bench_ticks / 2),
-            .qty = static_cast<lob::qty_t>(1 + (r % 50)),
+            .qty = 1 + (r % 50),
             .s = (r & 1U) ? lob::side::bid : lob::side::ask,
             .t = lob::tif::ioc,
             ._pad = 0,

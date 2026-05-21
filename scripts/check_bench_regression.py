@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import statistics
 import sys
 from pathlib import Path
 
@@ -26,7 +27,10 @@ def _cpu_delta(entry: dict[str, object]) -> float:
 
     compare.py emits the measurement under different keys depending on
     version; prefer the explicit aggregated mean / median fields and
-    fall back to a top-level 'cpu' field if present.
+    fall back to a top-level 'cpu' field if present. Use the median
+    across measurements: max biases the gate against a single noisy
+    spike on a shared CI runner, which is a frequent source of false
+    positives.
     """
     measurements = entry.get("measurements")
     if isinstance(measurements, list) and measurements:
@@ -38,11 +42,25 @@ def _cpu_delta(entry: dict[str, object]) -> float:
             if isinstance(v, int | float):
                 candidates.append(float(v))
         if candidates:
-            return max(candidates)
+            return statistics.median(candidates)
     v = entry.get("cpu")
     if isinstance(v, int | float):
         return float(v)
     return 0.0
+
+
+def _read_threshold(default: float = 0.15) -> float:
+    raw = os.environ.get("BENCH_REGRESSION_THRESHOLD")
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        print(
+            f"BENCH_REGRESSION_THRESHOLD must be a float; got {raw!r}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 
 def _check(records: list[dict[str, object]], threshold: float) -> list[tuple[str, float]]:
@@ -63,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--threshold",
         type=float,
-        default=float(os.environ.get("BENCH_REGRESSION_THRESHOLD", "0.15")),
+        default=_read_threshold(),
         help="Maximum allowed fractional CPU regression (default 0.15 = 15%%)",
     )
     args = parser.parse_args(argv)
@@ -85,6 +103,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"unexpected JSON shape: {type(raw).__name__}", file=sys.stderr)
         return 2
 
+    print(
+        f"check_bench_regression: {len(records)} entries, threshold {args.threshold:.0%}",
+        file=sys.stderr,
+    )
     regressions = _check(records, args.threshold)
     if regressions:
         print(

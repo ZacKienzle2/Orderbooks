@@ -21,7 +21,7 @@ def render(log: EventLog, *, bins: int = 200, output: str | Path | None = None) 
     if log.tops.empty:
         raise ValueError("event log has no top events")
 
-    tops = log.tops.copy()
+    tops = log.tops
     seq_min, seq_max = int(tops["seq"].min()), int(tops["seq"].max())
     seq_edges = np.linspace(seq_min, seq_max, bins + 1)
 

@@ -7,7 +7,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <random>
+#include <span>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
@@ -142,6 +145,49 @@ TEST_CASE("engine restore rejects header from an incompatible engine shape", "[e
     // After a rejected restore the engine is left in a freshly cleared state.
     REQUIRE_FALSE(engine_big.book_view().bids().best().has_value());
     REQUIRE_FALSE(engine_big.book_view().asks().best().has_value());
+}
+
+namespace {
+
+// Fixed-capacity sink that satisfies snapshot_sink. Throws std::bad_alloc
+// when the cumulative write exceeds the configured budget; the engine
+// state remains valid through and after the throw.
+class fixed_capacity_sink {
+  public:
+    explicit fixed_capacity_sink(std::size_t cap) : cap_(cap) {}
+
+    void write(std::span<const std::byte> bytes) {
+        if (used_ + bytes.size() > cap_)
+            throw std::bad_alloc{};
+        used_ += bytes.size();
+    }
+
+    [[nodiscard]] std::size_t used() const noexcept { return used_; }
+
+  private:
+    std::size_t cap_;
+    std::size_t used_{0};
+};
+
+}  // namespace
+
+TEST_CASE("engine snapshot propagates sink throw with engine state intact", "[engine][snapshot]") {
+    pub_t pub;
+    eng_t eng{pub, lob::engine_config{}};
+    seed(eng, 0xC0FFEEULL);
+    const auto best_bid = eng.book_view().bids().best();
+    const auto best_ask = eng.book_view().asks().best();
+    const auto seq_before = eng.last_seq();
+
+    // Header is 80 bytes; fix the budget at 64 so write throws before the
+    // first record lands. The throw must escape engine::snapshot cleanly
+    // and the engine must be byte-equal to its pre-call state.
+    fixed_capacity_sink sink{64};
+    REQUIRE_THROWS_AS(eng.snapshot(sink), std::bad_alloc);
+
+    REQUIRE(eng.book_view().bids().best() == best_bid);
+    REQUIRE(eng.book_view().asks().best() == best_ask);
+    REQUIRE(eng.last_seq() == seq_before);
 }
 
 TEST_CASE("engine restore rejects a truncated snapshot", "[engine][snapshot]") {
