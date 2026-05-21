@@ -56,5 +56,5 @@ Chosen option: **Option X**, because <one-sentence justification>.
 
 ## More Information
 
-- Related: [ADR-NNNN](NNNN-related-decision.md)
-- Reference: <link or citation>
+- Related: ADR-NNNN (replace with a real link when authoring)
+- Reference: <https://example.com/replace-with-citation>
