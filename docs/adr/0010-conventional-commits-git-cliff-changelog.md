@@ -92,7 +92,7 @@ treated as a generated artefact and is regenerated on every push to
 
 ## More Information
 
-- Conventional Commits 1.0.0: https://www.conventionalcommits.org/en/v1.0.0/
-- git-cliff: https://git-cliff.org
+- Conventional Commits 1.0.0: <https://www.conventionalcommits.org/en/v1.0.0/>
+- git-cliff: <https://git-cliff.org>
 - Repo config: [cliff.toml](../../cliff.toml).
 - CI workflow: [.github/workflows/changelog.yml](../../.github/workflows/changelog.yml).
