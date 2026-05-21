@@ -5,10 +5,12 @@
 #include <lob/types.hpp>
 
 #include <array>
+#include <cassert>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <ios>
 #include <ostream>
 #include <string_view>
 #include <system_error>
@@ -37,7 +39,15 @@ namespace lob {
 // badbit/failbit would call std::terminate from inside publish().
 class json_recorder {
   public:
-    explicit json_recorder(std::ostream& out) noexcept : out_(out) {}
+    explicit json_recorder(std::ostream& out) noexcept : out_(out) {
+        // publish() is declared noexcept to satisfy the publisher concept,
+        // but out_.write can throw if the stream has any exception bits
+        // enabled. A throw from inside noexcept calls std::terminate.
+        // Lock the contract at construction time so the failure is visible
+        // here rather than as a process abort on the first publish.
+        assert(out.exceptions() == std::ios::goodbit &&
+               "json_recorder: stream must not have exceptions enabled");
+    }
 
     void publish(const fill_msg& m) noexcept {
         std::array<char, 384> buf{};
