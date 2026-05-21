@@ -53,6 +53,22 @@ by [git-cliff](https://git-cliff.org).
 
 ### CI
 
+- **deps:** Bump actions/stale from 9.1.0 to 10.2.0 (#7) ([4315121](https://github.com/ZacKienzle2/Orderbooks/commit/43151213ad01569e13e531cfe4db12540de36504))
+
+- **deps:** Bump actions/checkout from 4.3.1 to 6.0.2 (#5) ([69997ff](https://github.com/ZacKienzle2/Orderbooks/commit/69997ff8e4c6ffb31675407b44d0cb36a35aa18e))
+
+- **deps:** Bump crate-ci/typos in the actions-minor-and-patch group (#1) ([db51151](https://github.com/ZacKienzle2/Orderbooks/commit/db511513d4daf5d03a90a434530e04810f54affa))
+
+- **deps:** Bump actions/upload-artifact from 4.4.3 to 7.0.1 (#2) ([f2eb08f](https://github.com/ZacKienzle2/Orderbooks/commit/f2eb08f2e987d48d6e81d46522f4986c8ce8282f))
+
+- **deps:** Bump dessant/lock-threads from 5.0.1 to 6.0.0 (#3) ([6940307](https://github.com/ZacKienzle2/Orderbooks/commit/69403079511e37bfdf9b96890c250276f47a2171))
+
+- **deps:** Bump google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml (#6) ([85caf60](https://github.com/ZacKienzle2/Orderbooks/commit/85caf6004e7d51e1aff972da7766855e6483dd2a))
+
+- **deps:** Bump softprops/action-gh-release from 2.6.2 to 3.0.0 (#8) ([58ced53](https://github.com/ZacKienzle2/Orderbooks/commit/58ced53f8a3a4d6800d6c44fed55270eb47fbffe))
+
+- **deps:** Bump github/codeql-action from 3.35.5 to 4.35.5 (#9) ([3cdddfc](https://github.com/ZacKienzle2/Orderbooks/commit/3cdddfc60e46a6506000447a0a74cac877aad094))
+
 - **deps:** Bump actions/first-interaction from 1 to 3 (#4) ([50f988c](https://github.com/ZacKienzle2/Orderbooks/commit/50f988c6465a49b3574e23e097bef3125719987e))
 
 - **deps:** Bump seanmiddleditch/gha-setup-ninja from 4 to 6 (#10) ([c614d6b](https://github.com/ZacKienzle2/Orderbooks/commit/c614d6b04ff33a959f05ee267c9b324fc1ce1195))
@@ -176,6 +192,8 @@ by [git-cliff](https://git-cliff.org).
 
 
 ### Maintenance
+
+- **changelog:** Regenerate from conventional commits (#12) ([1c554ed](https://github.com/ZacKienzle2/Orderbooks/commit/1c554ed9946b2fc0d3f4b4e6b8e4ce356375a9d0))
 
 - **lint:** Relax commitlint subject-case and markdownlint MD012 for bot PRs ([5f80b35](https://github.com/ZacKienzle2/Orderbooks/commit/5f80b35d3b8e91a3256685641195f7510e9f2d3a))
 
