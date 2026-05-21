@@ -2,21 +2,22 @@
 #include <lob/order.hpp>
 #include <lob/types.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-
 #include <cstddef>
+
+#include <catch2/catch_test_macros.hpp>
 
 namespace {
 
 using bid_side = lob::book_side<256, lob::side::bid>;
 using ask_side = lob::book_side<256, lob::side::ask>;
 
-void prime(lob::order& o, lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s) noexcept {
-    o.id        = id;
-    o.px        = px;
+void prime(
+    lob::order& o, lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s) noexcept {
+    o.id = id;
+    o.px = px;
     o.remaining = qty;
-    o.s         = s;
-    o.t         = lob::tif::gtc;
+    o.s = s;
+    o.t = lob::tif::gtc;
 }
 
 }  // namespace
@@ -31,9 +32,12 @@ TEST_CASE("book_side<bid> tracks best as highest price", "[book_side]") {
     prime(b, 2, 120, 20, lob::side::bid);
     prime(c, 3, 110, 30, lob::side::bid);
 
-    bs.add(a); REQUIRE(bs.best() == 100);
-    bs.add(b); REQUIRE(bs.best() == 120);
-    bs.add(c); REQUIRE(bs.best() == 120);
+    bs.add(a);
+    REQUIRE(bs.best() == 100);
+    bs.add(b);
+    REQUIRE(bs.best() == 120);
+    bs.add(c);
+    REQUIRE(bs.best() == 120);
 
     REQUIRE(bs.aggregate_at(100) == 10);
     REQUIRE(bs.aggregate_at(110) == 30);
@@ -53,12 +57,15 @@ TEST_CASE("book_side<ask> tracks best as lowest price", "[book_side]") {
     ask_side bs;
     lob::order a{}, b{}, c{};
     prime(a, 1, 100, 10, lob::side::ask);
-    prime(b, 2,  90, 20, lob::side::ask);
-    prime(c, 3,  95, 30, lob::side::ask);
+    prime(b, 2, 90, 20, lob::side::ask);
+    prime(c, 3, 95, 30, lob::side::ask);
 
-    bs.add(a); REQUIRE(bs.best() == 100);
-    bs.add(b); REQUIRE(bs.best() == 90);
-    bs.add(c); REQUIRE(bs.best() == 90);
+    bs.add(a);
+    REQUIRE(bs.best() == 100);
+    bs.add(b);
+    REQUIRE(bs.best() == 90);
+    bs.add(c);
+    REQUIRE(bs.best() == 90);
 
     bs.remove(b);
     REQUIRE(bs.best() == 95);
@@ -74,12 +81,14 @@ TEST_CASE("book_side FIFO at one level preserves time priority", "[book_side]") 
     prime(a, 1, 100, 10, lob::side::bid);
     prime(b, 2, 100, 20, lob::side::bid);
     prime(c, 3, 100, 30, lob::side::bid);
-    bs.add(a); bs.add(b); bs.add(c);
+    bs.add(a);
+    bs.add(b);
+    bs.add(c);
     REQUIRE(bs.aggregate_at(100) == 60);
 
     auto& lvl = bs.level_at(100);
     REQUIRE(lvl.fifo.front().id == 1);
-    REQUIRE(lvl.fifo.back().id  == 3);
+    REQUIRE(lvl.fifo.back().id == 3);
 
     bs.remove(a);
     REQUIRE(lvl.fifo.front().id == 2);

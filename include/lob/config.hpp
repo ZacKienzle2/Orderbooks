@@ -8,8 +8,8 @@
 namespace lob {
 
 enum class self_cross_policy : std::uint8_t {
-    cancel_newest   = 0,
-    cancel_oldest   = 1,
+    cancel_newest = 0,
+    cancel_oldest = 1,
     decrement_trade = 2,
 };
 

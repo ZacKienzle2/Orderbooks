@@ -11,6 +11,7 @@ void bench_opposite(benchmark::State& state) {
         benchmark::DoNotOptimize(s);
     }
 }
+
 BENCHMARK(bench_opposite);
 
 }  // namespace

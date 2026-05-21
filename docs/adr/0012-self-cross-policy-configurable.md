@@ -4,7 +4,7 @@ date: "2026-05-19"
 deciders: ["Zac Kienzle"]
 ---
 
-# 0013. Self-cross policy is a construction-time configuration
+# 0012. Self-cross policy is a construction-time configuration
 
 ## Context and Problem Statement
 
@@ -83,7 +83,9 @@ enum class self_cross_policy : std::uint8_t {
 
 ## More Information
 
-- Related: [ADR-0012](0012-tif-coverage-stage1-gtc-ioc-fok.md)
+- Related: [ADR-0011](0011-tif-coverage-gtc-ioc-fok.md)
   (interaction with TIF semantics).
+- Related: [ADR-0013](0013-account-aware-self-cross.md)
+  (account-id schema and per-policy dispatch mechanics).
 - Reference: ISO 10383 venue MIC lists for which venues enforce which
   policy.
