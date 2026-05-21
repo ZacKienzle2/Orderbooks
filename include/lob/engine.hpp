@@ -10,8 +10,10 @@
 #include <lob/types.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <utility>
 
@@ -119,6 +121,8 @@ class engine {
         // Suppress nested top_msg emission so the modify appears as a single
         // coalesced top change rather than one per sub-step.
         const auto acct = o->account_id;
+        assert(state_.suppress_top_depth < std::numeric_limits<std::uint8_t>::max() &&
+               "engine: suppress_top_depth would overflow; composite nesting too deep");
         ++state_.suppress_top_depth;
         on_cancel(cancel_msg{.id = m.id});
         on_submit(submit_msg{.id = m.id,
