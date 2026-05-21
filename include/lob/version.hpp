@@ -6,11 +6,11 @@
 
 namespace lob::version {
 
-[[nodiscard]] std::uint32_t     major() noexcept;
-[[nodiscard]] std::uint32_t     minor() noexcept;
-[[nodiscard]] std::uint32_t     patch() noexcept;
-[[nodiscard]] std::string_view  string() noexcept;
-[[nodiscard]] std::string_view  git_sha() noexcept;
+[[nodiscard]] std::uint32_t major() noexcept;
+[[nodiscard]] std::uint32_t minor() noexcept;
+[[nodiscard]] std::uint32_t patch() noexcept;
+[[nodiscard]] std::string_view string() noexcept;
+[[nodiscard]] std::string_view git_sha() noexcept;
 
 }  // namespace lob::version
 

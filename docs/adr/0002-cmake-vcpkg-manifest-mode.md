@@ -94,6 +94,6 @@ RapidCheck / Google Benchmark / nanobench in or out.
 
 ## More Information
 
-- vcpkg manifest mode: https://learn.microsoft.com/vcpkg/users/manifests
-- CMakePresets v6 schema: https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
+- vcpkg manifest mode: <https://learn.microsoft.com/vcpkg/users/manifests>
+- CMakePresets v6 schema: <https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html>
 - Related: [ADR-0003](0003-linux-x86-64-primary-macos-dev.md).
