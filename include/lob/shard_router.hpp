@@ -14,6 +14,7 @@
 #include <memory>
 
 #ifndef NDEBUG
+    #include <atomic>
     #include <cassert>
     #include <thread>
 #endif
@@ -103,20 +104,26 @@ class shard_router {
     // subsequent dispatch comes from the same thread. Debug-only: the
     // router is single-threaded by contract, but nothing else enforces it.
     // No cost in release builds; the member and the call collapse to nothing.
+    //
+    // owner_ is std::atomic so a debug-only misuse from a racing thread
+    // sees a coherent value rather than a torn id; the load and store use
+    // relaxed ordering because we are only checking the "single-owner"
+    // invariant, not synchronising the actual dispatch payload.
     void check_owner_thread_() noexcept {
 #ifndef NDEBUG
         const auto self = std::this_thread::get_id();
-        if (owner_ == std::thread::id{}) {
-            owner_ = self;
+        auto seen = owner_.load(std::memory_order_relaxed);
+        if (seen == std::thread::id{}) {
+            owner_.store(self, std::memory_order_relaxed);
             return;
         }
-        assert(owner_ == self && "shard_router accessed from multiple threads");
+        assert(seen == self && "shard_router accessed from multiple threads");
 #endif
     }
 
     std::array<std::unique_ptr<engine_type>, NumShards> engines_{};
 #ifndef NDEBUG
-    std::thread::id owner_{};
+    std::atomic<std::thread::id> owner_{};
 #endif
 };
 
