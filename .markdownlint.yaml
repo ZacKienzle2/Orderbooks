@@ -5,5 +5,10 @@ MD033: false
 MD041: false
 MD036: false
 
+# CHANGELOG.md is regenerated automatically by git-cliff; double blank
+# lines between sections are part of its template. Disable MD012 globally
+# so the auto-PR does not have to be hand-fixed on every release.
+MD012: false
+
 MD024:
   siblings_only: true
