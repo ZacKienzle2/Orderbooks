@@ -53,18 +53,26 @@ class id_index {
   public:
     id_index() : id_index(default_capacity_) {}
 
+    // The constructor sizes the storage but does not first-touch the
+    // pages: the keys_ and values_ vectors are reserve()d to the target
+    // capacity and the empty-key initialisation runs lazily on the first
+    // insert / lookup / erase call. The consuming thread therefore
+    // becomes the first writer to every key page, and Linux's first-touch
+    // NUMA policy binds the pages to the consumer's node. Mirrors the
+    // slab_arena treatment introduced in ADR-0016.
     explicit id_index(std::size_t capacity_hint) {
         const std::size_t want = capacity_hint == 0 ? default_capacity_ : capacity_hint;
-        // Load factor target 0.5: round 2 * want up to the next power of two.
         const std::size_t cap = round_up_pow2(want * 2);
-        keys_.assign(cap, empty_key);
-        values_.assign(cap, nullptr);
+        keys_.reserve(cap);
+        values_.reserve(cap);
         mask_ = cap - 1;
     }
 
     void insert(order_id_t id, order* p) noexcept {
         assert(id != empty_key && "id_index: sentinel id is reserved");
         assert(size_ < (mask_ + 1) / 2 && "id_index: load factor invariant violated");
+        if (!storage_initialised_) [[unlikely]]
+            init_storage_();
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
             const auto k = keys_[i];
@@ -83,6 +91,8 @@ class id_index {
     }
 
     [[nodiscard]] order* lookup(order_id_t id) const noexcept {
+        if (!storage_initialised_) [[unlikely]]
+            return nullptr;
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
             const auto k = keys_[i];
@@ -96,6 +106,8 @@ class id_index {
 
     void erase(order_id_t id) noexcept {
         assert(id != empty_key && "id_index: sentinel id is reserved");
+        if (!storage_initialised_) [[unlikely]]
+            return;
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
             const auto k = keys_[i];
@@ -115,12 +127,21 @@ class id_index {
     [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
 
     void clear() noexcept {
-        std::fill(keys_.begin(), keys_.end(), empty_key);
-        std::fill(values_.begin(), values_.end(), nullptr);
+        if (storage_initialised_) {
+            std::fill(keys_.begin(), keys_.end(), empty_key);
+            std::fill(values_.begin(), values_.end(), nullptr);
+        }
         size_ = 0;
     }
 
   private:
+    void init_storage_() noexcept {
+        const std::size_t cap = mask_ + 1;
+        keys_.assign(cap, empty_key);
+        values_.assign(cap, nullptr);
+        storage_initialised_ = true;
+    }
+
     // Backward-shift deletion: starting from the freshly emptied slot,
     // walk forward and pull back any entry whose preferred bucket sits
     // at or before the emptied slot (modulo wrap-around), repeating
@@ -155,6 +176,7 @@ class id_index {
     std::vector<order*> values_{};
     std::size_t mask_{0};
     std::size_t size_{0};
+    mutable bool storage_initialised_{false};
 };
 
 }  // namespace lob
