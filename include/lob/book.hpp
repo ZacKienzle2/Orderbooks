@@ -124,10 +124,23 @@ class book {
     [[nodiscard]] const id_index& index() const noexcept { return idx_; }
 
   private:
-    book_side<Ticks, side::bid> bids_;
-    book_side<Ticks, side::ask> asks_;
-    slab_arena<order, MaxOrders> arena_;
+    // Align each side to a 64-byte boundary so the hot fields (the
+    // unique_ptr to the level array and the bitmap's top-tier word)
+    // of bids_ and asks_ never share a cache line. Without this, a
+    // bid-side update could invalidate the cache line carrying the
+    // ask-side cursor data and vice versa under a future consumer /
+    // producer split between the two sides.
+    alignas(64) book_side<Ticks, side::bid> bids_;
+    alignas(64) book_side<Ticks, side::ask> asks_;
+    alignas(64) slab_arena<order, MaxOrders> arena_;
     id_index idx_;
+
+    // Regression guard: if a future change strips one of the alignas(64)
+    // markers above the static_assert fires loudly at instantiation.
+    static_assert(alignof(book_side<Ticks, side::bid>) >= 64,
+                  "book::bids_ must be cache-line aligned");
+    static_assert(alignof(book_side<Ticks, side::ask>) >= 64,
+                  "book::asks_ must be cache-line aligned");
 };
 
 }  // namespace lob

@@ -27,7 +27,8 @@ target_sources(
          "${CMAKE_SOURCE_DIR}/include/lob/spsc_ring.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/json_recorder.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/snapshot.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/shard_router.hpp")
+         "${CMAKE_SOURCE_DIR}/include/lob/shard_router.hpp"
+         "${CMAKE_SOURCE_DIR}/include/lob/affinity.hpp")
 
 target_include_directories(
   lob_core PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -35,6 +36,6 @@ target_include_directories(
 
 target_link_libraries(
   lob_core
-  PUBLIC Boost::headers unordered_dense::unordered_dense
+  PUBLIC Boost::headers
   PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening
           fmt::fmt)

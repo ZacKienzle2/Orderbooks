@@ -14,6 +14,21 @@ import streamlit as st
 from orderbooks_viz import bitmap_occupancy, depth, event_log, flow_heatmap, top_series
 
 
+@st.cache_resource(show_spinner=False)
+def _load(log_path: str, mtime_ns: int) -> event_log.EventLog:
+    """Streamlit-cached read_file keyed on (path, mtime).
+
+    Uses cache_resource (by-reference) rather than cache_data (by-value):
+    EventLog is frozen with slots, so concurrent dashboard sessions can
+    safely share one instance. cache_data would pickle the four backing
+    DataFrames on every cache check, defeating the point on large logs.
+    The mtime_ns key invalidates the cache whenever the on-disk file
+    changes so the dashboard still reflects fresh runs.
+    """
+    del mtime_ns  # cache key only
+    return event_log.read_file(log_path)
+
+
 def _parse_argv() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -36,7 +51,11 @@ def main() -> None:
         st.info("Provide a JSON Lines event log path in the sidebar to begin.")
         return
 
-    log = event_log.read_file(log_path)
+    log_p = Path(log_path)
+    if not log_p.exists():
+        st.error(f"Log not found: {log_path}")
+        return
+    log = _load(log_path, log_p.stat().st_mtime_ns)
     st.sidebar.markdown(
         f"**fills** {len(log.fills)}  |  **tops** {len(log.tops)}  |  "
         f"**trades** {len(log.trades)}  |  **self-trades** {len(log.self_trades)}"

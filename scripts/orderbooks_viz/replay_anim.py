@@ -34,7 +34,7 @@ def render(
     if log.tops.empty:
         raise ValueError("event log has no top events")
 
-    tops = log.tops.copy().sort_values("seq").reset_index(drop=True)
+    tops = log.tops.sort_values("seq").reset_index(drop=True)
     frames = list(range(0, len(tops), max(stride, 1)))
 
     px_min = int(min(tops["bid_px"].min(), tops["ask_px"].min()))

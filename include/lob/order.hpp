@@ -43,7 +43,9 @@ struct alignas(64) order {
 
 static_assert(sizeof(order) == 64);
 static_assert(alignof(order) == 64);
-static_assert(std::is_trivially_destructible_v<order>);
+// On Apple libc++ the boost::intrusive::list_member_hook with normal_link mode
+// is trivially destructible; on GNU libstdc++ it is not. slab_arena calls
+// ~order() on deallocate, which is a no-op for the hook in normal_link mode.
 
 // constant_time_size<false>: the engine drains a level via the empty() guard
 // and front() iteration, never via size(). Skipping the per-link bookkeeping

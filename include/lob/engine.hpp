@@ -10,9 +10,12 @@
 #include <lob/types.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
+#include <utility>
 
 namespace lob {
 
@@ -32,6 +35,22 @@ namespace lob {
 // changes emit a top_msg subject to engine_config::top_throttle.
 template <publisher P, std::size_t Ticks, std::size_t MaxOrders>
 class engine {
+    // Belt-and-suspenders enforcement of the publisher::publish noexcept
+    // contract. The publisher concept already constrains these overloads,
+    // but the static_asserts make the assumption explicit at the engine's
+    // own instantiation point so any future relaxation of the concept (or
+    // a non-concept-checked instantiation, e.g. through type erasure) fails
+    // here rather than silently terminating mid-match if a publish ever
+    // throws while the book is in a transient state.
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const fill_msg&>())),
+                  "publisher::publish(fill_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const top_msg&>())),
+                  "publisher::publish(top_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const trade_msg&>())),
+                  "publisher::publish(trade_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const self_trade_msg&>())),
+                  "publisher::publish(self_trade_msg) must be noexcept");
+
   public:
     engine(P& pub, engine_config cfg) noexcept : pub_(pub), cfg_(cfg) {}
 
@@ -41,7 +60,7 @@ class engine {
     engine& operator=(engine&&) = delete;
     ~engine() = default;
 
-    void on_submit(const submit_msg& m) noexcept {
+    [[gnu::hot]] void on_submit(const submit_msg& m) noexcept {
         if (m.s == side::bid)
             handle_submit_<side::bid>(m);
         else
@@ -49,10 +68,17 @@ class engine {
         publish_top_if_changed_();
     }
 
-    void on_cancel(const cancel_msg& m) noexcept {
+    [[gnu::hot]] void on_cancel(const cancel_msg& m) noexcept {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
+        // The order's hot fields (s, px, remaining, account_id) and the
+        // FIFO hook share the order's cache line. on_cancel mutates that
+        // line (remove unlinks the hook; deallocate writes the freelist
+        // link), so issue a write-prefetch (rw=1) with T0 locality so the
+        // line lands in L1 already in Modified state and the upcoming
+        // RFO upgrade is skipped.
+        __builtin_prefetch(o, 1, 3);
         if (o->s == side::bid)
             book_.bids().remove(*o);
         else
@@ -63,10 +89,16 @@ class engine {
         publish_top_if_changed_();
     }
 
-    void on_modify(const modify_msg& m) noexcept {
+    [[gnu::hot]] void on_modify(const modify_msg& m) noexcept {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
+        // Issue the write-prefetch first so the line is in flight while
+        // the branch below resolves; the field reads then hit cache
+        // instead of paying the miss latency synchronously. Modify
+        // mutates remaining and (on price change) reroutes the FIFO
+        // hook, so the write hint (rw=1) avoids an RFO upgrade later.
+        __builtin_prefetch(o, 1, 3);
         const auto s = o->s;
         const auto t = o->t;
         if (m.new_px == o->px) {
@@ -85,8 +117,13 @@ class engine {
             publish_top_if_changed_();
             return;
         }
-        // price change: cancel + resubmit at new price (loses time priority)
+        // price change: cancel + resubmit at new price (loses time priority).
+        // Suppress nested top_msg emission so the modify appears as a single
+        // coalesced top change rather than one per sub-step.
         const auto acct = o->account_id;
+        assert(state_.suppress_top_depth < std::numeric_limits<std::uint8_t>::max() &&
+               "engine: suppress_top_depth would overflow; composite nesting too deep");
+        ++state_.suppress_top_depth;
         on_cancel(cancel_msg{.id = m.id});
         on_submit(submit_msg{.id = m.id,
                              .px = m.new_px,
@@ -95,6 +132,8 @@ class engine {
                              .t = t,
                              ._pad = 0,
                              .account_id = acct});
+        --state_.suppress_top_depth;
+        publish_top_if_changed_();
     }
 
     // Serialise the engine's complete state into a snapshot_sink.
@@ -104,10 +143,13 @@ class engine {
     // side, bids before asks. That order is the same order restore() needs
     // to replay them in to reproduce the FIFO time priority at each level.
     //
-    // Throwing is not part of the contract: the sink's write() is required
-    // to be noexcept by the snapshot_sink concept.
+    // Throwing: snapshot() propagates any exception thrown by the sink's
+    // write(). Production sinks (fixed buffers, mmap-backed files, ring
+    // publishers) should mark write() noexcept; growable sinks like
+    // vector_snapshot_buffer can throw std::bad_alloc on memory pressure
+    // and the engine state is unaffected because snapshot() never mutates.
     template <snapshot_sink S>
-    void snapshot(S& sink) const noexcept {
+    [[gnu::cold]] void snapshot(S& sink) const {
         snapshot_header hdr{};
         hdr.ticks = Ticks;
         hdr.max_orders = MaxOrders;
@@ -131,7 +173,7 @@ class engine {
     // parameters do not match the engine instance, leaving the engine in a
     // freshly cleared state.
     template <snapshot_source R>
-    [[nodiscard]] bool restore(R& src) noexcept {
+    [[nodiscard]] [[gnu::cold]] bool restore(R& src) noexcept {
         snapshot_header hdr{};
         if (!read_bytes_(src, &hdr, sizeof(hdr))) {
             clear_state_();
@@ -370,6 +412,11 @@ class engine {
     void publish_top_if_changed_() noexcept {
         if (!state_.top_dirty)
             return;
+        // Honour suppression set by composite operations; keep top_dirty
+        // set so the outermost publish (after the composite completes)
+        // observes the cumulative state change and emits once.
+        if (state_.suppress_top_depth != 0)
+            return;
         state_.top_dirty = false;
 
         const auto bb = book_.bids().best();
@@ -409,14 +456,24 @@ class engine {
             return book_.asks();
     }
 
-    [[nodiscard]] std::uint64_t count_resting_() const noexcept {
+    [[nodiscard]] [[gnu::cold]] std::uint64_t count_resting_() const noexcept {
+        // Drive the walk from the bitmap so empty tiers cost nothing.
+        // count_resting_ is cold (called once per snapshot()), but the
+        // linear O(Ticks) scan was wasteful on sparse books with large
+        // Ticks. Bitmap descent collapses the empty bulk to a tier walk.
         std::uint64_t count = 0;
-        for (tick_t px = 0; px < Ticks; ++px) {
-            for (const auto& o : book_.bids().level_at(px).fifo) {
+        for (auto px = book_.bids().next_populated_at_or_after(0); px.has_value();
+             px = (*px == Ticks - 1) ? std::nullopt
+                                     : book_.bids().next_populated_at_or_after(*px + 1)) {
+            for (const auto& o : book_.bids().level_at(*px).fifo) {
                 (void)o;
                 ++count;
             }
-            for (const auto& o : book_.asks().level_at(px).fifo) {
+        }
+        for (auto px = book_.asks().next_populated_at_or_after(0); px.has_value();
+             px = (*px == Ticks - 1) ? std::nullopt
+                                     : book_.asks().next_populated_at_or_after(*px + 1)) {
+            for (const auto& o : book_.asks().level_at(*px).fifo) {
                 (void)o;
                 ++count;
             }
@@ -425,7 +482,7 @@ class engine {
     }
 
     template <snapshot_sink S>
-    static void emit_bytes_(S& sink, const void* p, std::size_t n) noexcept {
+    static void emit_bytes_(S& sink, const void* p, std::size_t n) {
         sink.write(std::span<const std::byte>{static_cast<const std::byte*>(p), n});
     }
 
@@ -435,40 +492,60 @@ class engine {
     }
 
     template <side Side, snapshot_sink S>
-    void emit_side_(S& sink) const noexcept {
-        for (tick_t px = 0; px < Ticks; ++px) {
-            const auto& lvl =
-                (Side == side::bid) ? book_.bids().level_at(px) : book_.asks().level_at(px);
-            for (const auto& o : lvl.fifo) {
-                snapshot_order_record rec{};
-                rec.id = o.id;
-                rec.remaining = o.remaining;
-                rec.px = o.px;
-                rec.s = static_cast<std::uint8_t>(Side);
-                rec.t = static_cast<std::uint8_t>(o.t);
-                rec.account_id = o.account_id;
-                emit_bytes_(sink, &rec, sizeof(rec));
+    void emit_side_(S& sink) const {
+        // Snapshot contract: records are emitted in (price ascending,
+        // FIFO front-to-back) order so restore() replays them in the
+        // same order and reproduces FIFO time priority at each level.
+        // The iteration is driven by the bitmap (always ascending via
+        // next_populated_at_or_after) regardless of which side is best
+        // at the high or low end of the ladder.
+        auto emit_from = [&](auto& side) {
+            for (auto px = side.next_populated_at_or_after(0); px.has_value();
+                 px = (*px == Ticks - 1) ? std::nullopt
+                                         : side.next_populated_at_or_after(*px + 1)) {
+                for (const auto& o : side.level_at(*px).fifo) {
+                    snapshot_order_record rec{};
+                    rec.id = o.id;
+                    rec.remaining = o.remaining;
+                    rec.px = o.px;
+                    rec.s = static_cast<std::uint8_t>(Side);
+                    rec.t = static_cast<std::uint8_t>(o.t);
+                    rec.account_id = o.account_id;
+                    emit_bytes_(sink, &rec, sizeof(rec));
+                }
             }
-        }
+        };
+        if constexpr (Side == side::bid)
+            emit_from(book_.bids());
+        else
+            emit_from(book_.asks());
     }
 
-    bool clear_state_and_fail_() noexcept {
+    [[gnu::cold]] bool clear_state_and_fail_() noexcept {
         clear_state_();
         return false;
     }
 
-    void clear_state_() noexcept {
+    [[gnu::cold]] void clear_state_() noexcept {
         // Drain both sides, releasing every live order back to the arena.
-        for (tick_t px = 0; px < Ticks; ++px) {
-            while (!book_.bids().level_at(px).fifo.empty()) {
-                auto& o = book_.bids().level_at(px).fifo.front();
+        // Drive the iteration from the bitmap so empty tiers cost nothing.
+        // remove() updates the bitmap as it goes, so re-querying best()
+        // each outer iteration is the cheapest way to keep up with the
+        // shrinking populated set.
+        while (auto px = book_.bids().best()) {
+            auto& lvl = book_.bids().level_at(*px);
+            while (!lvl.fifo.empty()) {
+                auto& o = lvl.fifo.front();
                 auto* victim = &o;
                 book_.bids().remove(o);
                 book_.index().erase(victim->id);
                 book_.arena().deallocate(victim);
             }
-            while (!book_.asks().level_at(px).fifo.empty()) {
-                auto& o = book_.asks().level_at(px).fifo.front();
+        }
+        while (auto px = book_.asks().best()) {
+            auto& lvl = book_.asks().level_at(*px);
+            while (!lvl.fifo.empty()) {
+                auto& o = lvl.fifo.front();
                 auto* victim = &o;
                 book_.asks().remove(o);
                 book_.index().erase(victim->id);
@@ -478,7 +555,7 @@ class engine {
         state_ = hot_state{};
     }
 
-    bool replay_record_(const snapshot_order_record& rec) noexcept {
+    [[gnu::cold]] bool replay_record_(const snapshot_order_record& rec) noexcept {
         if (rec.px >= Ticks)
             return false;
         auto* o = book_.arena().allocate();
@@ -513,6 +590,12 @@ class engine {
         qty_t last_ask_qty{0};
         bool have_top{false};
         bool top_dirty{false};
+        // Suppresses nested top_msg emission from publish_top_if_changed_.
+        // Composite operations that perform multiple book mutations (e.g.
+        // a price-change modify dispatched as cancel + submit) bump this
+        // depth around the sub-calls so callers see a single coalesced
+        // top_msg rather than one per sub-step.
+        std::uint8_t suppress_top_depth{0};
     };
 
     P& pub_;

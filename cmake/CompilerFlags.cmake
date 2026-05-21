@@ -1,3 +1,4 @@
+# cmake-lint: disable=C0103
 include_guard(GLOBAL)
 include(CheckCXXCompilerFlag)
 
@@ -32,8 +33,19 @@ else()
 
   if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL
                                             "RelWithDebInfo")
-    set(_lob_perf_candidates -fno-plt -fno-semantic-interposition
-                             -fstrict-aliasing)
+    # -fno-trapping-math and -ffp-contract=fast both relax floating-point
+    # semantics. The engine itself is integer-only today, but any future FP
+    # analytics translation unit linked under these flags will have FMA
+    # contraction permitted and trapping ops removed; rounding may differ from a
+    # strict-IEEE build. Re-evaluate before adding any production FP risk path.
+    set(_lob_perf_candidates
+        -fno-plt
+        -fno-semantic-interposition
+        -fstrict-aliasing
+        -falign-functions=64
+        -falign-loops=32
+        -fno-trapping-math
+        -ffp-contract=fast)
     set(_lob_perf_compile "")
     foreach(_flag IN LISTS _lob_perf_candidates)
       _lob_probe_flag("${_flag}" _ok)

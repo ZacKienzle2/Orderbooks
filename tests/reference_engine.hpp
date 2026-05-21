@@ -54,6 +54,7 @@ struct reference_engine {
     qty_t last_bid_qty{0};
     qty_t last_ask_qty{0};
     bool top_dirty{false};
+    std::uint8_t suppress_top_depth{0};
 
     explicit reference_engine(engine_config c) noexcept : cfg{c} {}
 
@@ -126,6 +127,7 @@ struct reference_engine {
             publish_top_();
             return;
         }
+        ++suppress_top_depth;
         on_cancel(cancel_msg{.id = m.id});
         on_submit(submit_msg{.id = m.id,
                              .px = m.new_px,
@@ -134,6 +136,8 @@ struct reference_engine {
                              .t = t,
                              ._pad = 0,
                              .account_id = a});
+        --suppress_top_depth;
+        publish_top_();
     }
 
   private:
@@ -321,6 +325,8 @@ struct reference_engine {
 
     void publish_top_() noexcept {
         if (!top_dirty)
+            return;
+        if (suppress_top_depth != 0)
             return;
         top_dirty = false;
         const auto bb = best_bid();
