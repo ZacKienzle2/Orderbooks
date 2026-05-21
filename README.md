@@ -103,7 +103,7 @@ uv run pre-commit install --install-hooks
 
 ## Repository layout
 
-```
+```text
 include/lob/    public headers (header-only domain types + engine ABI)
 src/lob/        translation units (build-only internals)
 tests/          Catch2 v3 unit + property tests, reference engine, replay fixtures

@@ -33,20 +33,12 @@ jobs:
           - language: actions
             build-mode: none
             os: ubuntu-latest
-          # Supported: c-cpp, csharp, go, java-kotlin, javascript-typescript,
-          # python, ruby, rust, swift.
-          # - language: python
-          #   build-mode: none
-          #   os: ubuntu-latest
-          # - language: javascript-typescript
-          #   build-mode: none
-          #   os: ubuntu-latest
-          # - language: c-cpp
-          #   build-mode: autobuild
-          #   os: ubuntu-latest
-          # - language: rust
-          #   build-mode: none
-          #   os: ubuntu-latest
+          - language: c-cpp
+            build-mode: manual
+            os: ubuntu-latest
+          - language: python
+            build-mode: none
+            os: ubuntu-latest
 
     steps:
       - name: Harden runner
@@ -59,6 +51,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install Ninja
+        if: matrix.language == 'c-cpp'
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v6
+
+      - name: Install vcpkg
+        if: matrix.language == 'c-cpp'
+        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@458d36d7d4f47d0dd16ca424c1d3cda0060f1360 # v3
         with:
@@ -70,11 +70,15 @@ jobs:
         if: matrix.build-mode == 'autobuild'
         uses: github/codeql-action/autobuild@458d36d7d4f47d0dd16ca424c1d3cda0060f1360 # v3
 
-      - name: Manual build placeholder
-        if: matrix.build-mode == 'manual'
+      - name: Manual build (C / C++)
+        if: matrix.language == 'c-cpp'
+        env:
+          CC: clang
+          CXX: clang++
         run: |
-          echo "::error::Manual build mode selected but no build steps defined."
-          exit 1
+          set -euo pipefail
+          cmake --preset linux-clang-rel
+          cmake --build --preset linux-clang-rel --parallel
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@458d36d7d4f47d0dd16ca424c1d3cda0060f1360 # v3

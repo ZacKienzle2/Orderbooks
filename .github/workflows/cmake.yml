@@ -193,13 +193,13 @@ jobs:
       - name: Run clang-tidy on changed files
         run: |
           set -euo pipefail
-          base="$(git merge-base origin/${{ github.base_ref }} HEAD)"
-          changed=$(git diff --name-only --diff-filter=ACMR "${base}"...HEAD -- '*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hxx' '*.h' | tr '\n' ' ')
-          if [ -z "${changed}" ]; then
+          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "${base}"...HEAD -- '*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hxx' '*.h')
+          if [ "${#changed[@]}" -eq 0 ]; then
             echo "No C++ files changed."
             exit 0
           fi
-          clang-tidy-18 -p build/linux-clang-rel ${changed}
+          clang-tidy-18 -p build/linux-clang-rel --header-filter='(include|src)/lob/.*' "${changed[@]}"
 
   format-check:
     name: clang-format check

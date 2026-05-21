@@ -6,19 +6,27 @@ Architectural decisions referenced below live in [`docs/adr/`](docs/adr/README.m
 
 ## Now
 
-In active development.
+Active polish and observability work.
 
-- Single-symbol matching engine with strict price-time priority, dense tick-ladder book, hierarchical bitmap for best-price lookup, slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress rings, time-in-force coverage for GTC / IOC / FOK, configurable self-cross policy.
+- Per-core pinning of shard threads via `sched_setaffinity` (Linux) and `thread_policy_set` (macOS), with documented host configuration for production-quality latency numbers.
+- Replay animation in the Python visualisation harness via `matplotlib.animation.FuncAnimation`.
+- Bench baseline captured on a pinned Linux host and committed as `bench/baseline.json` so the regression gate becomes live.
+
+## Recently Landed
+
+- Matching engine with strict price-time priority, dense tick-ladder book, hierarchical bitmap (best-price queries and successor / predecessor walks), slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress rings, GTC / IOC / FOK time-in-force, account-aware self-cross policy with three behaviours.
+- Snapshot and warm-start wire format (see [ADR-0014](docs/adr/0014-snapshot-wire-format.md)) with round-trip, warm-start-equivalence, and rejection-path tests.
+- Multi-symbol shard router (see [ADR-0015](docs/adr/0015-multi-symbol-shard-router.md)) over per-symbol engines, dispatched via SplitMix64 truncated to log2(NumShards) bits.
+- JSON Lines event recorder and `lob_replay` CLI; Python `orderbooks_viz` harness with six matplotlib renderers and a Streamlit dashboard.
 
 ## Next
 
 Planned for the next milestone.
 
-- Huge-page-backed arena polish.
-- Deterministic snapshot and warm-start sink.
-- Multi-symbol shard router with per-core pinning.
+- Huge-page-backed arena (`MAP_HUGETLB | MAP_HUGE_2MB`) on Linux with macOS fallback.
 - MPSC ingress option for multi-gateway deployments.
 - Post-only and pegged time-in-force variants (preceded by a top-of-book listener seam).
+- Differential property tests over the shard router under multi-symbol load.
 
 ## Later
 

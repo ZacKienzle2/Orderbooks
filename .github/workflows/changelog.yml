@@ -35,12 +35,10 @@ jobs:
           persist-credentials: false
 
       - name: Generate changelog
-        uses: orhun/git-cliff-action@4a4a951bc43fafe41cd2348e181853f7af9d5302 # v4
+        uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: --verbose --unreleased --prepend CHANGELOG.md
-        env:
-          OUTPUT: CHANGELOG.md
+          args: --verbose --output CHANGELOG.md
 
       - name: Detect drift
         id: drift
@@ -61,7 +59,9 @@ jobs:
           commit-message: "chore(changelog): regenerate from conventional commits"
           title: "chore(changelog): regenerate from conventional commits"
           body: |
-            Automated changelog regeneration from `git-cliff`. Reviewer just needs to confirm the rendering looks right; merging this PR is purely a documentation refresh.
+            Automated changelog regeneration from `git-cliff`. Reviewer just needs
+            to confirm the rendering looks right; merging this PR is purely a
+            documentation refresh.
           labels: |
             chore
             docs

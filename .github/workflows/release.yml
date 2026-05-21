@@ -53,7 +53,7 @@ jobs:
           fi
 
       - name: Generate release notes via git-cliff
-        uses: orhun/git-cliff-action@4a4a951bc43fafe41cd2348e181853f7af9d5302 # v4
+        uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
           args: --verbose --latest --strip header
@@ -61,7 +61,7 @@ jobs:
           OUTPUT: RELEASE_NOTES.md
 
       - name: Regenerate full CHANGELOG.md at tag
-        uses: orhun/git-cliff-action@4a4a951bc43fafe41cd2348e181853f7af9d5302 # v4
+        uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
           args: --verbose --tag ${{ github.ref_name }}
