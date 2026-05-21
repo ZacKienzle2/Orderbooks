@@ -33,8 +33,7 @@ void bench_alloc_only(benchmark::State& state) {
         live.clear();
         state.ResumeTiming();
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                            static_cast<std::int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
 }
 
 BENCHMARK(bench_alloc_only)->Range(64, 32'768);
@@ -54,8 +53,7 @@ void bench_dealloc_only(benchmark::State& state) {
         live.clear();
         benchmark::ClobberMemory();
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                            static_cast<std::int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
 }
 
 BENCHMARK(bench_dealloc_only)->Range(64, 32'768);

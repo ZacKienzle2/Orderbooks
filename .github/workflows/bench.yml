@@ -90,6 +90,8 @@ jobs:
 
       - name: Compare against baseline
         if: hashFiles('bench/baseline.json') != ''
+        env:
+          BENCH_REGRESSION_THRESHOLD: "0.15"
         run: |
           set -euo pipefail
           # google/benchmark ships compare.py in its source tree. Pull it
@@ -102,5 +104,17 @@ jobs:
           base="https://raw.githubusercontent.com/google/benchmark"
           curl -fsSL "${base}/${GBENCH_SHA}/tools/compare.py" -o compare.py
           python3 -m pip install --user scipy
-          python3 compare.py benchmarks bench/baseline.json artifacts/bench.json \
+          python3 compare.py --dump_json artifacts/bench-compare.json \
+            benchmarks bench/baseline.json artifacts/bench.json \
             | tee artifacts/bench-compare.txt
+          python3 scripts/check_bench_regression.py artifacts/bench-compare.json
+
+      - name: Upload comparison artefact
+        if: hashFiles('bench/baseline.json') != ''
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: bench-compare
+          path: |
+            artifacts/bench-compare.txt
+            artifacts/bench-compare.json
+          retention-days: 30

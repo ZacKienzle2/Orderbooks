@@ -23,7 +23,7 @@ def render(
     if log.fills.empty:
         raise ValueError("event log has no fill events")
 
-    fills = log.fills.copy()
+    fills = log.fills
     px_edges = np.linspace(fills["px"].min() - 0.5, fills["px"].max() + 0.5, px_bins + 1)
     seq_edges = np.linspace(fills["seq"].min(), fills["seq"].max(), time_bins + 1)
     h, _, _ = np.histogram2d(

@@ -13,6 +13,12 @@
 #include <cstdint>
 #include <memory>
 
+#ifndef NDEBUG
+    #include <atomic>
+    #include <cassert>
+    #include <thread>
+#endif
+
 namespace lob {
 
 // Per-symbol shard router over a fixed number of engine instances.
@@ -54,11 +60,20 @@ class shard_router {
     shard_router& operator=(shard_router&&) = delete;
     ~shard_router() = default;
 
-    void on_submit(symbol_id_t sym, const submit_msg& m) noexcept { shard_for(sym).on_submit(m); }
+    void on_submit(symbol_id_t sym, const submit_msg& m) noexcept {
+        check_owner_thread_();
+        shard_for(sym).on_submit(m);
+    }
 
-    void on_cancel(symbol_id_t sym, const cancel_msg& m) noexcept { shard_for(sym).on_cancel(m); }
+    void on_cancel(symbol_id_t sym, const cancel_msg& m) noexcept {
+        check_owner_thread_();
+        shard_for(sym).on_cancel(m);
+    }
 
-    void on_modify(symbol_id_t sym, const modify_msg& m) noexcept { shard_for(sym).on_modify(m); }
+    void on_modify(symbol_id_t sym, const modify_msg& m) noexcept {
+        check_owner_thread_();
+        shard_for(sym).on_modify(m);
+    }
 
     [[nodiscard]] engine_type& shard(std::size_t idx) noexcept { return *engines_[idx]; }
 
@@ -67,7 +82,7 @@ class shard_router {
     }
 
     [[nodiscard]] std::size_t shard_index_for(symbol_id_t sym) const noexcept {
-        return static_cast<std::size_t>(splitmix64(sym) & mask);
+        return splitmix64(sym) & mask;
     }
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
@@ -85,7 +100,31 @@ class shard_router {
         return x ^ (x >> 31);
     }
 
+    // Records the thread id of the first dispatch call and asserts every
+    // subsequent dispatch comes from the same thread. Debug-only: the
+    // router is single-threaded by contract, but nothing else enforces it.
+    // No cost in release builds; the member and the call collapse to nothing.
+    //
+    // owner_ is std::atomic so a debug-only misuse from a racing thread
+    // sees a coherent value rather than a torn id; the load and store use
+    // relaxed ordering because we are only checking the "single-owner"
+    // invariant, not synchronising the actual dispatch payload.
+    void check_owner_thread_() noexcept {
+#ifndef NDEBUG
+        const auto self = std::this_thread::get_id();
+        auto seen = owner_.load(std::memory_order_relaxed);
+        if (seen == std::thread::id{}) {
+            owner_.store(self, std::memory_order_relaxed);
+            return;
+        }
+        assert(seen == self && "shard_router accessed from multiple threads");
+#endif
+    }
+
     std::array<std::unique_ptr<engine_type>, NumShards> engines_{};
+#ifndef NDEBUG
+    std::atomic<std::thread::id> owner_{};
+#endif
 };
 
 }  // namespace lob

@@ -64,26 +64,36 @@ class hier_bitmap {
 
     constexpr void clear(std::size_t bit) noexcept {
         assert(bit < Ticks);
+        // Branchless cascading clear: each tier's bit is masked out only
+        // when the tier below became empty as a result of this clear. The
+        // hint mask `-uint64_t(empty)` is 0 or all-ones, so the AND with
+        // the per-tier bit mask collapses to zero (no-op) when the tier
+        // below still has population. Eliminating the early-return
+        // branches lets the OOO core issue all four loads and all four
+        // stores without a control dependency between tiers.
         const auto l0_word = bit / W;
-        l0_[l0_word] &= ~mask(bit);
+        const auto l0_post = l0_[l0_word] & ~mask(bit);
+        l0_[l0_word] = l0_post;
         if constexpr (L1_W > 0) {
-            if (l0_[l0_word] != 0)
-                return;
+            const auto l0_empty = std::uint64_t{l0_post == 0};
             const auto l1_bit = l0_word;
             const auto l1_word = l1_bit / W;
-            l1_[l1_word] &= ~mask(l1_bit);
+            const auto l1_clear_mask = mask(l1_bit) & (0 - l0_empty);
+            const auto l1_post = l1_[l1_word] & ~l1_clear_mask;
+            l1_[l1_word] = l1_post;
             if constexpr (L2_W > 0) {
-                if (l1_[l1_word] != 0)
-                    return;
+                const auto l1_empty = std::uint64_t{l1_post == 0} & l0_empty;
                 const auto l2_bit = l1_word;
                 const auto l2_word = l2_bit / W;
-                l2_[l2_word] &= ~mask(l2_bit);
+                const auto l2_clear_mask = mask(l2_bit) & (0 - l1_empty);
+                const auto l2_post = l2_[l2_word] & ~l2_clear_mask;
+                l2_[l2_word] = l2_post;
                 if constexpr (L3_W > 0) {
-                    if (l2_[l2_word] != 0)
-                        return;
+                    const auto l2_empty = std::uint64_t{l2_post == 0} & l1_empty;
                     const auto l3_bit = l2_word;
                     const auto l3_word = l3_bit / W;
-                    l3_[l3_word] &= ~mask(l3_bit);
+                    const auto l3_clear_mask = mask(l3_bit) & (0 - l2_empty);
+                    l3_[l3_word] &= ~l3_clear_mask;
                 }
             }
         }

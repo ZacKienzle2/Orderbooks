@@ -50,13 +50,17 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0004](0004-dense-tick-ladder-book.md) | Accepted | Dense tick-ladder order book representation |
 | [0005](0005-hierarchical-bitmap-best-price.md) | Accepted | Hierarchical bitmap for best-price queries |
 | [0006](0006-slab-arena-intrusive-fifo.md) | Accepted | Slab arena with intrusive FIFOs for orders |
-| [0007](0007-unordered-dense-id-index.md) | Accepted | ankerl::unordered_dense for the order-id index |
+| [0007](0007-unordered-dense-id-index.md) | Superseded by ADR-0017 | ankerl::unordered_dense for the order-id index |
 | [0008](0008-single-thread-engine-spsc-boundary.md) | Accepted | Single-threaded engine with SPSC boundary rings |
 | [0009](0009-crtp-publisher-no-virtual-hot-path.md) | Accepted | CRTP and concepts in place of virtual functions on the hot path |
 | [0010](0010-conventional-commits-git-cliff-changelog.md) | Accepted | Conventional Commits with git-cliff-generated CHANGELOG |
 | [0011](0011-tif-coverage-gtc-ioc-fok.md) | Accepted | Time-in-force coverage: GTC, IOC, FOK |
 | [0012](0012-self-cross-policy-configurable.md) | Accepted | Self-cross policy is a construction-time configuration |
 | [0013](0013-account-aware-self-cross.md) | Accepted | Account-aware self-cross detection and enforcement |
+| [0014](0014-snapshot-wire-format.md) | Accepted | Snapshot wire format for warm-start |
+| [0015](0015-multi-symbol-shard-router.md) | Accepted | Multi-symbol shard router |
+| [0016](0016-numa-first-touch-arena.md) | Accepted | NUMA-correct first-touch initialisation for the slab arena |
+| [0017](0017-soa-open-addressed-id-index.md) | Accepted | Open-addressed SoA hash table for the id_index |
 
 ## References
 
