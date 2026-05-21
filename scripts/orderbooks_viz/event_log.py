@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
+from operator import itemgetter
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -47,14 +48,17 @@ def _loads(line: bytes | str) -> Any:
 
 
 def _columnar(rows: list[dict], cols: tuple[str, ...]) -> dict[str, np.ndarray]:
-    """Project a list of homogeneous dicts into a column-major dict of int64 arrays."""
+    """Project a list of homogeneous dicts into a column-major dict of int64 arrays.
+
+    Uses np.fromiter to fill each column inside the numpy core loop instead
+    of a Python-level per-row, per-column assignment; on large logs the
+    Python loop dominated the build phase. Missing keys raise KeyError so
+    malformed events fail loudly rather than being silently zero-coerced.
+    """
     if not rows:
         return {c: np.empty(0, dtype=np.int64) for c in cols}
-    out: dict[str, np.ndarray] = {c: np.empty(len(rows), dtype=np.int64) for c in cols}
-    for i, r in enumerate(rows):
-        for c in cols:
-            out[c][i] = r.get(c, 0)
-    return out
+    n = len(rows)
+    return {c: np.fromiter(map(itemgetter(c), rows), dtype=np.int64, count=n) for c in cols}
 
 
 def _stream(records: Iterable[str | bytes]) -> Iterable[dict]:
