@@ -53,6 +53,10 @@ by [git-cliff](https://git-cliff.org).
 
 ### CI
 
+- **deps:** Bump actions/first-interaction from 1 to 3 (#4) ([50f988c](https://github.com/ZacKienzle2/Orderbooks/commit/50f988c6465a49b3574e23e097bef3125719987e))
+
+- **deps:** Bump seanmiddleditch/gha-setup-ninja from 4 to 6 (#10) ([c614d6b](https://github.com/ZacKienzle2/Orderbooks/commit/c614d6b04ff33a959f05ee267c9b324fc1ce1195))
+
 - **bench:** Use median across measurements and validate threshold env var ([4b51e57](https://github.com/ZacKienzle2/Orderbooks/commit/4b51e578cf83fa39ac75ced3b03e120bb1bd000e))
 
 - **bench:** Fail microbench job on CPU-time regression past threshold ([b8e2e6c](https://github.com/ZacKienzle2/Orderbooks/commit/b8e2e6c16bc3613170edc85ea2bfa29d3ac2335c))
@@ -172,6 +176,10 @@ by [git-cliff](https://git-cliff.org).
 
 
 ### Maintenance
+
+- **lint:** Relax commitlint subject-case and markdownlint MD012 for bot PRs ([5f80b35](https://github.com/ZacKienzle2/Orderbooks/commit/5f80b35d3b8e91a3256685641195f7510e9f2d3a))
+
+- **changelog:** Regenerate from conventional commits (#11) ([1f10a15](https://github.com/ZacKienzle2/Orderbooks/commit/1f10a1557eb27d705175953877ef5ae3408b218a))
 
 - **viz:** Make orderbooks_viz an installable package ([3206433](https://github.com/ZacKienzle2/Orderbooks/commit/32064338d425bc74a41a812d36663d43d6707e53))
 
