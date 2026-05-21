@@ -1,7 +1,10 @@
 #include <lob/json_recorder.hpp>
 #include <lob/messages.hpp>
+#include <lob/types.hpp>
 
 #include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -53,6 +56,26 @@ TEST_CASE("json_recorder encodes self_trade_msg", "[json_recorder]") {
         out.str() ==
         R"({"kind":"self_trade","seq":99,"aggressor":11,"resting":13,"account":7,"px":99,"qty":2})"
         "\n");
+}
+
+TEST_CASE("json_recorder encodes max-width fields without overflow", "[json_recorder]") {
+    constexpr auto max64 = std::numeric_limits<std::uint64_t>::max();
+    constexpr auto max_tick = std::numeric_limits<lob::tick_t>::max();
+    constexpr auto max_acct = std::numeric_limits<lob::account_id_t>::max();
+    std::ostringstream out;
+    lob::json_recorder rec{out};
+    rec.publish(lob::self_trade_msg{
+        .aggressor = max64,
+        .resting = max64,
+        .account = max_acct,
+        .px = max_tick,
+        .qty = max64,
+        .seq = max64,
+    });
+    const std::string s = out.str();
+    REQUIRE(s.starts_with(R"({"kind":"self_trade","seq":18446744073709551615,)"));
+    REQUIRE(s.back() == '\n');
+    REQUIRE(s.size() < 384);
 }
 
 TEST_CASE("json_recorder appends multiple events without delimiter loss", "[json_recorder]") {
