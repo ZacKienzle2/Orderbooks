@@ -13,8 +13,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE
       "RelWithDebInfo"
       CACHE STRING "Default build type" FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-               "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+                                               "RelWithDebInfo" "MinSizeRel")
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)

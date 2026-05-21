@@ -1,0 +1,19 @@
+title = "Orderbooks gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Skip vendored, generated, and ephemeral trees."
+paths = [
+  '''^\.venv/''',
+  '''^venv/''',
+  '''^\.python-venv/''',
+  '''^build/''',
+  '''^cmake-build-.*/''',
+  '''^\.cache/''',
+  '''^node_modules/''',
+  '''^vcpkg_installed/''',
+  '''^third_party/''',
+  '''^external/''',
+]

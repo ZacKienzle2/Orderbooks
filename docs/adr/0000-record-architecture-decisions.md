@@ -79,6 +79,6 @@ zero-padded sequence number.
 
 ## More Information
 
-- MADR project: https://adr.github.io/madr/
+- MADR project: <https://adr.github.io/madr/>
 - Nygard, M. (2011). *Documenting Architecture Decisions*.
 - Process documentation: [docs/adr/README.md](README.md).

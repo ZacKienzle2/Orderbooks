@@ -1,8 +1,8 @@
 #include <lob/messages.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-
 #include <type_traits>
+
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("inbound command POD widths", "[messages]") {
     STATIC_REQUIRE(std::is_trivially_copyable_v<lob::submit_msg>);
@@ -17,7 +17,8 @@ TEST_CASE("outbound event POD widths", "[messages]") {
 }
 
 TEST_CASE("command tagged union dispatch", "[messages]") {
-    const auto sub = lob::command::make_submit({.id = 1, .px = 100, .qty = 50, .s = lob::side::bid, .t = lob::tif::gtc});
+    const auto sub = lob::command::make_submit(
+        {.id = 1, .px = 100, .qty = 50, .s = lob::side::bid, .t = lob::tif::gtc});
     REQUIRE(sub.k == lob::command::kind::submit);
     REQUIRE(sub.body.submit.id == 1);
     REQUIRE(sub.body.submit.px == 100);
@@ -39,7 +40,8 @@ TEST_CASE("event tagged union dispatch", "[messages]") {
     REQUIRE(f.body.fill.taker == 2);
     REQUIRE(f.body.fill.seq == 42);
 
-    const auto t = lob::event::make_top({.bid_px = 99, .ask_px = 101, .bid_qty = 10, .ask_qty = 20, .seq = 43});
+    const auto t = lob::event::make_top(
+        {.bid_px = 99, .ask_px = 101, .bid_qty = 10, .ask_qty = 20, .seq = 43});
     REQUIRE(t.k == lob::event::kind::top);
     REQUIRE(t.body.top.bid_px == 99);
     REQUIRE(t.body.top.ask_px == 101);
