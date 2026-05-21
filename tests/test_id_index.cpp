@@ -45,7 +45,7 @@ TEST_CASE("id_index erase across a colliding-id chain shifts entries back", "[id
     lob::id_index idx{64};
     std::array<lob::order, 16> pool{};
     for (std::size_t i = 0; i < pool.size(); ++i) {
-        pool[i].id = static_cast<lob::order_id_t>(i + 1);
+        pool[i].id = i + 1;
         idx.insert(pool[i].id, &pool[i]);
     }
     // Erase head, middle, and tail of insertion order; survivors must remain
