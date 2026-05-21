@@ -3,7 +3,12 @@ include_guard(GLOBAL)
 add_library(lob_sanitizers INTERFACE)
 add_library(lob::sanitizers ALIAS lob_sanitizers)
 
-set(LOB_SANITIZER "" CACHE STRING "Comma-separated list of -fsanitize values (address,undefined,thread,memory,fuzzer,leak)")
+set(LOB_SANITIZER
+    ""
+    CACHE
+      STRING
+      "Comma-separated list of -fsanitize values (address,undefined,thread,memory,fuzzer,leak)"
+)
 
 if(LOB_SANITIZER STREQUAL "")
   return()
@@ -22,10 +27,6 @@ foreach(_san IN LISTS _lob_san_list)
 endforeach()
 
 target_compile_options(
-  lob_sanitizers
-  INTERFACE
-    ${_lob_san_flags}
-    -fno-omit-frame-pointer
-    -fno-optimize-sibling-calls
-)
+  lob_sanitizers INTERFACE ${_lob_san_flags} -fno-omit-frame-pointer
+                           -fno-optimize-sibling-calls)
 target_link_options(lob_sanitizers INTERFACE ${_lob_san_flags})

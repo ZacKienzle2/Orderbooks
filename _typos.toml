@@ -11,6 +11,15 @@ fpe = "fpe"    # floating-point exception
 nd = "nd"      # boost::intrusive::auto_unlink + others
 sps = "sps"    # samples-per-second
 crate = "crate"
+ba = "ba"            # best ask cursor (matching engine and reference)
+bb = "bb"            # best bid cursor (matching engine and reference)
+po = "po"            # post-only TIF abbreviation
+te = "te"            # taker-execute marker
+hte = "hte"          # halt-to-end marker
+countr = "countr"    # std::countr_zero / countr_one (C++20 bit ops)
+countl = "countl"    # std::countl_zero / countl_one (C++20 bit ops)
+popc = "popc"        # std::popcount abbreviation
+browseable = "browseable"  # GitHub doc spelling in SUPPORT.md
 
 [files]
 extend-exclude = [
