@@ -69,6 +69,12 @@ class spsc_ring {
         return true;
     }
 
+    // Best-effort observers; valid only for owner-side or external
+    // synchronisation. Two separate acquire loads of head_ and tail_ are
+    // not an atomic snapshot, so a concurrent producer or consumer can
+    // observe a partially-updated pair; the unsigned subtraction
+    // h - t can transiently appear inverted near the boundary. Use
+    // these for diagnostics, never as the gate on a hot-path decision.
     [[nodiscard]] std::size_t size() const noexcept {
         const auto h = head_.load(std::memory_order_acquire);
         const auto t = tail_.load(std::memory_order_acquire);
@@ -87,6 +93,13 @@ class spsc_ring {
     // consumer's cache line. Lines are 64-byte aligned to prevent false
     // sharing between producer and consumer cores. buf_ lives on its
     // own line so slot writes never invalidate the cursor lines.
+    //
+    // tail_cache_ is owned by the producer (read and written only inside
+    // try_push); head_cache_ is owned by the consumer. Neither is atomic
+    // because no cross-side access is permitted. A non-owner observer
+    // that touched either cache field would see arbitrarily stale data
+    // and could misclassify the ring's fullness. Do not add such an
+    // observer.
     alignas(64) std::atomic<std::uint64_t> head_{0};
     std::uint64_t tail_cache_{0};
     alignas(64) std::atomic<std::uint64_t> tail_{0};
