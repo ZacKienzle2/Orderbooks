@@ -43,4 +43,6 @@ extend-exclude = [
   # External fixture data: ITCH samples and replay logs are not source.
   "data/",
   "tests/fixtures/",
+  # Generated changelog: git-cliff output embeds commit SHAs that trip the speller.
+  "CHANGELOG.md",
 ]
