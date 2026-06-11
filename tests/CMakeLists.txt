@@ -9,6 +9,7 @@ add_executable(
   test_arena.cpp
   test_spsc.cpp
   test_messages.cpp
+  test_fix_parser.cpp
   test_order.cpp
   test_id_index.cpp
   test_level.cpp

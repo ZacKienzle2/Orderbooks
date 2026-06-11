@@ -32,7 +32,7 @@ Planned for the next milestone.
 
 Under consideration. Open issues to discuss.
 
-- Zero-copy FIX 4.4 tag-value parser over `std::span<const std::byte>`, gateway adapter writing into the command ring, libFuzzer harness for malformed inputs.
+- Zero-copy FIX 4.4 tag-value parser over `std::span<const std::byte>`: done (`include/lob/fix_parser.hpp`, ADR-0018) for the NewOrderSingle / OrderCancelRequest / OrderCancelReplaceRequest order-entry subset, emitting `lob::command`. Remaining: gateway adapter writing parsed commands into the command ring, and a libFuzzer harness for malformed inputs.
 - ITCH 5.0 feed handler and reference replay harness.
 - L3 book egress publisher with delta compression.
 - Risk gateway (pre-trade limits, fat-finger guards).
