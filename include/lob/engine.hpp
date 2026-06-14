@@ -104,7 +104,7 @@ class engine {
         if (m.new_px == o->px) {
             if (m.new_qty == o->remaining)
                 return;  // genuine no-op
-            // qty-only fast path: mutate aggregate in place
+            // Qty-only fast path. Mutate the level aggregate in place.
             if (s == side::bid) {
                 auto& lvl = book_.bids().level_at(o->px);
                 lvl.aggregate = lvl.aggregate - o->remaining + m.new_qty;
@@ -117,11 +117,11 @@ class engine {
             publish_top_if_changed_();
             return;
         }
-        // Price change. In-place reprice fast path: when the new price would
+        // Price change, in-place reprice fast path. When the new price does
         // not cross the opposite best, the order relocates to another resting
         // level on the same side. The id -> order* mapping is invariant across
         // the move (same node), so the id_index and arena are untouched and the
-        // speculative match walk is skipped; only the FIFO membership, the two
+        // speculative match walk is skipped. Only the FIFO membership, the two
         // levels' aggregates, and the bitmap change. Time priority is
         // surrendered (push_back at the destination), matching the crossing
         // cancel + resubmit path below.
@@ -150,8 +150,8 @@ class engine {
                 return;
             }
         }
-        // Crossing reprice: cancel + resubmit at the new price so the order can
-        // execute against the opposite side (loses time priority). Suppress
+        // Crossing reprice. Cancel then resubmit at the new price so the order
+        // can execute against the opposite side (loses time priority). Suppress
         // nested top_msg emission so the modify surfaces as a single coalesced
         // top change rather than one per sub-step.
         const auto acct = o->account_id;
@@ -172,16 +172,16 @@ class engine {
 
     // Serialise the engine's complete state into a snapshot_sink.
     //
-    // Layout: a snapshot_header followed by num_orders snapshot_order_records.
-    // Records are emitted in (price ascending, FIFO front-to-back) order per
-    // side, bids before asks. That order is the same order restore() needs
-    // to replay them in to reproduce the FIFO time priority at each level.
+    // The wire layout is a snapshot_header followed by num_orders
+    // snapshot_order_records. Records are emitted in (price ascending, FIFO
+    // front-to-back) order per side, bids before asks. restore() replays that
+    // exact order to reproduce FIFO time priority at each level.
     //
-    // Throwing: snapshot() propagates any exception thrown by the sink's
-    // write(). Production sinks (fixed buffers, mmap-backed files, ring
-    // publishers) should mark write() noexcept; growable sinks like
-    // vector_snapshot_buffer can throw std::bad_alloc on memory pressure
-    // and the engine state is unaffected because snapshot() never mutates.
+    // snapshot() propagates any exception thrown by the sink's write().
+    // Production sinks (fixed buffers, mmap-backed files, ring publishers)
+    // should mark write() noexcept. Growable sinks like vector_snapshot_buffer
+    // can throw std::bad_alloc on memory pressure, leaving engine state
+    // unaffected because snapshot() never mutates.
     template <snapshot_sink S>
     [[gnu::cold]] void snapshot(S& sink) const {
         snapshot_header hdr{};
@@ -256,8 +256,8 @@ class engine {
     void handle_submit_(const submit_msg& m) noexcept {
         constexpr auto Opp = (Side == side::bid) ? side::ask : side::bid;
 
-        // FOK precheck: walk opposite levels from best toward `m.px` and sum
-        // their aggregates; abort all if the total is less than the request.
+        // FOK precheck. Walk opposite levels from best toward `m.px` and sum
+        // their aggregates, aborting the whole order if the total is short.
         if (m.t == tif::fok) {
             if (!can_fully_fill_<Opp>(m.px, m.qty))
                 return;
@@ -526,7 +526,7 @@ class engine {
 
     template <side Side, snapshot_sink S>
     void emit_side_(S& sink) const {
-        // Snapshot contract: records are emitted in (price ascending,
+        // Snapshot contract. Records are emitted in (price ascending,
         // FIFO front-to-back) order so restore() replays them in the
         // same order and reproduces FIFO time priority at each level.
         // The iteration is driven by the bitmap (always ascending via
