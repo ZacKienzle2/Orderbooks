@@ -17,14 +17,18 @@ namespace lob {
 
 // book_side<Ticks, Side>
 // ----------------------
-// Dense per-side ladder of `Ticks` price levels plus a hierarchical bitmap
-// for `O(1)` best-price queries. Side is encoded as a non-type template
-// parameter so the `best()` direction is dead-coded per instantiation
-// (highest_set for bids, lowest_set for asks).
+// Dense per-side ladder of `Ticks` price levels backed by a hierarchical
+// bitmap. best() reads a cached top-of-book maintained incrementally by add /
+// remove, so it never descends the bitmap on the hot path. The bitmap remains
+// the source of truth for next / prev_populated and refreshes the cache when
+// the top level drains. Side is a non-type template parameter, so the best()
+// direction is dead-coded per instantiation (highest_set for bids, lowest_set
+// for asks).
 //
-// add / remove update one level and at most one bitmap word per tier. Both
-// are noexcept; out-of-range tick indices are UB-by-contract (the engine
-// validates upstream).
+// add / remove update one level and at most one bitmap word per tier; remove
+// pays a single bitmap descent only when the top level empties. Both are
+// noexcept; out-of-range tick indices are UB-by-contract (engine validates
+// upstream).
 template <std::size_t Ticks, side Side>
 class book_side {
   public:
@@ -42,20 +46,40 @@ class book_side {
         lvl.push_back(o);
         if (was_empty)
             bm_.set(o.px);
+        // A newly resting price can only equal or improve this side's best,
+        // so one compare maintains the cache with no bitmap descent.
+        if (!has_best_) {
+            best_ = o.px;
+            has_best_ = true;
+        } else if constexpr (Side == side::bid) {
+            if (o.px > best_)
+                best_ = o.px;
+        } else {
+            if (o.px < best_)
+                best_ = o.px;
+        }
     }
 
     void remove(order& o) noexcept {
         auto& lvl = (*levels_)[o.px];
         lvl.unlink(o);
-        if (lvl.empty())
+        if (lvl.empty()) {
             bm_.clear(o.px);
+            // The best moves only when the top level itself drains; a deeper
+            // level emptying leaves the cache valid. The descent in
+            // recompute_best_ therefore runs only on the top-of-book case.
+            if (o.px == best_)
+                recompute_best_();
+        }
     }
 
+    // O(1) best-price query returning the incrementally maintained cache. The
+    // bitmap stays the source of truth for next / prev_populated and for
+    // refreshing this cache when the top level drains.
     [[nodiscard]] std::optional<tick_t> best() const noexcept {
-        const auto v = (Side == side::bid) ? bm_.highest_set() : bm_.lowest_set();
-        if (!v.has_value())
+        if (!has_best_)
             return std::nullopt;
-        return static_cast<tick_t>(*v);
+        return best_;
     }
 
     [[nodiscard]] qty_t aggregate_at(tick_t px) const noexcept { return (*levels_)[px].aggregate; }
@@ -64,9 +88,15 @@ class book_side {
 
     [[nodiscard]] level& level_at(tick_t px) noexcept { return (*levels_)[px]; }
 
-    // The matching engine drains a level FIFO directly during a cross and
-    // needs to inform the bitmap when the level emptied as a result.
-    void notify_level_emptied(tick_t px) noexcept { bm_.clear(px); }
+    // Single chokepoint through which a match-path drain clears the bitmap:
+    // the engine drains a level FIFO directly during a cross and calls this
+    // when the level emptied. Refresh the cached best here when the drained
+    // level was the top of book.
+    void notify_level_emptied(tick_t px) noexcept {
+        bm_.clear(px);
+        if (has_best_ && px == best_)
+            recompute_best_();
+    }
 
     // Inspect the bitmap for FOK precheck without exposing internals.
     [[nodiscard]] std::optional<tick_t> next_populated_at_or_after(tick_t px) const noexcept {
@@ -88,8 +118,19 @@ class book_side {
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Ticks; }
 
   private:
+    // Recompute the cached best from the bitmap. Runs only when the top level
+    // drains (remove / notify_level_emptied), so its descent is amortised
+    // across the O(1) best() reads it enables everywhere else.
+    void recompute_best_() noexcept {
+        const auto v = (Side == side::bid) ? bm_.highest_set() : bm_.lowest_set();
+        has_best_ = v.has_value();
+        best_ = has_best_ ? static_cast<tick_t>(*v) : tick_t{0};
+    }
+
     std::unique_ptr<std::array<level, Ticks>> levels_;
     hier_bitmap<Ticks> bm_{};
+    tick_t best_{0};
+    bool has_best_{false};
 };
 
 // book<Ticks, MaxOrders>
