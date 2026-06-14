@@ -88,10 +88,10 @@ class book_side {
 
     [[nodiscard]] level& level_at(tick_t px) noexcept { return (*levels_)[px]; }
 
-    // Single chokepoint through which a match-path drain clears the bitmap:
-    // the engine drains a level FIFO directly during a cross and calls this
-    // when the level emptied. Refresh the cached best here when the drained
-    // level was the top of book.
+    // Single chokepoint through which a match-path drain clears the bitmap.
+    // The engine drains a level FIFO directly during a cross and calls this
+    // once the level has emptied. Refresh the cached best here when the
+    // drained level was the top of book.
     void notify_level_emptied(tick_t px) noexcept {
         bm_.clear(px);
         if (has_best_ && px == best_)
@@ -175,8 +175,8 @@ class book {
     alignas(64) slab_arena<order, MaxOrders> arena_;
     id_index idx_;
 
-    // Regression guard: if a future change strips one of the alignas(64)
-    // markers above the static_assert fires loudly at instantiation.
+    // Regression guard. If a future change strips one of the alignas(64)
+    // markers above, the static_assert fires loudly at instantiation.
     static_assert(alignof(book_side<Ticks, side::bid>) >= 64,
                   "book::bids_ must be cache-line aligned");
     static_assert(alignof(book_side<Ticks, side::ask>) >= 64,

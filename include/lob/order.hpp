@@ -11,7 +11,7 @@
 
 namespace lob {
 
-// 64-byte cache-line-aligned resting-order record. Layout is hand-packed:
+// 64-byte cache-line-aligned resting-order record. Byte layout follows.
 //   id            (8) | remaining (8) | px         (4)
 //   side         (1) | tif       (1) | _pad0     (2)
 //   account_id   (4)
@@ -19,7 +19,7 @@ namespace lob {
 // alignas(64) pads the struct to 64 bytes total; the trailing bytes are
 // reserved for future per-order metadata (tags, timestamps).
 //
-// The resting price level is `px` itself: an order can only be removed from
+// The resting price level is `px` itself. An order is only ever removed from
 // the level it rests at, and every remove() site holds `px` unchanged at the
 // resting value, so a separate cached level index would be pure redundancy.
 //
@@ -28,10 +28,9 @@ namespace lob {
 // arena that allocated the order; the level borrows it via list::push_back /
 // list::erase.
 //
-// normal_link mode is chosen so the hook stays trivially destructible: the
-// engine owns link / unlink timing, and both auto_unlink and safe_link add
-// a non-trivial destructor that would force a per-order teardown loop in
-// the arena.
+// normal_link mode keeps the hook trivially destructible. The engine owns
+// link / unlink timing, and both auto_unlink and safe_link add a non-trivial
+// destructor that would force a per-order teardown loop in the arena.
 struct alignas(64) order {
     order_id_t id;
     qty_t remaining;
@@ -50,10 +49,11 @@ static_assert(alignof(order) == 64);
 // is trivially destructible; on GNU libstdc++ it is not. slab_arena calls
 // ~order() on deallocate, which is a no-op for the hook in normal_link mode.
 
-// constant_time_size<false>: the engine drains a level via the empty() guard
-// and front() iteration, never via size(). Skipping the per-link bookkeeping
-// shaves a counter update off every push_back / pop_front on the hot path.
-// The level aggregate (lob::level::aggregate) is the durable size signal.
+// With constant_time_size<false> the engine drains a level via the empty()
+// guard and front() iteration, never via size(). Skipping the per-link
+// bookkeeping shaves a counter update off every push_back / pop_front on the
+// hot path. The level aggregate (lob::level::aggregate) is the durable size
+// signal.
 using order_fifo = boost::intrusive::list<
     order,
     boost::intrusive::member_hook<order, decltype(order::fifo_hook), &order::fifo_hook>,
