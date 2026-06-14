@@ -117,9 +117,43 @@ class engine {
             publish_top_if_changed_();
             return;
         }
-        // price change: cancel + resubmit at new price (loses time priority).
-        // Suppress nested top_msg emission so the modify appears as a single
-        // coalesced top change rather than one per sub-step.
+        // Price change. In-place reprice fast path: when the new price would
+        // not cross the opposite best, the order relocates to another resting
+        // level on the same side. The id -> order* mapping is invariant across
+        // the move (same node), so the id_index and arena are untouched and the
+        // speculative match walk is skipped; only the FIFO membership, the two
+        // levels' aggregates, and the bitmap change. Time priority is
+        // surrendered (push_back at the destination), matching the crossing
+        // cancel + resubmit path below.
+        if (s == side::bid) {
+            const auto opp = book_.asks().best();
+            if (!opp.has_value() || m.new_px < *opp) {
+                auto& bs = book_.bids();
+                bs.remove(*o);
+                o->px = m.new_px;
+                o->remaining = m.new_qty;
+                bs.add(*o);
+                state_.top_dirty = true;
+                publish_top_if_changed_();
+                return;
+            }
+        } else {
+            const auto opp = book_.bids().best();
+            if (!opp.has_value() || m.new_px > *opp) {
+                auto& as = book_.asks();
+                as.remove(*o);
+                o->px = m.new_px;
+                o->remaining = m.new_qty;
+                as.add(*o);
+                state_.top_dirty = true;
+                publish_top_if_changed_();
+                return;
+            }
+        }
+        // Crossing reprice: cancel + resubmit at the new price so the order can
+        // execute against the opposite side (loses time priority). Suppress
+        // nested top_msg emission so the modify surfaces as a single coalesced
+        // top change rather than one per sub-step.
         const auto acct = o->account_id;
         assert(state_.suppress_top_depth < std::numeric_limits<std::uint8_t>::max() &&
                "engine: suppress_top_depth would overflow; composite nesting too deep");
