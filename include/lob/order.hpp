@@ -14,10 +14,14 @@ namespace lob {
 // 64-byte cache-line-aligned resting-order record. Layout is hand-packed:
 //   id            (8) | remaining (8) | px         (4)
 //   side         (1) | tif       (1) | _pad0     (2)
-//   level_idx    (4) | account_id (4)
-//   fifo_hook   (16)                                       -> 48 used
-// alignas(64) pads the struct to 64 bytes total; the trailing 16 bytes are
+//   account_id   (4)
+//   fifo_hook   (16)                                       -> 44 used
+// alignas(64) pads the struct to 64 bytes total; the trailing bytes are
 // reserved for future per-order metadata (tags, timestamps).
+//
+// The resting price level is `px` itself: an order can only be removed from
+// the level it rests at, and every remove() site holds `px` unchanged at the
+// resting value, so a separate cached level index would be pure redundancy.
 //
 // fifo_hook participates in a boost::intrusive::list that represents the
 // FIFO at the order's resting price level. Hook ownership stays with the
@@ -35,7 +39,6 @@ struct alignas(64) order {
     side s;
     tif t;
     std::uint16_t _pad0;
-    std::uint32_t level_idx;
     account_id_t account_id;
     boost::intrusive::list_member_hook<boost::intrusive::link_mode<boost::intrusive::normal_link>>
         fifo_hook;

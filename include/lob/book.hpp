@@ -40,16 +40,15 @@ class book_side {
         auto& lvl = (*levels_)[o.px];
         const bool was_empty = lvl.empty();
         lvl.push_back(o);
-        o.level_idx = o.px;
         if (was_empty)
             bm_.set(o.px);
     }
 
     void remove(order& o) noexcept {
-        auto& lvl = (*levels_)[o.level_idx];
+        auto& lvl = (*levels_)[o.px];
         lvl.unlink(o);
         if (lvl.empty())
-            bm_.clear(o.level_idx);
+            bm_.clear(o.px);
     }
 
     [[nodiscard]] std::optional<tick_t> best() const noexcept {
