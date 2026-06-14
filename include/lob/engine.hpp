@@ -371,7 +371,6 @@ class engine {
         o->s = Side;
         o->t = m.t;
         o->_pad0 = 0;
-        o->level_idx = m.px;
         o->account_id = m.account_id;
         side_<Side>().add(*o);
         book_.index().insert(m.id, o);
@@ -567,7 +566,6 @@ class engine {
         o->s = static_cast<side>(rec.s);
         o->t = static_cast<tif>(rec.t);
         o->_pad0 = 0;
-        o->level_idx = rec.px;
         o->account_id = rec.account_id;
         if (o->s == side::bid)
             book_.bids().add(*o);

@@ -38,7 +38,7 @@ serves multiple instrument widths.
 
 ### Consequences
 
-- Positive: Add and cancel are pointer arithmetic on `level_idx`.
+- Positive: Add and cancel are pointer arithmetic on the order's `px`.
 - Positive: Walking from best is a tight loop over adjacent cache lines.
 - Positive: No tree pointer chasing; no internal node cache misses.
 - Negative: Upfront memory cost ~32 MiB per book.
