@@ -164,6 +164,43 @@ void bench_modify_qty_only(benchmark::State& state) {
 
 BENCHMARK(bench_modify_qty_only);
 
+void bench_modify_price(benchmark::State& state) {
+    // Non-crossing price-move modify, the in-place relink fast path. The book
+    // is one-sided (asks only, no bids), so every move stays resting and never
+    // falls back to cancel-and-resubmit; ids and target prices range across a
+    // wide band so each modify touches a cold order record, level, and bitmap.
+    noop_publisher pub;
+    engine_t eng{pub, lob::engine_config{}};
+    constexpr std::size_t n = 4096;
+    constexpr lob::tick_t lo = bench_ticks / 2;
+    constexpr lob::tick_t hi = lo + 2048;
+    prng g{0x5EEDF00DULL};
+    for (lob::order_id_t id = 1; id <= n; ++id) {
+        eng.on_submit(lob::submit_msg{
+            .id = id,
+            .px = static_cast<lob::tick_t>(lo + g.next() % (hi - lo)),
+            .qty = 1 + g.next() % 50,
+            .s = lob::side::ask,
+            .t = lob::tif::gtc,
+            ._pad = 0,
+            .account_id = 0,
+        });
+    }
+    lob::order_id_t id = 1;
+    for (auto _ : state) {
+        eng.on_modify(lob::modify_msg{
+            .id = id,
+            .new_px = static_cast<lob::tick_t>(lo + g.next() % (hi - lo)),
+            .new_qty = 1 + g.next() % 50,
+        });
+        id = id % n + 1;
+        benchmark::ClobberMemory();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+
+BENCHMARK(bench_modify_price);
+
 void bench_match_crossing(benchmark::State& state) {
     // Steady-state: pre-populate one side, repeatedly fire aggressors that
     // cross 1-N levels of the opposite. The bench rebuilds the book inside
