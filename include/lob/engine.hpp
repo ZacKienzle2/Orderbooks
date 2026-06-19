@@ -79,13 +79,15 @@ class engine {
         // line lands in L1 already in Modified state and the upcoming
         // RFO upgrade is skipped.
         __builtin_prefetch(o, 1, 3);
+        const auto cancel_side = o->s;
+        const auto cancel_px = o->px;
         if (o->s == side::bid)
             book_.bids().remove(*o);
         else
             book_.asks().remove(*o);
         book_.index().erase(o->id);
         book_.arena().deallocate(o);
-        state_.top_dirty = true;
+        mark_top_(cancel_side, cancel_px);
         publish_top_if_changed_();
     }
 
@@ -113,7 +115,7 @@ class engine {
                 lvl.aggregate = lvl.aggregate - o->remaining + m.new_qty;
             }
             o->remaining = m.new_qty;
-            state_.top_dirty = true;
+            mark_top_(s, o->px);
             publish_top_if_changed_();
             return;
         }
@@ -127,22 +129,26 @@ class engine {
         if (s == side::bid) {
             const auto best_ask = book_.asks().best();
             if (!best_ask.has_value() || m.new_px < *best_ask) {
+                const auto old_px = o->px;
                 book_.bids().remove(*o);
                 o->px = m.new_px;
                 o->remaining = m.new_qty;
                 book_.bids().add(*o);
-                state_.top_dirty = true;
+                mark_top_(side::bid, old_px);
+                mark_top_(side::bid, m.new_px);
                 publish_top_if_changed_();
                 return;
             }
         } else {
             const auto best_bid = book_.bids().best();
             if (!best_bid.has_value() || m.new_px > *best_bid) {
+                const auto old_px = o->px;
                 book_.asks().remove(*o);
                 o->px = m.new_px;
                 o->remaining = m.new_qty;
                 book_.asks().add(*o);
-                state_.top_dirty = true;
+                mark_top_(side::ask, old_px);
+                mark_top_(side::ask, m.new_px);
                 publish_top_if_changed_();
                 return;
             }
@@ -241,6 +247,12 @@ class engine {
                 return false;
             }
         }
+        // The replayed book is now whole, so seed the per-side presence flags
+        // from it and leave the top clean, matching the no-emit-on-restore
+        // contract.
+        state_.have_bid_side = book_.bids().best().has_value();
+        state_.have_ask_side = book_.asks().best().has_value();
+        state_.top_dirty = false;
         return true;
     }
 
@@ -406,7 +418,7 @@ class engine {
         o->account_id = m.account_id;
         side_<Side>().add(*o);
         book_.index().insert(m.id, o);
-        state_.top_dirty = true;
+        mark_top_(Side, m.px);
     }
 
     template <side Opp>
@@ -440,6 +452,29 @@ class engine {
         return total >= want;
     }
 
+    // Conservatively reports whether a mutation at price px on side s could
+    // move top-of-book. A change strictly worse than the side's current best,
+    // on a side that already held orders at the last top, cannot, because the
+    // best price and the best level's quantity are untouched. Those skip the
+    // best recompute in publish_top_if_changed_. When no top is established, or
+    // the side was empty at the last top, any change there may set the top.
+    [[nodiscard]] bool affects_top_(side s, tick_t px) const noexcept {
+        if (!state_.have_top)
+            return true;
+        if (s == side::bid)
+            return !state_.have_bid_side || px >= state_.last_bid_px;
+        return !state_.have_ask_side || px <= state_.last_ask_px;
+    }
+
+    // Marks the top dirty after a mutation at price px on side s. With throttle
+    // off the engine emits a top per mutation by contract, so the guard applies
+    // only when throttle is on, where it suppresses the best recompute for a
+    // mutation that cannot move the top.
+    void mark_top_(side s, tick_t px) noexcept {
+        if (!cfg_.top_throttle || affects_top_(s, px))
+            state_.top_dirty = true;
+    }
+
     void publish_top_if_changed_() noexcept {
         if (!state_.top_dirty)
             return;
@@ -457,6 +492,12 @@ class engine {
         const tick_t ask_px = ba.has_value() ? *ba : tick_t{0};
         const qty_t bid_qty = bb.has_value() ? book_.bids().aggregate_at(*bb) : qty_t{0};
         const qty_t ask_qty = ba.has_value() ? book_.asks().aggregate_at(*ba) : qty_t{0};
+
+        // Refresh the per-side presence flags whenever the best is recomputed,
+        // before any throttle early-return, so affects_top_ never reads a stale
+        // flag.
+        state_.have_bid_side = bb.has_value();
+        state_.have_ask_side = ba.has_value();
 
         if (cfg_.top_throttle && state_.have_top && bid_px == state_.last_bid_px &&
             ask_px == state_.last_ask_px && bid_qty == state_.last_bid_qty &&
@@ -621,6 +662,11 @@ class engine {
         qty_t last_ask_qty{0};
         bool have_top{false};
         bool top_dirty{false};
+        // Whether each side held any order at the last published top. With the
+        // cached best price they let a mutation decide, without a bitmap walk,
+        // if it could move the top. See affects_top_.
+        bool have_bid_side{false};
+        bool have_ask_side{false};
         // Suppresses nested top_msg emission from publish_top_if_changed_.
         // Composite operations that perform multiple book mutations (e.g.
         // a price-change modify dispatched as cancel + submit) bump this
