@@ -18,6 +18,7 @@ Active polish and observability work.
 - Merging egress consumer (see [ADR-0021](docs/adr/0021-merging-egress-consumer.md)) that fans the per-shard event rings into one sequenced stream for a single downstream sink.
 - Publisher-concept seam (see [ADR-0022](docs/adr/0022-publisher-seam-for-merged-egress.md)) bridging the merged stream onto any publisher, wiring the runtime through the merger into the JSON Lines recorder.
 - Huge-page-backed slab arena (see [ADR-0023](docs/adr/0023-hugepage-backed-arena.md)) preferring 2 MiB pages to cut data-TLB pressure during bursts, with a transparent fallback chain and no change to the first-touch NUMA policy.
+- From-scratch HDR latency histogram (see [ADR-0024](docs/adr/0024-hdr-latency-histogram.md)) with O(1) allocation-free record and exact p50 / p99 / p99.9 / p99.99 queries, the in-process backbone for latency measurement and a future regression gate.
 - Replay animation in the Python visualisation harness via `matplotlib.animation.FuncAnimation`.
 - Matching engine with strict price-time priority, dense tick-ladder book, hierarchical bitmap (best-price queries and successor / predecessor walks), slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress rings, GTC / IOC / FOK time-in-force, account-aware self-cross policy with three behaviours.
 - Snapshot and warm-start wire format (see [ADR-0014](docs/adr/0014-snapshot-wire-format.md)) with round-trip, warm-start-equivalence, and rejection-path tests.

@@ -1,0 +1,10 @@
+---
+# Benchmarks use the Google Benchmark `for (auto _ : state)` loop, which the
+# dead-store analyzer flags, and seed their RNGs with fixed constants so a run
+# is reproducible. Both are intentional in a microbenchmark, so disable the
+# matching checks here while inheriting the rest of the project policy.
+InheritParentConfig: true
+Checks: >
+  -clang-analyzer-deadcode.DeadStores,
+  -cert-msc32-c,
+  -cert-msc51-cpp
