@@ -17,6 +17,7 @@ Active polish and observability work.
 - Per-shard egress rings (see [ADR-0020](docs/adr/0020-per-shard-egress-rings.md)) so each shard publishes events into its own SPSC ring through a `ring_publisher`, removing the thread-safe shared-publisher requirement.
 - Merging egress consumer (see [ADR-0021](docs/adr/0021-merging-egress-consumer.md)) that fans the per-shard event rings into one sequenced stream for a single downstream sink.
 - Publisher-concept seam (see [ADR-0022](docs/adr/0022-publisher-seam-for-merged-egress.md)) bridging the merged stream onto any publisher, wiring the runtime through the merger into the JSON Lines recorder.
+- Huge-page-backed slab arena (see [ADR-0023](docs/adr/0023-hugepage-backed-arena.md)) preferring 2 MiB pages to cut data-TLB pressure during bursts, with a transparent fallback chain and no change to the first-touch NUMA policy.
 - Replay animation in the Python visualisation harness via `matplotlib.animation.FuncAnimation`.
 - Matching engine with strict price-time priority, dense tick-ladder book, hierarchical bitmap (best-price queries and successor / predecessor walks), slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress rings, GTC / IOC / FOK time-in-force, account-aware self-cross policy with three behaviours.
 - Snapshot and warm-start wire format (see [ADR-0014](docs/adr/0014-snapshot-wire-format.md)) with round-trip, warm-start-equivalence, and rejection-path tests.
@@ -27,7 +28,6 @@ Active polish and observability work.
 
 Planned for the next milestone.
 
-- Huge-page-backed arena (`MAP_HUGETLB | MAP_HUGE_2MB`) on Linux with macOS fallback.
 - MPSC ingress option for multi-gateway deployments.
 - Post-only and pegged time-in-force variants (preceded by a top-of-book listener seam).
 - Differential property tests over the shard router under multi-symbol load.

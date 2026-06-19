@@ -33,8 +33,9 @@ sub-microsecond order processing on Linux x86_64.
   per order.
 - Open-addressed robin-hood map (`ankerl::unordered_dense::segmented_map`)
   for order-id to order lookup on cancel and modify.
-- Optional huge-page backing (2 MiB) on Linux for warm-cache, low-jitter
-  steady-state operation.
+- 2 MiB huge-page backing for the slab arena where the host allows, cutting
+  data-TLB pressure during bursts, with a transparent fallback to regular
+  pages and no change to the first-touch NUMA policy.
 
 ### Concurrency
 
