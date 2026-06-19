@@ -51,7 +51,7 @@ lob::submit_msg make_submit(prng& g, lob::order_id_t id) noexcept {
         .id = id,
         .px = static_cast<lob::tick_t>(r % bench_ticks),
         .qty = 1 + (r >> 16) % 100,
-        .s = (r & 1U) ? lob::side::bid : lob::side::ask,
+        .s = (r & 1U) != 0 ? lob::side::bid : lob::side::ask,
         .t = lob::tif::gtc,
         ._pad = 0,
         .account_id = 0,
@@ -128,7 +128,7 @@ void bench_cancel_warm(benchmark::State& state) {
             .id = id,
             .px = static_cast<lob::tick_t>((id * 2654435761ULL) % bench_ticks),
             .qty = 1,
-            .s = (id & 1U) ? lob::side::bid : lob::side::ask,
+            .s = (id & 1U) != 0 ? lob::side::bid : lob::side::ask,
             .t = lob::tif::gtc,
             ._pad = 0,
             .account_id = 0,
@@ -180,7 +180,7 @@ void bench_match_crossing(benchmark::State& state) {
             .id = taker_id++,
             .px = static_cast<lob::tick_t>(bench_ticks / 2),
             .qty = 1 + (r % 50),
-            .s = (r & 1U) ? lob::side::bid : lob::side::ask,
+            .s = (r & 1U) != 0 ? lob::side::bid : lob::side::ask,
             .t = lob::tif::ioc,
             ._pad = 0,
             .account_id = 0,
@@ -191,5 +191,53 @@ void bench_match_crossing(benchmark::State& state) {
 }
 
 BENCHMARK(bench_match_crossing);
+
+void bench_match_deep_sweep(benchmark::State& state) {
+    // Deep single-level sweep. Rest a tall FIFO at one price, then fire one
+    // aggressor that consumes the whole stack. Each fill advances to the next
+    // resting order through the intrusive list, so the timed work is dominated
+    // by FIFO pointer-chasing across arena slots. This is the path the match
+    // loop's software prefetch targets; the resting stack is rebuilt outside
+    // the timed region so the measurement isolates the sweep.
+    noop_publisher pub;
+    engine_t eng{pub, lob::engine_config{}};
+    constexpr lob::tick_t px = bench_ticks / 2;
+    constexpr std::size_t depth = 512;
+    lob::order_id_t maker_id = 1;
+    lob::order_id_t taker_id = 1'000'000'000;
+
+    const auto refill = [&] {
+        for (std::size_t i = 0; i < depth; ++i) {
+            eng.on_submit(lob::submit_msg{
+                .id = maker_id++,
+                .px = px,
+                .qty = 1,
+                .s = lob::side::ask,
+                .t = lob::tif::gtc,
+                ._pad = 0,
+                .account_id = 0,
+            });
+        }
+    };
+    refill();
+    for (auto _ : state) {
+        eng.on_submit(lob::submit_msg{
+            .id = taker_id++,
+            .px = px,
+            .qty = static_cast<lob::qty_t>(depth),
+            .s = lob::side::bid,
+            .t = lob::tif::ioc,
+            ._pad = 0,
+            .account_id = 0,
+        });
+        state.PauseTiming();
+        refill();
+        state.ResumeTiming();
+        benchmark::ClobberMemory();
+    }
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(depth));
+}
+
+BENCHMARK(bench_match_deep_sweep);
 
 }  // namespace
