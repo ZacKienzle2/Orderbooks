@@ -71,6 +71,7 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0025](0025-match-sweep-prefetch.md) | Superseded by ADR-0027 | Software prefetch and invariant hoist in the match sweep |
 | [0026](0026-absolute-latency-ceiling-gate.md) | Accepted | Absolute latency-ceiling gate in CI |
 | [0027](0027-match-sweep-prefetch-reverted.md) | Accepted | Match-sweep prefetch measured and reverted |
+| [0028](0028-in-place-modify-relink.md) | Accepted | In-place relink for a resting price-move modify |
 
 ## References
 

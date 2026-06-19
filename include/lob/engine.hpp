@@ -117,9 +117,40 @@ class engine {
             publish_top_if_changed_();
             return;
         }
-        // price change: cancel + resubmit at new price (loses time priority).
-        // Suppress nested top_msg emission so the modify appears as a single
-        // coalesced top change rather than one per sub-step.
+        // Price change that still rests: relink the existing record in place.
+        // The order survives, so its id_index entry and arena slot are
+        // unchanged; only the level FIFOs and bitmaps move. This skips the
+        // index erase and insert and the arena free and allocate a cancel and
+        // resubmit pays, the two costliest random-memory steps on this path. A
+        // price change forfeits time priority either way, so landing at the
+        // back of the new level reproduces the cancel-and-resubmit result.
+        if (s == side::bid) {
+            const auto best_ask = book_.asks().best();
+            if (!best_ask.has_value() || m.new_px < *best_ask) {
+                book_.bids().remove(*o);
+                o->px = m.new_px;
+                o->remaining = m.new_qty;
+                book_.bids().add(*o);
+                state_.top_dirty = true;
+                publish_top_if_changed_();
+                return;
+            }
+        } else {
+            const auto best_bid = book_.bids().best();
+            if (!best_bid.has_value() || m.new_px > *best_bid) {
+                book_.asks().remove(*o);
+                o->px = m.new_px;
+                o->remaining = m.new_qty;
+                book_.asks().add(*o);
+                state_.top_dirty = true;
+                publish_top_if_changed_();
+                return;
+            }
+        }
+        // Crossing price change: cancel + resubmit at the new price so the
+        // order matches against the book and loses time priority. Suppress
+        // nested top_msg emission so the modify appears as a single coalesced
+        // top change rather than one per sub-step.
         const auto acct = o->account_id;
         assert(state_.suppress_top_depth < std::numeric_limits<std::uint8_t>::max() &&
                "engine: suppress_top_depth would overflow; composite nesting too deep");
