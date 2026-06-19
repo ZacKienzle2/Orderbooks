@@ -33,6 +33,25 @@ divide by the host's nominal frequency for nanoseconds.
 
 Output: `artifacts/perf/perf-<utc>.txt`. Events: `cycles, instructions, branches, branch-misses, L1-dcache-load(-misses), LLC-load(-misses), dTLB-load-misses, iTLB-load-misses`.
 
+## Latency ceiling gate
+
+CI also runs an absolute, baseline-free gate over the latency benchmark.
+`scripts/check_latency_ceiling.py` reads the run's own `artifacts/bench.json`,
+takes the median aggregate of `bench_submit_latency`, and fails the build when a
+percentile exceeds its ceiling. Unlike the relative gate it needs no baseline,
+so it stays active from the first run and catches a gross algorithmic regression
+(an O(1) path turned linear) that a drifting baseline would absorb.
+
+Ceilings are reference cycles, set in `bench.yml` and overridable per run.
+
+```bash
+LATENCY_P50_CEILING=600 LATENCY_P999_CEILING=8000 \
+  python3 scripts/check_latency_ceiling.py artifacts/bench.json
+```
+
+Exit codes are the contract. 0 within ceiling, 1 on a breach, 2 on a missing
+file, absent benchmark, or absent counter.
+
 ## Regression gate
 
 CI runs `google/benchmark`'s `compare.py` against `bench/baseline.json`.
