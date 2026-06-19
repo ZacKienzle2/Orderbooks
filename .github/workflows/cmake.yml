@@ -188,7 +188,11 @@ jobs:
       - name: Configure
         env:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run: cmake --preset linux-clang-rel
+        # Module scanning emits @<tu>.o.modmap response files into the compile
+        # commands. They are generated during the build, which this job skips,
+        # so clang-tidy cannot open them and reports a clang-diagnostic-error.
+        # Disable scanning so the exported compile commands carry no modmap.
+        run: cmake --preset linux-clang-rel -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
 
       - name: Run clang-tidy on changed files
         run: |
