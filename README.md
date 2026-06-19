@@ -41,8 +41,10 @@ sub-microsecond order processing on Linux x86_64.
 - Single-threaded engine pinned to an isolated core.
 - Vyukov-style bounded SPSC ring at the ingress and egress boundaries,
   cache-line padded heads and tails, no false sharing.
-- Multi-symbol scalability via per-symbol shard router (each engine
-  instance pinned to its own core).
+- Multi-symbol scalability via per-symbol shard router over independent
+  per-symbol engines.
+- Threaded shard runtime that drives each shard on its own worker thread,
+  pinned to its own core, draining a dedicated SPSC ingress ring.
 
 ### Wire format
 

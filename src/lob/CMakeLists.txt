@@ -25,9 +25,11 @@ target_sources(
          "${CMAKE_SOURCE_DIR}/include/lob/bitmap.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/arena.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/spsc_ring.hpp"
+         "${CMAKE_SOURCE_DIR}/include/lob/spin.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/json_recorder.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/snapshot.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/shard_router.hpp"
+         "${CMAKE_SOURCE_DIR}/include/lob/shard_runtime.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/affinity.hpp")
 
 target_include_directories(
