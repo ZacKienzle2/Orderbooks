@@ -1,12 +1,11 @@
 #ifndef LOB_SHARD_RUNTIME_HPP
 #define LOB_SHARD_RUNTIME_HPP
 
-#include <lob/affinity.hpp>
 #include <lob/concepts.hpp>
 #include <lob/engine.hpp>
 #include <lob/messages.hpp>
 #include <lob/shard_router.hpp>
-#include <lob/spin.hpp>
+#include <lob/shard_worker.hpp>
 #include <lob/spsc_ring.hpp>
 #include <lob/types.hpp>
 
@@ -15,30 +14,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <thread>
 
 namespace lob {
-
-// Host placement and busy-wait policy for the shard worker threads.
-//
-// When pin_threads is set, worker i is pinned to core (first_core + i *
-// core_stride) via lob::pin_this_thread_to_core. A stride above one skips
-// SMT siblings or interleaves across sockets, depending on the host's core
-// enumeration. Pinning is best effort. A platform that ignores the hint (or
-// any non-Linux, non-macOS target) leaves the worker unpinned and the
-// runtime still functions.
-//
-// spin_budget bounds the busy-wait. A worker that finds its ingress ring
-// empty spins with cpu_relax up to spin_budget times, then yields to the
-// scheduler. A large budget minimises wake latency on a dedicated isolated
-// core; a small one returns the core to other work sooner on a shared host.
-struct shard_runtime_config {
-    bool pin_threads{true};
-    std::size_t first_core{0};
-    std::size_t core_stride{1};
-    unsigned spin_budget{1024};
-};
 
 // Threaded executor over a shard_router. Each shard runs on its own worker
 // thread, pinned to its own core, draining a dedicated single-producer /
@@ -168,71 +146,14 @@ class shard_runtime {
         return true;
     }
 
-    static void dispatch_(engine_type& eng, const command& c) noexcept {
-        switch (c.k) {
-            case command::kind::submit:
-                eng.on_submit(c.body.submit);
-                break;
-            case command::kind::cancel:
-                eng.on_cancel(c.body.cancel);
-                break;
-            case command::kind::modify:
-                eng.on_modify(c.body.modify);
-                break;
-        }
-    }
-
     void run_shard_(std::size_t idx) noexcept {
-        if (rt_.pin_threads) {
-            (void)pin_this_thread_to_core(rt_.first_core + idx * rt_.core_stride);
-        }
-        char name[16];
-        std::snprintf(name, sizeof(name), "lob-shard-%02zu", idx);
-        (void)set_this_thread_name(name);
-
-        auto& ring = ingress_[idx];
-        auto& eng = router_.shard(idx);
-        auto& processed = processed_[idx].value;
-
-        command c;
-        unsigned idle = 0;
-        for (;;) {
-            if (ring.try_pop(c)) {
-                dispatch_(eng, c);
-                processed.fetch_add(1, std::memory_order_release);
-                idle = 0;
-                continue;
-            }
-            if (stop_.load(std::memory_order_acquire)) {
-                // The producer no longer pushes once stop is observed, and the
-                // acquire above makes every prior push visible, so this drains
-                // the ring to completion before the worker exits.
-                while (ring.try_pop(c)) {
-                    dispatch_(eng, c);
-                    processed.fetch_add(1, std::memory_order_release);
-                }
-                return;
-            }
-            if (idle < rt_.spin_budget) {
-                cpu_relax();
-                ++idle;
-            } else {
-                std::this_thread::yield();
-            }
-        }
+        drive_shard(idx, ingress_[idx], router_.shard(idx), processed_[idx].value, stop_, rt_);
     }
-
-    // One processed counter per shard, each on its own cache line so a
-    // worker's release store never invalidates a neighbour's line and the
-    // producer's drain poll reads them without false sharing.
-    struct alignas(64) padded_counter {
-        std::atomic<std::uint64_t> value{0};
-    };
 
     router_type router_;
     shard_runtime_config rt_;
     std::array<ring_type, NumShards> ingress_{};
-    std::array<padded_counter, NumShards> processed_{};
+    std::array<padded_atomic, NumShards> processed_{};
     // Owned solely by the producer thread; never read by the workers.
     std::array<std::uint64_t, NumShards> pushed_{};
     std::array<std::thread, NumShards> workers_{};

@@ -82,15 +82,26 @@ a hint that asks threads sharing a non-zero tag to prefer the same L2, and
 the scheduler may still migrate them. Use macOS for development and
 correctness work; capture production latency numbers on a tuned Linux host.
 
+## Egress
+
+`shard_runtime` shares one publisher across every worker, so that publisher
+must be thread safe. `shard_egress_runtime` removes that requirement by
+giving each shard its own SPSC egress ring fed by a `ring_publisher`. Worker
+i is the sole producer of egress ring i and a single downstream consumer
+drains it with `try_poll`, so the publish path holds no lock and contends no
+cache line across cores. A full ring drops the event and bumps a per-shard
+loss counter; size the ring to the worst-case burst and drain it promptly.
+
 ## Verifying correctness under threading
 
-`tests/test_shard_runtime.cpp` asserts the threaded runtime reproduces the
-synchronous router's book state byte for byte over a randomised command
-stream. Run the suite under ThreadSanitizer on Linux to check the memory
-ordering of the ingress rings, the stop flag, and the drain counters.
+`tests/test_shard_runtime.cpp` and `tests/test_shard_egress_runtime.cpp`
+assert each runtime reproduces the synchronous router's book state byte for
+byte over a randomised command stream. Run the suite under ThreadSanitizer on
+Linux to check the memory ordering of the ingress and egress rings, the stop
+flag, and the drain counters.
 
 ```bash
 cmake --preset linux-clang-tsan
 cmake --build --preset linux-clang-tsan --target lob_tests --parallel
-ctest --preset linux-clang-tsan -R runtime
+ctest --preset linux-clang-tsan -R "runtime|egress"
 ```

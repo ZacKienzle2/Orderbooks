@@ -63,6 +63,7 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0017](0017-soa-open-addressed-id-index.md) | Accepted | Open-addressed SoA hash table for the id_index |
 | [0018](0018-zero-copy-fix-order-entry-parser.md) | Accepted | Zero-copy FIX 4.4 order-entry parser |
 | [0019](0019-threaded-shard-runtime-core-pinned-workers.md) | Accepted | Threaded shard runtime with core-pinned workers |
+| [0020](0020-per-shard-egress-rings.md) | Accepted | Per-shard egress rings for the threaded runtime |
 
 ## References
 

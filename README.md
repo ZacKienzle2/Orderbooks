@@ -45,6 +45,8 @@ sub-microsecond order processing on Linux x86_64.
   per-symbol engines.
 - Threaded shard runtime that drives each shard on its own worker thread,
   pinned to its own core, draining a dedicated SPSC ingress ring.
+- Optional per-shard egress rings so each shard publishes events into its
+  own SPSC ring, keeping the publish path lock-free and contention-free.
 
 ### Wire format
 
