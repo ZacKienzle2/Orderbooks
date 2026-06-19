@@ -51,7 +51,7 @@ TEST_CASE("ring_publisher serialises events and reports drops", "[egress]") {
     pub.publish(lob::fill_msg{.maker = 1, .taker = 2, .px = 10, .qty = 1, .seq = 3});
     REQUIRE(pub.dropped() == 1);
 
-    lob::event e;
+    lob::event e{};
     REQUIRE(ring.try_pop(e));
     REQUIRE(e.k == lob::event::kind::trade);
     REQUIRE(ring.try_pop(e));
@@ -80,7 +80,7 @@ TEST_CASE("shard_egress_runtime reproduces synchronous router book state", "[egr
 
     std::vector<entry> live;
     lob::order_id_t next_id = 1;
-    lob::event sink;
+    lob::event sink{};
 
     for (std::size_t step = 0; step < 4'000; ++step) {
         const int roll = op(rng);
@@ -144,7 +144,7 @@ TEST_CASE("shard_egress_runtime publishes a fill on the owning shard's egress ri
     const auto sh = rt.shard_index_for(sym);
     std::size_t fills = 0;
     std::size_t tops = 0;
-    lob::event e;
+    lob::event e{};
     while (rt.try_poll(sh, e)) {
         if (e.k == lob::event::kind::fill) {
             ++fills;

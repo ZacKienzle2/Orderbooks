@@ -81,7 +81,7 @@ TEST_CASE("egress_merger delivers every event across shards exactly once", "[mer
     merger.start();
 
     for (lob::order_id_t i = 1; i <= 2'000; ++i) {
-        const auto sym = static_cast<lob::symbol_id_t>(i % 16 + 1);
+        const lob::symbol_id_t sym = i % 16 + 1;
         const auto px = static_cast<lob::tick_t>(i % ticks);
         while (!rt.try_submit(sym, sub(i, px, 2, lob::side::bid))) {}
     }

@@ -23,7 +23,7 @@ namespace lob {
 // bits as well as the high bits, so masking off the high bits loses no
 // distribution quality.
 [[nodiscard]] constexpr std::size_t shard_index(symbol_id_t sym, std::size_t num_shards) noexcept {
-    return static_cast<std::size_t>(splitmix64(sym) & (num_shards - 1));
+    return splitmix64(sym) & (num_shards - 1);
 }
 
 }  // namespace lob
