@@ -4,9 +4,12 @@
 # idioms in this low-latency engine: brace-less single statements, dense arrays
 # indexed by runtime values, trivially-copyable PODs left uninitialised on the
 # hot path, fixed-size C arrays backing padding and storage, the slab arena's
-# intrusive-freelist pointer punning, and the trailing-underscore convention
-# for private members and methods. Disabling them keeps the remaining bugprone,
-# analyzer, performance, and portability checks enforceable on every file.
+# intrusive-freelist pointer punning, the trailing-underscore convention for
+# private members and methods, and non-owning reference members on sinks that
+# borrow a stream or publisher. The two clang-analyzer optin checks are off
+# because they fire inside Catch2's test machinery rather than on project code.
+# Disabling these keeps the remaining bugprone, analyzer, performance, and
+# portability checks enforceable on every file.
 Checks: >
   bugprone-*,
   cert-*,
@@ -53,7 +56,9 @@ Checks: >
   -bugprone-sizeof-expression,
   -bugprone-multi-level-implicit-pointer-conversion,
   -cert-err33-c,
-  -clang-analyzer-optin.performance.Padding
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -clang-analyzer-optin.performance.Padding,
+  -clang-analyzer-optin.core.EnumCastOutOfRange
 
 WarningsAsErrors: '*'
 

@@ -23,6 +23,7 @@ add_executable(
   test_shard_runtime.cpp
   test_shard_egress_runtime.cpp
   test_egress_merger.cpp
+  test_publisher_sink.cpp
   test_affinity.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(

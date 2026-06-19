@@ -49,6 +49,8 @@ sub-microsecond order processing on Linux x86_64.
   own SPSC ring, keeping the publish path lock-free and contention-free.
 - Single-threaded merging consumer that fans the per-shard egress rings
   into one sequenced event stream for a downstream recorder or publisher.
+- Publisher-concept seam bridging the merged stream onto any publisher, so
+  the runtime streams straight into the JSON Lines recorder unchanged.
 
 ### Wire format
 
