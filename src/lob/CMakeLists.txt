@@ -28,6 +28,7 @@ target_sources(
          "${CMAKE_SOURCE_DIR}/include/lob/spsc_ring.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/spin.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/hash.hpp"
+         "${CMAKE_SOURCE_DIR}/include/lob/latency_histogram.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/json_recorder.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/snapshot.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/shard_router.hpp"

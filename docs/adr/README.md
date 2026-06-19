@@ -67,6 +67,7 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0021](0021-merging-egress-consumer.md) | Accepted | Single-threaded merging egress consumer |
 | [0022](0022-publisher-seam-for-merged-egress.md) | Accepted | Publisher-concept seam for the merged egress stream |
 | [0023](0023-hugepage-backed-arena.md) | Accepted | Huge-page-backed slab arena |
+| [0024](0024-hdr-latency-histogram.md) | Accepted | From-scratch HDR histogram for latency measurement |
 
 ## References
 

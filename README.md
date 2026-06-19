@@ -67,6 +67,9 @@ Linux x86_64.
 ### Observability
 
 - Latency histograms via `nanobench` for tail-aware p50 / p99 / p99.9.
+- In-process HDR latency histogram (`lob::latency_histogram`) with O(1)
+  allocation-free record and exact percentile queries for the engine's own
+  timing loops.
 - `scripts/perfstat.sh` wraps `perf stat` for IPC, branch-miss and
   L1-miss telemetry under a fixed-seed workload.
 - CI bench job gates throughput regressions against `bench/baseline.json`.
