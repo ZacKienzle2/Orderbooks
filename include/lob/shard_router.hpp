@@ -4,6 +4,7 @@
 #include <lob/concepts.hpp>
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
+#include <lob/hash.hpp>
 #include <lob/messages.hpp>
 #include <lob/types.hpp>
 
@@ -82,7 +83,7 @@ class shard_router {
     }
 
     [[nodiscard]] std::size_t shard_index_for(symbol_id_t sym) const noexcept {
-        return splitmix64(sym) & mask;
+        return shard_index(sym, NumShards);
     }
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
