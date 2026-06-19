@@ -61,6 +61,17 @@ callbacks, and steer interrupts away from them.
   echo madvise | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
   ```
 
+- Reserve 2 MiB huge pages so the slab arena backs its storage with them
+  (see ADR-0023). Size the pool to the engine's arenas plus headroom.
+
+  ```bash
+  echo 512 | sudo tee /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+  cat /proc/meminfo | grep -i hugepages_total
+  ```
+
+  The arena falls back to regular pages when none are reserved, so this is a
+  latency optimisation, not a correctness requirement.
+
 - Pull network-card interrupts off the worker cores so feed traffic does
   not preempt a shard. Set `/proc/irq/<n>/smp_affinity` for each device
   queue to the housekeeping mask.

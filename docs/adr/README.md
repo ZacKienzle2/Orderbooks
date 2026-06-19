@@ -66,6 +66,7 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0020](0020-per-shard-egress-rings.md) | Accepted | Per-shard egress rings for the threaded runtime |
 | [0021](0021-merging-egress-consumer.md) | Accepted | Single-threaded merging egress consumer |
 | [0022](0022-publisher-seam-for-merged-egress.md) | Accepted | Publisher-concept seam for the merged egress stream |
+| [0023](0023-hugepage-backed-arena.md) | Accepted | Huge-page-backed slab arena |
 
 ## References
 

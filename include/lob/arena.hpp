@@ -1,11 +1,11 @@
 #ifndef LOB_ARENA_HPP
 #define LOB_ARENA_HPP
 
-#include <array>
+#include <lob/hugepage.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <memory>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -43,18 +43,19 @@ class slab_arena {
         std::byte bytes[sizeof(T)];
     };  // NOLINT
 
-    using slot_array = std::array<slot, Capacity>;
-
   public:
-    // The constructor reserves the slab storage but deliberately leaves
-    // the intrusive freelist uninitialised. The first allocate() call
-    // builds the freelist on the consuming thread, which is the thread
-    // that pays the page-fault cost; Linux's first-touch NUMA policy
-    // then binds every slab page to that thread's NUMA node. Without
-    // this deferral the freelist would be built on the router thread
-    // and every subsequent allocate/deallocate on the consumer thread
-    // would pay a cross-socket access. See ADR-0016 for the rationale.
-    slab_arena() { storage_ = std::make_unique<slot_array>(); }
+    // The constructor reserves the slab storage, preferring 2 MiB huge
+    // pages so the whole slab needs only a handful of data-TLB entries
+    // (see hugepage_region and ADR-0023), but deliberately leaves the
+    // intrusive freelist uninitialised. The first allocate() call builds
+    // the freelist on the consuming thread, which is the thread that pays
+    // the page-fault cost; Linux's first-touch NUMA policy then binds every
+    // slab page to that thread's NUMA node. The region is not pre-faulted,
+    // so the huge-page backing and the lazy first-touch compose. Without
+    // this deferral the freelist would be built on the router thread and
+    // every subsequent allocate/deallocate on the consumer thread would pay
+    // a cross-socket access. See ADR-0016 for the rationale.
+    slab_arena() : storage_(Capacity * sizeof(slot), alignof(slot)) {}
 
     slab_arena(slab_arena&&) noexcept = default;
     slab_arena& operator=(slab_arena&&) noexcept = default;
@@ -93,7 +94,7 @@ class slab_arena {
 
     [[nodiscard]] bool owns(const T* p) const noexcept {
         const auto* s = reinterpret_cast<const slot*>(p);
-        const auto* base = (*storage_).data();
+        const auto* base = slots_();
         return s >= base && s < base + Capacity;
     }
 
@@ -108,16 +109,36 @@ class slab_arena {
         return next;
     }
 
-    void init_freelist_() noexcept {
-        for (std::size_t i = 0; i + 1 < Capacity; ++i) {
-            store_link_(&(*storage_)[i], &(*storage_)[i + 1]);
+    // hugepage_region always holds a live mapping after construction, so the
+    // storage pointer is non-null for any validly-constructed, not-moved-from
+    // arena. Asserting it to the optimiser lets it prove allocate() returns
+    // non-null on the success path, sparing every caller a null check on the
+    // hot path (and keeping -Wnull-dereference quiet).
+    [[nodiscard]] void* nonnull_storage_() const noexcept {
+        void* p = storage_.data();
+        if (p == nullptr) [[unlikely]] {
+            __builtin_unreachable();
         }
-        store_link_(&(*storage_)[Capacity - 1], nullptr);
-        free_head_ = &(*storage_)[0];
+        return p;
+    }
+
+    [[nodiscard]] slot* slots_() noexcept { return static_cast<slot*>(nonnull_storage_()); }
+
+    [[nodiscard]] const slot* slots_() const noexcept {
+        return static_cast<const slot*>(nonnull_storage_());
+    }
+
+    void init_freelist_() noexcept {
+        slot* base = slots_();
+        for (std::size_t i = 0; i + 1 < Capacity; ++i) {
+            store_link_(base + i, base + i + 1);
+        }
+        store_link_(base + (Capacity - 1), nullptr);
+        free_head_ = base;
         freelist_built_ = true;
     }
 
-    alignas(64) std::unique_ptr<slot_array> storage_;
+    hugepage_region storage_;
     slot* free_head_{nullptr};
     std::size_t in_use_{0};
     bool freelist_built_{false};

@@ -6,6 +6,7 @@ add_executable(
   test_types.cpp
   test_version.cpp
   test_bitmap.cpp
+  test_hugepage.cpp
   test_arena.cpp
   test_spsc.cpp
   test_messages.cpp
