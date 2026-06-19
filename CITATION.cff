@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 title: "Orderbooks"
-abstract: "Low-latency limit order book and matching engine for high-frequency trading simulation in C++20."
+abstract: "Low-latency limit order book and matching engine in C++20."
 type: software
 authors:
   - family-names: "Kienzle"
