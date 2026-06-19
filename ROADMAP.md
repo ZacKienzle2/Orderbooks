@@ -43,7 +43,7 @@ Under consideration. Open issues to discuss.
 - Risk gateway (pre-trade limits, fat-finger guards).
 - Order-routing simulator with venue latency models.
 - Python bindings via pybind11 for scripted backtests on the matching engine.
-- AVX-512 fast-path for bitmap scans on hosts with that ISA.
+- AVX-512 fast-path for bitmap scans. Analysed and declined. The hierarchical bitmap (ADR-0005) already resolves best-price in O(tier-count) through count-trailing-zeros and count-leading-zeros over single words, so there is no linear scan for a SIMD path to beat, and a wide compare would add broadcast and movemask setup without removing a loop. Hot-path effort went instead to the match-sweep software prefetch (ADR-0025). Worth revisiting only if a future structure introduces an actual linear bitmap walk.
 
 ## Out of Scope
 
