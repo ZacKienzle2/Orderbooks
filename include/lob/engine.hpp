@@ -13,6 +13,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <utility>
@@ -254,6 +255,13 @@ class engine {
         constexpr auto Opp = (Side == side::bid) ? side::ask : side::bid;
         auto& opp = side_<Opp>();
 
+        // An aggressor with no account can never self-cross, so the test is
+        // loop-invariant. Hoisting it lets the inner sweep skip reloading m's
+        // account field on every fill. The compiler cannot prove the maker
+        // writes below leave m untouched, so without the hoist it reloads the
+        // field each pass.
+        const bool self_cross_possible = m.account_id != 0;
+
         while (remaining > 0) {
             const auto best = opp.best();
             if (!best.has_value())
@@ -269,9 +277,20 @@ class engine {
 
             auto& lvl = opp.level_at(best_px);
             while (remaining > 0 && !lvl.empty()) {
-                auto& maker = lvl.fifo.front();
+                const auto front_it = lvl.fifo.begin();
+                order& maker = *front_it;
 
-                if (m.account_id != 0 && maker.account_id == m.account_id) {
+                // Prefetch the successor's cache line while this maker's fill
+                // is computed. A full fill pops the front and promotes the
+                // successor, so the next pass would otherwise stall on a cold
+                // pointer-chase across the arena. rw=1 mirrors on_cancel
+                // because the pop rewrites the successor's intrusive prev-link,
+                // so the line is wanted in Modified state. The next pointer
+                // sits in this maker's already-hot line, so reading it is free.
+                if (const auto next_it = std::next(front_it); next_it != lvl.fifo.end())
+                    __builtin_prefetch(&*next_it, 1, 3);
+
+                if (self_cross_possible && maker.account_id == m.account_id) {
                     if (handle_self_cross_(m, maker, lvl, best_px, remaining)) {
                         if (lvl.empty())
                             opp.notify_level_emptied(best_px);
