@@ -1,10 +1,15 @@
 ---
-status: "Accepted"
+status: "Superseded by ADR-0027"
 date: "2026-06-19"
 deciders: ["Zac Kienzle"]
 ---
 
 # 0025. Software prefetch and invariant hoist in the match sweep
+
+> Superseded by [ADR-0027](0027-match-sweep-prefetch-reverted.md). An A/B
+> benchmark showed the prefetch regresses the common contiguous sweep and buys
+> nothing on the scattered case it targeted, so the engine change was reverted.
+> The reasoning below is retained as the original record.
 
 ## Context and Problem Statement
 
