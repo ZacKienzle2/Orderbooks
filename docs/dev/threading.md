@@ -92,16 +92,23 @@ drains it with `try_poll`, so the publish path holds no lock and contends no
 cache line across cores. A full ring drops the event and bumps a per-shard
 loss counter; size the ring to the worst-case burst and drain it promptly.
 
+When a downstream wants one feed rather than a per-shard poll loop,
+`egress_merger` runs a single thread that owns the consumer side of every
+egress ring and forwards events to one sink stamped with a gap-free global
+sequence. Quiesce the producing runtime before stopping the merger so its
+final pass drains every ring.
+
 ## Verifying correctness under threading
 
 `tests/test_shard_runtime.cpp` and `tests/test_shard_egress_runtime.cpp`
 assert each runtime reproduces the synchronous router's book state byte for
-byte over a randomised command stream. Run the suite under ThreadSanitizer on
-Linux to check the memory ordering of the ingress and egress rings, the stop
-flag, and the drain counters.
+byte over a randomised command stream, and `tests/test_egress_merger.cpp`
+asserts the merger delivers every event exactly once in a gap-free sequence.
+Run the suite under ThreadSanitizer on Linux to check the memory ordering of
+the ingress and egress rings, the stop flag, and the drain counters.
 
 ```bash
 cmake --preset linux-clang-tsan
 cmake --build --preset linux-clang-tsan --target lob_tests --parallel
-ctest --preset linux-clang-tsan -R "runtime|egress"
+ctest --preset linux-clang-tsan -R "runtime|egress|merger"
 ```

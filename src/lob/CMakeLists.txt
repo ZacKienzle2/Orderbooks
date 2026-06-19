@@ -34,6 +34,7 @@ target_sources(
          "${CMAKE_SOURCE_DIR}/include/lob/ring_publisher.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/shard_runtime.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/shard_egress_runtime.hpp"
+         "${CMAKE_SOURCE_DIR}/include/lob/egress_merger.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/affinity.hpp")
 
 target_include_directories(

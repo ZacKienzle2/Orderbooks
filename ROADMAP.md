@@ -9,12 +9,13 @@ Architectural decisions referenced below live in [`docs/adr/`](docs/adr/README.m
 Active polish and observability work.
 
 - Bench baseline captured on a pinned Linux host and committed as `bench/baseline.json` so the regression gate becomes live.
-- A merging egress consumer that interleaves per-shard event rings into one sequenced stream for downstream publishers.
+- Wire the merging egress consumer into the JSON Lines recorder and a streaming publisher seam.
 
 ## Recently Landed
 
 - Threaded shard runtime (see [ADR-0019](docs/adr/0019-threaded-shard-runtime-core-pinned-workers.md)) running one worker per shard, each pinned to its own core, draining a dedicated SPSC ingress ring into its engine; host tuning documented in [`docs/dev/threading.md`](docs/dev/threading.md).
 - Per-shard egress rings (see [ADR-0020](docs/adr/0020-per-shard-egress-rings.md)) so each shard publishes events into its own SPSC ring through a `ring_publisher`, removing the thread-safe shared-publisher requirement.
+- Merging egress consumer (see [ADR-0021](docs/adr/0021-merging-egress-consumer.md)) that fans the per-shard event rings into one sequenced stream for a single downstream sink.
 - Replay animation in the Python visualisation harness via `matplotlib.animation.FuncAnimation`.
 - Matching engine with strict price-time priority, dense tick-ladder book, hierarchical bitmap (best-price queries and successor / predecessor walks), slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress rings, GTC / IOC / FOK time-in-force, account-aware self-cross policy with three behaviours.
 - Snapshot and warm-start wire format (see [ADR-0014](docs/adr/0014-snapshot-wire-format.md)) with round-trip, warm-start-equivalence, and rejection-path tests.

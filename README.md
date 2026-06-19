@@ -47,6 +47,8 @@ sub-microsecond order processing on Linux x86_64.
   pinned to its own core, draining a dedicated SPSC ingress ring.
 - Optional per-shard egress rings so each shard publishes events into its
   own SPSC ring, keeping the publish path lock-free and contention-free.
+- Single-threaded merging consumer that fans the per-shard egress rings
+  into one sequenced event stream for a downstream recorder or publisher.
 
 ### Wire format
 
