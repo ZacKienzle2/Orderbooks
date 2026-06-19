@@ -1,8 +1,8 @@
 # Orderbooks
 
-Low-latency limit order book and matching engine for high-frequency
-trading simulation. C++20 over Boost.Intrusive, designed for
-sub-microsecond order processing on Linux x86_64.
+Low-latency limit order book and matching engine. C++20 over
+Boost.Intrusive, designed for sub-microsecond order processing on
+Linux x86_64.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C.svg?logo=cplusplus)](https://en.cppreference.com/w/cpp/20)
