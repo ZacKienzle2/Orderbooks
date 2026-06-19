@@ -8,7 +8,7 @@ Architectural decisions referenced below live in [`docs/adr/`](docs/adr/README.m
 
 Active polish and observability work.
 
-- Bench baseline captured on a pinned Linux host and committed as `bench/baseline.json` so the regression gate becomes live.
+- Bench baseline captured on a pinned Linux host and committed as `bench/baseline.json` so the relative regression gate joins the now-live absolute latency-ceiling gate (ADR-0026), adding slow-creep detection on top of gross-jump detection.
 - A gateway adapter that frames parsed FIX commands into a runtime ingress ring.
 
 ## Recently Landed
@@ -19,6 +19,8 @@ Active polish and observability work.
 - Publisher-concept seam (see [ADR-0022](docs/adr/0022-publisher-seam-for-merged-egress.md)) bridging the merged stream onto any publisher, wiring the runtime through the merger into the JSON Lines recorder.
 - Huge-page-backed slab arena (see [ADR-0023](docs/adr/0023-hugepage-backed-arena.md)) preferring 2 MiB pages to cut data-TLB pressure during bursts, with a transparent fallback chain and no change to the first-touch NUMA policy.
 - From-scratch HDR latency histogram (see [ADR-0024](docs/adr/0024-hdr-latency-histogram.md)) with O(1) allocation-free record and exact p50 / p99 / p99.9 / p99.99 queries, the in-process backbone for latency measurement and a future regression gate.
+- Absolute latency-ceiling gate (see [ADR-0026](docs/adr/0026-absolute-latency-ceiling-gate.md)) over the engine latency benchmark, baseline-free and active on every CI run, failing the build when p50 or p99.9 exceeds a fixed reference-cycle ceiling.
+- Match-sweep successor prefetch and self-cross invariant hoist (see [ADR-0025](docs/adr/0025-match-sweep-prefetch.md)) that hide the FIFO pointer-chase across arena slots on deep single-level sweeps.
 - Replay animation in the Python visualisation harness via `matplotlib.animation.FuncAnimation`.
 - Matching engine with strict price-time priority, dense tick-ladder book, hierarchical bitmap (best-price queries and successor / predecessor walks), slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress rings, GTC / IOC / FOK time-in-force, account-aware self-cross policy with three behaviours.
 - Snapshot and warm-start wire format (see [ADR-0014](docs/adr/0014-snapshot-wire-format.md)) with round-trip, warm-start-equivalence, and rejection-path tests.

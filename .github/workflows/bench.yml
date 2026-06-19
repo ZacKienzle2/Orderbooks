@@ -88,6 +88,16 @@ jobs:
           path: artifacts/bench.json
           retention-days: 30
 
+      - name: Latency ceiling gate
+        # Absolute, baseline-free ceiling on the engine latency percentiles.
+        # Stays active on every run, so a gross algorithmic regression fails
+        # the build even before a baseline exists. Ceilings are reference
+        # cycles and carry wide headroom over a healthy run; tune here.
+        env:
+          LATENCY_P50_CEILING: "600"
+          LATENCY_P999_CEILING: "8000"
+        run: python3 scripts/check_latency_ceiling.py artifacts/bench.json
+
       - name: Compare against baseline
         if: hashFiles('bench/baseline.json') != ''
         env:
