@@ -24,8 +24,11 @@ constexpr std::size_t egress = 4096;
 // Reference sink for the synchronous router used as the equivalence oracle.
 struct null_publisher {
     void publish(const lob::fill_msg&) noexcept {}
+
     void publish(const lob::top_msg&) noexcept {}
+
     void publish(const lob::trade_msg&) noexcept {}
+
     void publish(const lob::self_trade_msg&) noexcept {}
 };
 
@@ -74,6 +77,7 @@ TEST_CASE("shard_egress_runtime reproduces synchronous router book state", "[egr
         lob::symbol_id_t sym;
         lob::order_id_t id;
     };
+
     std::vector<entry> live;
     lob::order_id_t next_id = 1;
     lob::event sink;
@@ -85,39 +89,34 @@ TEST_CASE("shard_egress_runtime reproduces synchronous router book state", "[egr
             const auto id = next_id++;
             const auto side = is_bid(rng) ? lob::side::bid : lob::side::ask;
             const auto m = sub(id, px(rng), qty(rng), side);
-            while (!rt.try_submit(sym, m)) {
-            }
+            while (!rt.try_submit(sym, m)) {}
             ref.on_submit(sym, m);
             live.push_back({sym, id});
         } else if (roll < 8) {
             std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
             const auto e = live[pick(rng)];
             const lob::modify_msg m{.id = e.id, .new_px = px(rng), .new_qty = qty(rng)};
-            while (!rt.try_modify(e.sym, m)) {
-            }
+            while (!rt.try_modify(e.sym, m)) {}
             ref.on_modify(e.sym, m);
         } else {
             std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
             const auto idx = pick(rng);
             const auto e = live[idx];
             const lob::cancel_msg m{.id = e.id};
-            while (!rt.try_cancel(e.sym, m)) {
-            }
+            while (!rt.try_cancel(e.sym, m)) {}
             ref.on_cancel(e.sym, m);
             live[idx] = live.back();
             live.pop_back();
         }
         // Keep the egress rings drained so the producer never stalls on them.
         for (std::size_t s = 0; s < shards; ++s) {
-            while (rt.try_poll(s, sink)) {
-            }
+            while (rt.try_poll(s, sink)) {}
         }
     }
 
     rt.drain();
     for (std::size_t s = 0; s < shards; ++s) {
-        while (rt.try_poll(s, sink)) {
-        }
+        while (rt.try_poll(s, sink)) {}
     }
     rt.stop();
 
@@ -138,10 +137,8 @@ TEST_CASE("shard_egress_runtime publishes a fill on the owning shard's egress ri
     rt.start();
 
     constexpr lob::symbol_id_t sym = 123;
-    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {
-    }
-    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {
-    }
+    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {}
+    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {}
     rt.drain();
 
     const auto sh = rt.shard_index_for(sym);
@@ -171,8 +168,7 @@ TEST_CASE("shard_egress_runtime drops events when an undrained egress ring fills
     constexpr lob::symbol_id_t sym = 7;
     const auto sh = rt.shard_index_for(sym);
     for (lob::order_id_t i = 1; i <= 60; ++i) {
-        while (!rt.try_submit(sym, sub(i, static_cast<lob::tick_t>(i), 1, lob::side::bid))) {
-        }
+        while (!rt.try_submit(sym, sub(i, static_cast<lob::tick_t>(i), 1, lob::side::bid))) {}
     }
     rt.drain();
     rt.stop();

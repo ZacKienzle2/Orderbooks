@@ -102,8 +102,7 @@ class egress_merger {
             if (stop_.load(std::memory_order_acquire)) {
                 // Producers quiesced before stop, so the acquire makes every
                 // published event visible; drain each ring to empty and exit.
-                while (drain_round_(e)) {
-                }
+                while (drain_round_(e)) {}
                 return;
             }
             if (idle < cfg_.spin_budget) {

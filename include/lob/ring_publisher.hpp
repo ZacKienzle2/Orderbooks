@@ -30,6 +30,7 @@ class ring_publisher {
     using ring_type = spsc_ring<event, Capacity>;
 
     ring_publisher() noexcept = default;
+
     explicit ring_publisher(ring_type& egress) noexcept : egress_(&egress) {}
 
     // Point the publisher at its egress ring. Used when the owner default
@@ -38,8 +39,11 @@ class ring_publisher {
     void bind(ring_type& egress) noexcept { egress_ = &egress; }
 
     void publish(const fill_msg& m) noexcept { push_(event::make_fill(m)); }
+
     void publish(const top_msg& m) noexcept { push_(event::make_top(m)); }
+
     void publish(const trade_msg& m) noexcept { push_(event::make_trade(m)); }
+
     void publish(const self_trade_msg& m) noexcept { push_(event::make_self_trade(m)); }
 
     // Number of events dropped because the ring was full at publish time.

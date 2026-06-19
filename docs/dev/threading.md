@@ -38,7 +38,7 @@ callbacks, and steer interrupts away from them.
 
 - Kernel command line for cores 4 to 7.
 
-  ```
+  ```text
   isolcpus=4-7 nohz_full=4-7 rcu_nocbs=4-7 irqaffinity=0-3
   ```
 

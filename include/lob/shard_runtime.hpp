@@ -122,9 +122,11 @@ class shard_runtime {
     }
 
     [[nodiscard]] router_type& router() noexcept { return router_; }
+
     [[nodiscard]] const router_type& router() const noexcept { return router_; }
 
     [[nodiscard]] engine_type& shard(std::size_t idx) noexcept { return router_.shard(idx); }
+
     [[nodiscard]] const engine_type& shard(std::size_t idx) const noexcept {
         return router_.shard(idx);
     }
@@ -134,6 +136,7 @@ class shard_runtime {
     }
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
+
     [[nodiscard]] static constexpr std::size_t ring_capacity() noexcept { return RingCapacity; }
 
   private:

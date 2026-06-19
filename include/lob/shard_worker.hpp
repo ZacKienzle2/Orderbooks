@@ -46,15 +46,15 @@ struct alignas(64) padded_atomic {
 template <class Engine>
 inline void apply_command(Engine& eng, const command& c) noexcept {
     switch (c.k) {
-        case command::kind::submit:
-            eng.on_submit(c.body.submit);
-            break;
-        case command::kind::cancel:
-            eng.on_cancel(c.body.cancel);
-            break;
-        case command::kind::modify:
-            eng.on_modify(c.body.modify);
-            break;
+    case command::kind::submit:
+        eng.on_submit(c.body.submit);
+        break;
+    case command::kind::cancel:
+        eng.on_cancel(c.body.cancel);
+        break;
+    case command::kind::modify:
+        eng.on_modify(c.body.modify);
+        break;
     }
 }
 

@@ -126,6 +126,7 @@ class shard_egress_runtime {
     }
 
     [[nodiscard]] engine_type& shard(std::size_t idx) noexcept { return *engines_[idx]; }
+
     [[nodiscard]] const engine_type& shard(std::size_t idx) const noexcept {
         return *engines_[idx];
     }
@@ -139,9 +140,11 @@ class shard_egress_runtime {
     }
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
+
     [[nodiscard]] static constexpr std::size_t ingress_capacity() noexcept {
         return IngressCapacity;
     }
+
     [[nodiscard]] static constexpr std::size_t egress_capacity() noexcept { return EgressCapacity; }
 
   private:

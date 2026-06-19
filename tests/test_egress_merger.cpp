@@ -43,16 +43,14 @@ TEST_CASE("egress_merger forwards a crossing's events with a gap-free sequence",
     recording_sink sink;
     sink.events.reserve(1024);
     sink.seqs.reserve(1024);
-    lob::egress_merger<runtime_t, recording_sink> merger{rt, sink,
-                                                         lob::merger_config{.pin_thread = false}};
+    lob::egress_merger<runtime_t, recording_sink> merger{
+        rt, sink, lob::merger_config{.pin_thread = false}};
     rt.start();
     merger.start();
 
     constexpr lob::symbol_id_t sym = 123;
-    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {
-    }
-    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {
-    }
+    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {}
+    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {}
 
     rt.drain();
     rt.stop();
@@ -77,16 +75,15 @@ TEST_CASE("egress_merger delivers every event across shards exactly once", "[mer
     recording_sink sink;
     sink.events.reserve(8192);
     sink.seqs.reserve(8192);
-    lob::egress_merger<runtime_t, recording_sink> merger{rt, sink,
-                                                         lob::merger_config{.pin_thread = false}};
+    lob::egress_merger<runtime_t, recording_sink> merger{
+        rt, sink, lob::merger_config{.pin_thread = false}};
     rt.start();
     merger.start();
 
     for (lob::order_id_t i = 1; i <= 2'000; ++i) {
         const auto sym = static_cast<lob::symbol_id_t>(i % 16 + 1);
         const auto px = static_cast<lob::tick_t>(i % ticks);
-        while (!rt.try_submit(sym, sub(i, px, 2, lob::side::bid))) {
-        }
+        while (!rt.try_submit(sym, sub(i, px, 2, lob::side::bid))) {}
     }
 
     rt.drain();
