@@ -109,6 +109,17 @@ inline void cpu_relax() noexcept {
 #endif
 }
 
+// EAGAIN and EWOULDBLOCK are the same value on Linux, so testing both with a
+// logical or is a tautology gcc flags under -Wlogical-op. Collapse to one test
+// where they are equal, and keep both where a platform defines them apart.
+[[nodiscard]] bool would_block(int e) noexcept {
+#if EAGAIN == EWOULDBLOCK
+    return e == EAGAIN;
+#else
+    return e == EAGAIN || e == EWOULDBLOCK;
+#endif
+}
+
 void set_nonblocking(int fd) noexcept {
     const int fl = ::fcntl(fd, F_GETFL, 0);
     ::fcntl(fd, F_SETFL, fl | O_NONBLOCK);
@@ -128,7 +139,7 @@ bool read_all(int fd, void* buf, std::size_t n) noexcept {
         }
         if (r == 0)
             return false;
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if (would_block(errno)) {
             cpu_relax();
             continue;
         }
@@ -148,7 +159,7 @@ bool write_all(int fd, const void* buf, std::size_t n) noexcept {
         }
         if (w == 0)
             return false;
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if (would_block(errno)) {
             cpu_relax();
             continue;
         }
