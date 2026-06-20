@@ -75,6 +75,7 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0029](0029-guard-top-recompute.md) | Accepted | Guard the top-of-book recompute behind a price test |
 | [0030](0030-end-to-end-load-harness.md) | Accepted | End-to-end load harness for system throughput and latency |
 | [0031](0031-binary-order-entry-gateway.md) | Accepted | Binary order-entry gateway over TCP |
+| [0032](0032-batch-worker-processed-counter.md) | Accepted | Batch the shard worker's processed counter |
 
 ## References
 
