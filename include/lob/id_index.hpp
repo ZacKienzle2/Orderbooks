@@ -4,6 +4,7 @@
 #include <lob/order.hpp>
 #include <lob/types.hpp>
 
+#include <algorithm>
 #include <bit>
 #include <cassert>
 #include <cstddef>
@@ -13,11 +14,15 @@
 
 namespace lob {
 
-// Open-addressed SoA hash table mapping order_id_t to order*.
+// Open-addressed AoS hash table mapping order_id_t to order*.
 //
-// Layout: parallel key and value vectors sized to the next power of two
-// above 2 * capacity, keeping the load factor at or below 0.5 and the
-// expected probe length around 1.5. The key array is initialised to
+// Layout: a single slot array, each slot holding one key next to its
+// value, sized to the next power of two above 2 * capacity. The load
+// factor stays at or below 0.5 and the expected probe length around 1.5.
+// Co-locating a key with its value in one 16-byte slot means a probe
+// touches one cache line where a split key array and value array would
+// touch two, which removes an L1 miss from every lookup, insert, and
+// erase on the hot path. The key field is initialised to
 // std::numeric_limits<order_id_t>::max() which acts as the empty
 // sentinel; that single id value is reserved and must not be inserted.
 //
@@ -33,10 +38,15 @@ namespace lob {
 // engine never inserts duplicates; the overwrite path is defensive only.
 //
 // All operations are noexcept and allocation-free on the hot path; the
-// only allocation occurs in the constructor when the storage vectors
-// are sized. See ADR-0017 for the rationale.
+// only allocation occurs in the constructor when the storage vector is
+// sized. See ADR-0017 for the rationale.
 class id_index {
     static constexpr order_id_t empty_key = std::numeric_limits<order_id_t>::max();
+
+    struct slot {
+        order_id_t key;
+        order* value;
+    };
 
     [[nodiscard]] static constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
         x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
@@ -54,17 +64,16 @@ class id_index {
     id_index() : id_index(default_capacity_) {}
 
     // The constructor sizes the storage but does not first-touch the
-    // pages: the keys_ and values_ vectors are reserve()d to the target
-    // capacity and the empty-key initialisation runs lazily on the first
-    // insert / lookup / erase call. The consuming thread therefore
-    // becomes the first writer to every key page, and Linux's first-touch
-    // NUMA policy binds the pages to the consumer's node. Mirrors the
+    // pages: the slots_ vector is reserve()d to the target capacity and
+    // the empty-key initialisation runs lazily on the first insert /
+    // lookup / erase call. The consuming thread therefore becomes the
+    // first writer to every slot page, and Linux's first-touch NUMA
+    // policy binds the pages to the consumer's node. Mirrors the
     // slab_arena treatment introduced in ADR-0016.
     explicit id_index(std::size_t capacity_hint) {
         const std::size_t want = capacity_hint == 0 ? default_capacity_ : capacity_hint;
         const std::size_t cap = round_up_pow2(want * 2);
-        keys_.reserve(cap);
-        values_.reserve(cap);
+        slots_.reserve(cap);
         mask_ = cap - 1;
     }
 
@@ -75,15 +84,15 @@ class id_index {
             init_storage_();
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
-            const auto k = keys_[i];
-            if (k == empty_key) {
-                keys_[i] = id;
-                values_[i] = p;
+            slot& s = slots_[i];
+            if (s.key == empty_key) {
+                s.key = id;
+                s.value = p;
                 ++size_;
                 return;
             }
-            if (k == id) {
-                values_[i] = p;
+            if (s.key == id) {
+                s.value = p;
                 return;
             }
             i = (i + 1) & mask_;
@@ -95,10 +104,10 @@ class id_index {
             return nullptr;
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
-            const auto k = keys_[i];
-            if (k == id) [[likely]]
-                return values_[i];
-            if (k == empty_key)
+            const slot& s = slots_[i];
+            if (s.key == id) [[likely]]
+                return s.value;
+            if (s.key == empty_key)
                 return nullptr;
             i = (i + 1) & mask_;
         }
@@ -110,7 +119,7 @@ class id_index {
             return;
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
-            const auto k = keys_[i];
+            const order_id_t k = slots_[i].key;
             if (k == empty_key)
                 return;
             if (k == id) {
@@ -127,18 +136,15 @@ class id_index {
     [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
 
     void clear() noexcept {
-        if (storage_initialised_) {
-            std::fill(keys_.begin(), keys_.end(), empty_key);
-            std::fill(values_.begin(), values_.end(), nullptr);
-        }
+        if (storage_initialised_)
+            std::fill(slots_.begin(), slots_.end(), slot{empty_key, nullptr});
         size_ = 0;
     }
 
   private:
     void init_storage_() noexcept {
         const std::size_t cap = mask_ + 1;
-        keys_.assign(cap, empty_key);
-        values_.assign(cap, nullptr);
+        slots_.assign(cap, slot{empty_key, nullptr});
         storage_initialised_ = true;
     }
 
@@ -150,10 +156,10 @@ class id_index {
     void shift_back_from_(std::size_t hole) noexcept {
         std::size_t j = (hole + 1) & mask_;
         while (true) {
-            const auto k = keys_[j];
+            const order_id_t k = slots_[j].key;
             if (k == empty_key) {
-                keys_[hole] = empty_key;
-                values_[hole] = nullptr;
+                slots_[hole].key = empty_key;
+                slots_[hole].value = nullptr;
                 return;
             }
             const std::size_t home = splitmix64(k) & mask_;
@@ -162,8 +168,7 @@ class id_index {
             const std::size_t hole_dist = (hole - home) & mask_;
             const std::size_t j_dist = (j - home) & mask_;
             if (hole_dist < j_dist) {
-                keys_[hole] = k;
-                values_[hole] = values_[j];
+                slots_[hole] = slots_[j];
                 hole = j;
             }
             j = (j + 1) & mask_;
@@ -172,8 +177,7 @@ class id_index {
 
     static constexpr std::size_t default_capacity_ = 256;
 
-    std::vector<order_id_t> keys_{};
-    std::vector<order*> values_{};
+    std::vector<slot> slots_{};
     std::size_t mask_{0};
     std::size_t size_{0};
     mutable bool storage_initialised_{false};
