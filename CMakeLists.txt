@@ -42,6 +42,7 @@ add_subdirectory(src/lob)
 add_subdirectory(apps/replay)
 add_subdirectory(apps/loadgen)
 add_subdirectory(apps/gateway)
+add_subdirectory(apps/profile)
 
 if(LOB_BUILD_TESTS)
   enable_testing()
