@@ -88,14 +88,10 @@ inline void drive_shard(std::size_t idx,
     // and its fence over the batch, while a single release store still
     // publishes every engine mutation in it to the producer's acquire load.
     constexpr unsigned batch = 64;
-    command c;
+    const auto run = [&eng](const command& c) noexcept { apply_command(eng, c); };
     unsigned idle = 0;
     for (;;) {
-        unsigned n = 0;
-        while (n < batch && ingress.try_pop(c)) {
-            apply_command(eng, c);
-            ++n;
-        }
+        const unsigned n = ingress.consume_batch(batch, run);
         if (n > 0) {
             processed.fetch_add(n, std::memory_order_release);
             idle = 0;
@@ -103,9 +99,9 @@ inline void drive_shard(std::size_t idx,
         }
         if (stop.load(std::memory_order_acquire)) {
             unsigned m = 0;
-            while (ingress.try_pop(c)) {
-                apply_command(eng, c);
-                ++m;
+            for (unsigned k = ingress.consume_batch(batch, run); k > 0;
+                 k = ingress.consume_batch(batch, run)) {
+                m += k;
             }
             if (m > 0)
                 processed.fetch_add(m, std::memory_order_release);

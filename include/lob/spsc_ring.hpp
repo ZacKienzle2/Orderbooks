@@ -69,6 +69,34 @@ class spsc_ring {
         return true;
     }
 
+    // Consume up to max_n queued elements in one claim, invoking fn with a
+    // const reference to each slot in FIFO order, and return the count
+    // consumed. The batch pays one acquire load of the producer cursor (only
+    // when the consumer's cache is stale) and one release store of the
+    // consumer cursor for the whole run, where a try_pop loop pays both per
+    // element. fn receives the slot in place, so no element is copied out of
+    // the ring. The slots stay claimed until the trailing release store, so
+    // fn must finish reading each element before returning; it must not
+    // re-enter this ring. fn is invoked under the same single-consumer
+    // contract as try_pop and must be noexcept in effect.
+    template <class F>
+    [[nodiscard]] unsigned consume_batch(unsigned max_n, F fn) noexcept {
+        const auto tail = tail_.load(std::memory_order_relaxed);
+        if (head_cache_ == tail) {
+            head_cache_ = head_.load(std::memory_order_acquire);
+            if (head_cache_ == tail) [[unlikely]]
+                return 0;
+        }
+        const std::uint64_t avail = head_cache_ - tail;
+        const unsigned n =
+            avail < static_cast<std::uint64_t>(max_n) ? static_cast<unsigned>(avail) : max_n;
+        for (unsigned i = 0; i < n; ++i) {
+            fn(buf_[(tail + i) & mask]);
+        }
+        tail_.store(tail + n, std::memory_order_release);
+        return n;
+    }
+
     // Best-effort observers; valid only for owner-side or external
     // synchronisation. Two separate acquire loads of head_ and tail_ are
     // not an atomic snapshot, so a concurrent producer or consumer can
