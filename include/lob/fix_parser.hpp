@@ -18,7 +18,8 @@ namespace lob::fix {
 // parse() turns one FIX message in a contiguous byte buffer into a
 // lob::command (submit / cancel / modify) that the engine consumes. It
 // allocates nothing: every field is a std::string_view into the caller's
-// buffer and numeric conversion goes through std::from_chars. The parser is
+// buffer, the tag folds to an int inline as the field is scanned, and value
+// conversion goes through std::from_chars. The parser is
 // deliberately decoupled from the engine template -- it speaks the command
 // tagged union, not engine<P, Ticks, MaxOrders>, so the gateway can frame
 // and validate wire bytes without instantiating a book.
@@ -77,32 +78,53 @@ struct field {
 // this to error::incomplete); scan::bad means the tag was not a non-empty
 // run of digits.
 [[nodiscard]] inline scan read_field(std::string_view buf, std::size_t& pos, field& out) noexcept {
-    if (pos >= buf.size())
+    const std::size_t n = buf.size();
+    if (pos >= n)
         return scan::need_more;
 
-    const std::size_t eq = buf.find('=', pos);
-    if (eq == std::string_view::npos)
-        return scan::need_more;
-    if (eq == pos)
-        return scan::bad;
-
+    // Single forward pass over `tag=value<SOH>`. The tag digits are
+    // accumulated as the scan walks to '=', folding the delimiter search and
+    // the integer conversion that a find()-then-from_chars pair did into one
+    // loop over the same bytes. Overflow rejection matches std::from_chars so
+    // a tag wider than an int is malformed, not a wrapped value.
+    const char* const data = buf.data();
     int tag = 0;
-    const char* const tag_begin = buf.data() + pos;
-    const char* const tag_end = buf.data() + eq;
-    const auto [tag_ptr, tag_ec] = std::from_chars(tag_begin, tag_end, tag);
-    if (tag_ec != std::errc{} || tag_ptr != tag_end)
+    std::size_t i = pos;
+    for (; i < n; ++i) {
+        const char ch = data[i];
+        if (ch == '=')
+            break;
+        const unsigned digit = static_cast<unsigned>(static_cast<unsigned char>(ch)) - '0';
+        if (digit >= 10)
+            return scan::bad;
+        constexpr int int_max = 2147483647;
+        if (tag > (int_max - static_cast<int>(digit)) / 10)
+            return scan::bad;
+        tag = tag * 10 + static_cast<int>(digit);
+    }
+    if (i >= n)
+        return scan::need_more;
+    if (i == pos)
         return scan::bad;
 
-    const std::size_t soh_pos = buf.find(soh, eq + 1);
-    if (soh_pos == std::string_view::npos)
+    const std::size_t val_begin = i + 1;
+    std::size_t soh_pos = val_begin;
+    while (soh_pos < n && data[soh_pos] != soh)
+        ++soh_pos;
+    if (soh_pos >= n)
         return scan::need_more;
 
     out.tag = tag;
-    out.value = buf.substr(eq + 1, soh_pos - (eq + 1));
+    out.value = buf.substr(val_begin, soh_pos - val_begin);
     pos = soh_pos + 1;
     return scan::ok;
 }
 
+// Parse a whole std::string_view as an unsigned integer, accepting the field
+// only when std::from_chars consumes every byte. A measured A/B kept this on
+// from_chars because a hand-rolled digit fold parsed the value fields slower,
+// where the inline tag scan in read_field wins by also folding the delimiter
+// search it replaces.
 template <typename T>
 [[nodiscard]] inline bool to_uint(std::string_view v, T& out) noexcept {
     if (v.empty())
