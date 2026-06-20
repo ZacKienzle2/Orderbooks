@@ -11,251 +11,301 @@ by [git-cliff](https://git-cliff.org).
 
 ### Added
 
-- **bench:** Add engine throughput baseline ([ffb37d0](https://github.com/ZacKienzle2/Orderbooks/commit/ffb37d018b907e30c201125501e4d468f4207377))
+- **profile:** Add synthetic-flow profiler and plugin runner (#50) ([ba219c6](https://github.com/ZacKienzle2/Orderbooks/commit/ba219c607f3933dd80b03027127e36247f0acf75))
 
-- **infra:** Thread pinning and name helpers for shard worker threads ([fc93b1c](https://github.com/ZacKienzle2/Orderbooks/commit/fc93b1c7e42dcd2e9f692c3d533e7f87bbfb2264))
+- **gateway:** Binary order-entry gateway over TCP (#46) ([ac62d1f](https://github.com/ZacKienzle2/Orderbooks/commit/ac62d1f87ee863ba4b092e1616057c3a44730fbf))
 
-- **viz:** Animated top-of-book replay from the event log ([8dc3e65](https://github.com/ZacKienzle2/Orderbooks/commit/8dc3e6579970c06acbfea8a49123dd546071171a))
+- **loadgen:** End-to-end load harness for throughput and latency (#45) ([69b75e6](https://github.com/ZacKienzle2/Orderbooks/commit/69b75e60823f8f7b9a726f323893444c09b42adc))
 
-- **infra:** Multi-symbol shard router over per-symbol engines ([2b37f62](https://github.com/ZacKienzle2/Orderbooks/commit/2b37f626af9dd9042f4317e9137ba08bd2111ae2))
+- **bench:** Profile engine submit latency with the HDR histogram (#39) ([7ed70d4](https://github.com/ZacKienzle2/Orderbooks/commit/7ed70d47c0ad3670dec477f08eb6f1ee0142a3fd))
 
-- **engine:** Snapshot and warm-start with a portable wire format ([b57f522](https://github.com/ZacKienzle2/Orderbooks/commit/b57f5221d8cc4556b5f2e698f401e6257e89d850))
+- **metrics:** Add a from-scratch HDR latency histogram (#38) ([1af809c](https://github.com/ZacKienzle2/Orderbooks/commit/1af809cfe8bd67e42ca93dfb36c6bf0ea1a8a695))
 
-- **viz:** Python harness for event-log plots and a streamlit dashboard ([93bf7e6](https://github.com/ZacKienzle2/Orderbooks/commit/93bf7e6167cba913477e0a3caceb8de94a8471f1))
+- **infra:** Publisher-concept seam for the merged egress stream (#35) ([34370b7](https://github.com/ZacKienzle2/Orderbooks/commit/34370b72c57d084c1188a174ac9bac29ce65274e))
 
-- **app:** Json-lines event recorder and replay binary ([b1945d7](https://github.com/ZacKienzle2/Orderbooks/commit/b1945d746a609d2ad30666ef315cf777611799fd))
+- **infra:** Threaded shard runtime, per-shard egress, merging consumer (#33) ([0859a90](https://github.com/ZacKienzle2/Orderbooks/commit/0859a90312c75a9728358691fbcbb7cb58e4ec5e))
 
-- **engine:** Self-cross policy enforcement on the fill path ([6a327fd](https://github.com/ZacKienzle2/Orderbooks/commit/6a327fd4217dee8e17afd91e9b45582d408a50b4))
+- **fix:** Zero-copy FIX 4.4 order-entry parser (#30) ([95c9222](https://github.com/ZacKienzle2/Orderbooks/commit/95c9222487d964a21d25e11c86c7022f062ff017))
 
-- **domain:** Account_id field on order and submit_msg ([74a67de](https://github.com/ZacKienzle2/Orderbooks/commit/74a67debfd8a1f2f29cb71ad0efcbbae5e3e5098))
+- **bench:** Add engine throughput baseline ([ba8bce1](https://github.com/ZacKienzle2/Orderbooks/commit/ba8bce1187f9f3809305dd6a4928c21b1aad8376))
 
-- **engine:** Price-time-priority matching engine with GTC, IOC, FOK ([fb1afab](https://github.com/ZacKienzle2/Orderbooks/commit/fb1afab80eef924bc484cacd046f74fe3671d879))
+- **infra:** Thread pinning and name helpers for shard worker threads ([1ff83b2](https://github.com/ZacKienzle2/Orderbooks/commit/1ff83b2a253bb56865ecc3ccc74d791392376569))
 
-- **infra:** Bitmap successor / predecessor queries for FOK precheck ([b8c0335](https://github.com/ZacKienzle2/Orderbooks/commit/b8c0335c0cba0070ef64378f28f1b1c4ce8bb57d))
+- **viz:** Animated top-of-book replay from the event log ([291177c](https://github.com/ZacKienzle2/Orderbooks/commit/291177c3e23bbdaf40ad930ee962da61a2544ec6))
 
-- **book:** Price level and dense-ladder book sides ([8a87700](https://github.com/ZacKienzle2/Orderbooks/commit/8a877002b7eb0b53f86d16e7e766cd2f80e14f47))
+- **infra:** Multi-symbol shard router over per-symbol engines ([857a925](https://github.com/ZacKienzle2/Orderbooks/commit/857a9254fd707685bbafb7cf5443d560b6ec08e3))
 
-- **domain:** Cache-aligned order POD and order-id index ([93a8e22](https://github.com/ZacKienzle2/Orderbooks/commit/93a8e2272244449c11ece7323b6421577111517c))
+- **engine:** Snapshot and warm-start with a portable wire format ([7033284](https://github.com/ZacKienzle2/Orderbooks/commit/7033284c1f6fa52e3260a70cdb64f619397625b0))
 
-- **domain:** Commands, events, concepts, and engine config ([7bd5bc6](https://github.com/ZacKienzle2/Orderbooks/commit/7bd5bc61ba5df6a742b96fd8dd8a474b76acf0fa))
+- **viz:** Python harness for event-log plots and a streamlit dashboard ([5ca597a](https://github.com/ZacKienzle2/Orderbooks/commit/5ca597a48ba82ef556a652ce41e518a55de044c0))
 
-- **infra:** Bounded SPSC ring for boundary messaging ([593428e](https://github.com/ZacKienzle2/Orderbooks/commit/593428eb2889780484a317acfa481dc9c817b2cd))
+- **app:** Json-lines event recorder and replay binary ([6179c19](https://github.com/ZacKienzle2/Orderbooks/commit/6179c19870ec88ab24ee8bedd3d2edc7678bbbc7))
 
-- **infra:** Slab arena with intrusive freelist ([0a94563](https://github.com/ZacKienzle2/Orderbooks/commit/0a94563ff7936626b333face5a9d03ad6e723f78))
+- **engine:** Self-cross policy enforcement on the fill path ([8b36cb3](https://github.com/ZacKienzle2/Orderbooks/commit/8b36cb3a698b2cebc5a8044d105ee0a4efe6f9bb))
 
-- **infra:** Hierarchical bitmap for best-price queries ([915523c](https://github.com/ZacKienzle2/Orderbooks/commit/915523ce8dec8c4b6696792eec6489e6fab138d3))
+- **domain:** Account_id field on order and submit_msg ([1f8b77f](https://github.com/ZacKienzle2/Orderbooks/commit/1f8b77f5296fb0725fdcf97fee08ce9fb14eff6c))
+
+- **engine:** Price-time-priority matching engine with GTC, IOC, FOK ([7f1060e](https://github.com/ZacKienzle2/Orderbooks/commit/7f1060e40f0d99a352e0dd5e0d7ff2f2f93061c5))
+
+- **infra:** Bitmap successor / predecessor queries for FOK precheck ([d2be3af](https://github.com/ZacKienzle2/Orderbooks/commit/d2be3af2c493df8d7e5e7d9f0b698f7766c7613d))
+
+- **book:** Price level and dense-ladder book sides ([2ff696f](https://github.com/ZacKienzle2/Orderbooks/commit/2ff696fba89de0c091e5d9bf7c14e1ab056f776b))
+
+- **domain:** Cache-aligned order POD and order-id index ([8364c00](https://github.com/ZacKienzle2/Orderbooks/commit/8364c006b7d1e490bf9f214b680cf80250232dbf))
+
+- **domain:** Commands, events, concepts, and engine config ([eb64192](https://github.com/ZacKienzle2/Orderbooks/commit/eb64192b4bd7b43c01da39465f0a88e7116ba66f))
+
+- **infra:** Bounded SPSC ring for boundary messaging ([0414d10](https://github.com/ZacKienzle2/Orderbooks/commit/0414d104078761ddfb3cd18a59a17d17deb7efdc))
+
+- **infra:** Slab arena with intrusive freelist ([a043c7d](https://github.com/ZacKienzle2/Orderbooks/commit/a043c7d4e1f08791fd3fd7be2e7cb759e4ec13d5))
+
+- **infra:** Hierarchical bitmap for best-price queries ([de703a5](https://github.com/ZacKienzle2/Orderbooks/commit/de703a56241e407995eabd45d8fa02a59564b2d4))
 
 
 ### Build
 
-- **cmake:** Add CMake, vcpkg, clang tooling, and C++ project skeleton ([cc81fd9](https://github.com/ZacKienzle2/Orderbooks/commit/cc81fd93b6da57d73a4fb5b43ec10daece9ec71c))
+- **cmake:** Add CMake, vcpkg, clang tooling, and C++ project skeleton ([0816683](https://github.com/ZacKienzle2/Orderbooks/commit/081668313ff6b59a8dcdef6f9286e95c576dadf5))
 
 
 ### CI
 
-- **deps:** Bump actions/stale from 9.1.0 to 10.2.0 (#7) ([4315121](https://github.com/ZacKienzle2/Orderbooks/commit/43151213ad01569e13e531cfe4db12540de36504))
+- **cmake:** Trigger the build matrix on apps changes (#56) ([9aeb314](https://github.com/ZacKienzle2/Orderbooks/commit/9aeb31457efff35b5a95621b98df9b77bb96e199))
 
-- **deps:** Bump actions/checkout from 4.3.1 to 6.0.2 (#5) ([69997ff](https://github.com/ZacKienzle2/Orderbooks/commit/69997ff8e4c6ffb31675407b44d0cb36a35aa18e))
+- **bench:** Gate engine latency against an absolute ceiling (#41) ([62b8e93](https://github.com/ZacKienzle2/Orderbooks/commit/62b8e93302e2a75dcba52d8efeeff4465d027ae7))
 
-- **deps:** Bump crate-ci/typos in the actions-minor-and-patch group (#1) ([db51151](https://github.com/ZacKienzle2/Orderbooks/commit/db511513d4daf5d03a90a434530e04810f54affa))
+- **clang-tidy:** Enforce lint by fixing module-scan and aligning policy (#34) ([40703e3](https://github.com/ZacKienzle2/Orderbooks/commit/40703e3aa23dc46e47f920a4f1c62bd449694f26))
 
-- **deps:** Bump actions/upload-artifact from 4.4.3 to 7.0.1 (#2) ([f2eb08f](https://github.com/ZacKienzle2/Orderbooks/commit/f2eb08f2e987d48d6e81d46522f4986c8ce8282f))
+- **deps:** Bump actions/stale from 9.1.0 to 10.2.0 (#7) ([55d71b2](https://github.com/ZacKienzle2/Orderbooks/commit/55d71b25e8b3c61b149941c742f1bf31423fde98))
 
-- **deps:** Bump dessant/lock-threads from 5.0.1 to 6.0.0 (#3) ([6940307](https://github.com/ZacKienzle2/Orderbooks/commit/69403079511e37bfdf9b96890c250276f47a2171))
+- **deps:** Bump actions/checkout from 4.3.1 to 6.0.2 (#5) ([461e51c](https://github.com/ZacKienzle2/Orderbooks/commit/461e51c22775af3aebb0fcc18e410d383cad0de7))
 
-- **deps:** Bump google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml (#6) ([85caf60](https://github.com/ZacKienzle2/Orderbooks/commit/85caf6004e7d51e1aff972da7766855e6483dd2a))
+- **deps:** Bump crate-ci/typos in the actions-minor-and-patch group (#1) ([36c1d00](https://github.com/ZacKienzle2/Orderbooks/commit/36c1d00e2a765ba483c2074cb619cf6c2ec25627))
 
-- **deps:** Bump softprops/action-gh-release from 2.6.2 to 3.0.0 (#8) ([58ced53](https://github.com/ZacKienzle2/Orderbooks/commit/58ced53f8a3a4d6800d6c44fed55270eb47fbffe))
+- **deps:** Bump actions/upload-artifact from 4.4.3 to 7.0.1 (#2) ([8569e88](https://github.com/ZacKienzle2/Orderbooks/commit/8569e881cba01bb7278748eac9aeee71504e064d))
 
-- **deps:** Bump github/codeql-action from 3.35.5 to 4.35.5 (#9) ([3cdddfc](https://github.com/ZacKienzle2/Orderbooks/commit/3cdddfc60e46a6506000447a0a74cac877aad094))
+- **deps:** Bump dessant/lock-threads from 5.0.1 to 6.0.0 (#3) ([007d71f](https://github.com/ZacKienzle2/Orderbooks/commit/007d71f66e85152d6d66941cf981b5bd5329baec))
 
-- **deps:** Bump actions/first-interaction from 1 to 3 (#4) ([50f988c](https://github.com/ZacKienzle2/Orderbooks/commit/50f988c6465a49b3574e23e097bef3125719987e))
+- **deps:** Bump google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml (#6) ([ee516dc](https://github.com/ZacKienzle2/Orderbooks/commit/ee516dc8449ebee4eb6be0f0b99003175f213242))
 
-- **deps:** Bump seanmiddleditch/gha-setup-ninja from 4 to 6 (#10) ([c614d6b](https://github.com/ZacKienzle2/Orderbooks/commit/c614d6b04ff33a959f05ee267c9b324fc1ce1195))
+- **deps:** Bump softprops/action-gh-release from 2.6.2 to 3.0.0 (#8) ([3d377f0](https://github.com/ZacKienzle2/Orderbooks/commit/3d377f0e24ed3329428a4493e7ed67d4a63ccfcc))
 
-- **bench:** Use median across measurements and validate threshold env var ([4b51e57](https://github.com/ZacKienzle2/Orderbooks/commit/4b51e578cf83fa39ac75ced3b03e120bb1bd000e))
+- **deps:** Bump github/codeql-action from 3.35.5 to 4.35.5 (#9) ([3474ce9](https://github.com/ZacKienzle2/Orderbooks/commit/3474ce9ee74dfab1910afd41af6f548f6410a1a2))
 
-- **bench:** Fail microbench job on CPU-time regression past threshold ([b8e2e6c](https://github.com/ZacKienzle2/Orderbooks/commit/b8e2e6c16bc3613170edc85ea2bfa29d3ac2335c))
+- **deps:** Bump actions/first-interaction from 1 to 3 (#4) ([bbb26fc](https://github.com/ZacKienzle2/Orderbooks/commit/bbb26fca9a629aa10526d09f74de0c2bb663d0b6))
 
-- **codeql:** Scan c-cpp and python in addition to actions ([6b702e5](https://github.com/ZacKienzle2/Orderbooks/commit/6b702e57bc3b332001c0d2f74da2c2879e3cea62))
+- **deps:** Bump seanmiddleditch/gha-setup-ninja from 4 to 6 (#10) ([d2acb70](https://github.com/ZacKienzle2/Orderbooks/commit/d2acb700a81364cd1057f3531030318c78101dbb))
 
-- **actions:** Add github actions workflows and repository metadata ([f27d33a](https://github.com/ZacKienzle2/Orderbooks/commit/f27d33aa9b972fd4ec03591af51b734aa7a0b895))
+- **bench:** Use median across measurements and validate threshold env var ([f1ce595](https://github.com/ZacKienzle2/Orderbooks/commit/f1ce595d03668326c4082afe9b0a9340f478f912))
+
+- **bench:** Fail microbench job on CPU-time regression past threshold ([dd16e16](https://github.com/ZacKienzle2/Orderbooks/commit/dd16e16a6e41478ee4f8c8bfe07232692f4143ab))
+
+- **codeql:** Scan c-cpp and python in addition to actions ([43820be](https://github.com/ZacKienzle2/Orderbooks/commit/43820be331f42e6a356dc5db4a9b60330de7570f))
+
+- **actions:** Add github actions workflows and repository metadata ([32a1eb5](https://github.com/ZacKienzle2/Orderbooks/commit/32a1eb5dc4d349d449e702528bc6cd636b1e46ad))
 
 
 ### Changed
 
-- **shard-router:** Wrap debug owner in std::atomic for torn-read safety ([1022e37](https://github.com/ZacKienzle2/Orderbooks/commit/1022e37a13b6ac0601df672a4efaae8d66526242))
+- **shard-router:** Wrap debug owner in std::atomic for torn-read safety ([d7f9dce](https://github.com/ZacKienzle2/Orderbooks/commit/d7f9dce91afb53cfb36f0fcf55df0b0aa2d66361))
 
-- **book:** Static_assert that book_side stays cache-line aligned ([9411e41](https://github.com/ZacKienzle2/Orderbooks/commit/9411e41dc479b4181980403ffd36d2440287e819))
+- **book:** Static_assert that book_side stays cache-line aligned ([07b1447](https://github.com/ZacKienzle2/Orderbooks/commit/07b1447fa1481dc73125e304ca7e7634a168818c))
 
-- **viz:** Drop unnecessary DataFrame .copy() calls in read-only renderers ([ea34302](https://github.com/ZacKienzle2/Orderbooks/commit/ea343023158f5a98b0f2b34fd05906442ee82118))
+- **viz:** Drop unnecessary DataFrame .copy() calls in read-only renderers ([8af0599](https://github.com/ZacKienzle2/Orderbooks/commit/8af059918822562117ca72793772dee300b72b62))
 
-- **viz:** Re-sort imports in test_viz_smoke.py for ruff isort ([7c1b6f2](https://github.com/ZacKienzle2/Orderbooks/commit/7c1b6f2a5912b0f92bc08ba21db4d204af46a5b6))
+- **viz:** Re-sort imports in test_viz_smoke.py for ruff isort ([4daa960](https://github.com/ZacKienzle2/Orderbooks/commit/4daa96014ad844fb75433314c52a9eddfe317088))
 
-- **format:** Apply clang-format to bench casts and affinity helpers ([e71e570](https://github.com/ZacKienzle2/Orderbooks/commit/e71e570873010f59ec9cef77a088525a2cdedd08))
+- **format:** Apply clang-format to bench casts and affinity helpers ([14003cb](https://github.com/ZacKienzle2/Orderbooks/commit/14003cbb244ff4450e73e21717b3ca8f420feb4c))
 
-- **viz:** Drop unused pandas import from replay_anim ([bdd6dad](https://github.com/ZacKienzle2/Orderbooks/commit/bdd6dadefb646b371406ca696b39483dfab942cc))
+- **viz:** Drop unused pandas import from replay_anim ([ff77109](https://github.com/ZacKienzle2/Orderbooks/commit/ff7710901bcf3280bb95048fe0f5bb53fed51043))
 
-- **cmake:** Apply cmake-format across the tree ([186bc54](https://github.com/ZacKienzle2/Orderbooks/commit/186bc54499e68f44ba65f4be063c9482659a66af))
+- **cmake:** Apply cmake-format across the tree ([600fa29](https://github.com/ZacKienzle2/Orderbooks/commit/600fa29b23b15c77a596dd5a54d74fca983dd1ae))
 
-- **viz:** Satisfy ruff lint and format on the python harness ([1782340](https://github.com/ZacKienzle2/Orderbooks/commit/17823401c30e09e679df83ecb1ff8d91e3bb8c16))
+- **viz:** Satisfy ruff lint and format on the python harness ([c0b4e5b](https://github.com/ZacKienzle2/Orderbooks/commit/c0b4e5bf1c7c87fb8b57cda40627d37ec64ebab3))
 
-- **format:** Apply clang-format across the C++ tree ([35e8898](https://github.com/ZacKienzle2/Orderbooks/commit/35e8898ccd3ff4cb8b826fd00dde35b95b12dfe3))
+- **format:** Apply clang-format across the C++ tree ([9dbe6bb](https://github.com/ZacKienzle2/Orderbooks/commit/9dbe6bb8eec8d79dfdc43c25e2a025d2b68f224b))
 
 
 ### Documentation
 
-- **cmake:** Flag -ffp-contract=fast and -fno-trapping-math rounding implications ([e475a07](https://github.com/ZacKienzle2/Orderbooks/commit/e475a078f8483aee9936d5c3caba246135b0707d))
+- **adr:** Record AoS id-index layout and engine cache floor (#52) ([848b731](https://github.com/ZacKienzle2/Orderbooks/commit/848b731cd924539c672dd10afe4eed32d4dea52b))
 
-- **spsc:** Pin observer best-effort semantics and cache ownership ([e7dac63](https://github.com/ZacKienzle2/Orderbooks/commit/e7dac636cb5f3ad211b527033843abad7aa750fe))
+- Drop the trading-simulation phrasing from the about line (#37) ([0841565](https://github.com/ZacKienzle2/Orderbooks/commit/08415658fc04995318f0add58cc2c426783181e2))
 
-- **adr:** Record snapshot wire format and shard router decisions ([900103e](https://github.com/ZacKienzle2/Orderbooks/commit/900103ed87d02d6709412d2e8fbecc31101485d3))
+- **cmake:** Flag -ffp-contract=fast and -fno-trapping-math rounding implications ([2f0b7a8](https://github.com/ZacKienzle2/Orderbooks/commit/2f0b7a86a64406705ca9cf4f74a3b5c4a621825f))
 
-- **adr:** List ADR-0013 in the cluster index ([112a810](https://github.com/ZacKienzle2/Orderbooks/commit/112a8101145788c999daf7d1c2d17fa0fd3439ca))
+- **spsc:** Pin observer best-effort semantics and cache ownership ([2bb7188](https://github.com/ZacKienzle2/Orderbooks/commit/2bb7188ff2eeb0a9eaf6ab01606926e2ba8e2ae6))
 
-- **adr:** Record account-aware self-cross semantics ([af4aca1](https://github.com/ZacKienzle2/Orderbooks/commit/af4aca1ee225afa12ddc7f33c4b70289513a7e51))
+- **adr:** Record snapshot wire format and shard router decisions ([066bc82](https://github.com/ZacKienzle2/Orderbooks/commit/066bc8233a3aab95337cd906cd37dd48d67e529e))
 
-- **adr:** Record initial architecture decisions and dev guides ([dfdfe7b](https://github.com/ZacKienzle2/Orderbooks/commit/dfdfe7b09b0c8623e8acf61b050ed31a0991cca5))
+- **adr:** List ADR-0013 in the cluster index ([9092f18](https://github.com/ZacKienzle2/Orderbooks/commit/9092f183485a8eff7dc971b8998307c9c0f2b134))
+
+- **adr:** Record account-aware self-cross semantics ([0425d49](https://github.com/ZacKienzle2/Orderbooks/commit/0425d493b19f0fba4d3fee139d56e9269ab8106d))
+
+- **adr:** Record initial architecture decisions and dev guides ([4beafab](https://github.com/ZacKienzle2/Orderbooks/commit/4beafab72b1f0fda2ccbc5e6df8d213e10408afe))
 
 
 ### Fixed
 
-- **tests:** Drop useless cast in id_index shift-back chain test ([ddc468e](https://github.com/ZacKienzle2/Orderbooks/commit/ddc468ed50ad46809afa4e45397d53801baf12d9))
+- **gateway:** Collapse EAGAIN or EWOULDBLOCK test under -Wlogical-op (#48) ([c6f02f7](https://github.com/ZacKienzle2/Orderbooks/commit/c6f02f72e2cb57ddde34c26d8fed57e91cd55edc))
 
-- **engine:** Assert suppress_top_depth nesting cap before increment ([79a0620](https://github.com/ZacKienzle2/Orderbooks/commit/79a06200160a81646035ce618c755b423eebbb39))
+- **tests:** Drop useless cast in id_index shift-back chain test ([a3f2cbe](https://github.com/ZacKienzle2/Orderbooks/commit/a3f2cbea679bad02defa9e0c70c8af932e4a6109))
 
-- **json-recorder:** Assert stream has no exceptions enabled at construction ([a3f9099](https://github.com/ZacKienzle2/Orderbooks/commit/a3f909973fe59d21c491f0d36e20e9acfac8fb05))
+- **engine:** Assert suppress_top_depth nesting cap before increment ([551f7b7](https://github.com/ZacKienzle2/Orderbooks/commit/551f7b7fde1bc1b53a9d14c71bc86dc02a49fae5))
 
-- **id-index:** Guard reserved sentinel id and load-factor invariant ([3d956dc](https://github.com/ZacKienzle2/Orderbooks/commit/3d956dc4531887e3970edfb2da9c7984d105cf90))
+- **json-recorder:** Assert stream has no exceptions enabled at construction ([8f35b52](https://github.com/ZacKienzle2/Orderbooks/commit/8f35b5272f3583707a2321316f2c8d0c79a7c9fd))
 
-- **bitmap:** Drop useless static_cast on negation of uint64_t hint ([a5d37c8](https://github.com/ZacKienzle2/Orderbooks/commit/a5d37c8866140d4f89f8d96c7cd3c40d2ca51dd4))
+- **id-index:** Guard reserved sentinel id and load-factor invariant ([fde114a](https://github.com/ZacKienzle2/Orderbooks/commit/fde114a9708d19764863b9b49eb5c29dcaae6793))
 
-- **build:** Tame GCC array-bounds and useless-cast across recorder and engine bench ([ba96193](https://github.com/ZacKienzle2/Orderbooks/commit/ba961937975f40f2cf857f15fe6c897178f0aa16))
+- **bitmap:** Drop useless static_cast on negation of uint64_t hint ([997989c](https://github.com/ZacKienzle2/Orderbooks/commit/997989c67566fbb45f95d9e0e89cab3bd7deb32a))
 
-- **json-recorder:** Satisfy GCC -Werror=useless-cast and -Werror=array-bounds ([fa10773](https://github.com/ZacKienzle2/Orderbooks/commit/fa10773dff3f90e07133b91c71846a54b9ef59b9))
+- **build:** Tame GCC array-bounds and useless-cast across recorder and engine bench ([f38b4cf](https://github.com/ZacKienzle2/Orderbooks/commit/f38b4cfc7ff675154781c3dbef5ebea73f90c140))
 
-- **bench:** Respect modify_msg declaration order in designated initializer ([67953eb](https://github.com/ZacKienzle2/Orderbooks/commit/67953eb92c3fd2418f311d296270f1d949531439))
+- **json-recorder:** Satisfy GCC -Werror=useless-cast and -Werror=array-bounds ([ed99045](https://github.com/ZacKienzle2/Orderbooks/commit/ed9904555b1a845807a57b2d3d7d366627ff9f9e))
 
-- **shard_router:** Assert single-owner thread on every dispatch (debug) ([b43ca4b](https://github.com/ZacKienzle2/Orderbooks/commit/b43ca4bee6e04636922f8bd9af5466007dd509b2))
+- **bench:** Respect modify_msg declaration order in designated initializer ([a2e4d8c](https://github.com/ZacKienzle2/Orderbooks/commit/a2e4d8cf56bbabd271a077ca460e5dbdc09a5914))
 
-- **engine:** Coalesce duplicate top_msg emitted by price-change modify ([3dd3ad3](https://github.com/ZacKienzle2/Orderbooks/commit/3dd3ad350e6b4b67d15227d52402d81805ff09bb))
+- **shard_router:** Assert single-owner thread on every dispatch (debug) ([985630a](https://github.com/ZacKienzle2/Orderbooks/commit/985630a648110c088238f09ddb72aeebb9f2def0))
 
-- **engine:** Static_assert publisher::publish noexcept contract at instantiation ([cd30a7b](https://github.com/ZacKienzle2/Orderbooks/commit/cd30a7b5696ad9b6466ea75e62402bb1e5921af2))
+- **engine:** Coalesce duplicate top_msg emitted by price-change modify ([b78b5ab](https://github.com/ZacKienzle2/Orderbooks/commit/b78b5ab64ddf1928abd6c1cac9f63380a792dfc9))
 
-- **arena:** Enforce nothrow-destructible contract on slot type ([1835046](https://github.com/ZacKienzle2/Orderbooks/commit/18350463001e799de01f4b961b4307894cdf142f))
+- **engine:** Static_assert publisher::publish noexcept contract at instantiation ([d0bed71](https://github.com/ZacKienzle2/Orderbooks/commit/d0bed71c042c1f6f665b5af47ab2f13d3043c7bd))
 
-- **snapshot:** Enforce little-endian host and drop false noexcept on growable sink ([5d361eb](https://github.com/ZacKienzle2/Orderbooks/commit/5d361eb49fac327843ae4bba197174103923cc84))
+- **arena:** Enforce nothrow-destructible contract on slot type ([b6cae09](https://github.com/ZacKienzle2/Orderbooks/commit/b6cae0968f37f7dc4d9a6fb490bd92f3cb2655d8))
 
-- **tests:** Drop libstdc++-incompatible trivially-destructible assert on order ([88bd076](https://github.com/ZacKienzle2/Orderbooks/commit/88bd076b7274592854d581ef1b7838703c7a0c19))
+- **snapshot:** Enforce little-endian host and drop false noexcept on growable sink ([1d63837](https://github.com/ZacKienzle2/Orderbooks/commit/1d63837f4ac2ecd19a01118bded39f8fbda2d42e))
 
-- **build:** Satisfy GCC -Werror=useless-cast and -Werror=missing-field-initializers ([5a920f6](https://github.com/ZacKienzle2/Orderbooks/commit/5a920f612d904b6d726894ad38b2f2edb3463890))
+- **tests:** Drop libstdc++-incompatible trivially-destructible assert on order ([73b4f38](https://github.com/ZacKienzle2/Orderbooks/commit/73b4f38c245ab35f4eea171b03a080cfe95c4244))
 
-- **bench:** Drop useless static_cast on state.iterations() ([d5006c8](https://github.com/ZacKienzle2/Orderbooks/commit/d5006c8acc894b4a3dc463ad0b43c90078c50d4c))
+- **build:** Satisfy GCC -Werror=useless-cast and -Werror=missing-field-initializers ([9438cb0](https://github.com/ZacKienzle2/Orderbooks/commit/9438cb02a3e133a7369bce1f5125cf198e6e2b3e))
 
-- **build:** Drop is_trivially_destructible static_assert and useless size cast ([25139ae](https://github.com/ZacKienzle2/Orderbooks/commit/25139ae3cdc98dbedf510a107c5069adbd4a090c))
+- **bench:** Drop useless static_cast on state.iterations() ([743726e](https://github.com/ZacKienzle2/Orderbooks/commit/743726ebc5810a8f77151b00accbb86953a78de3))
 
-- **infra:** Make slab_arena tolerate types whose destructors libstdc++ does not optimise away ([8a337b9](https://github.com/ZacKienzle2/Orderbooks/commit/8a337b9b94c2b2e91560492346ba555e55f60cc8))
+- **build:** Drop is_trivially_destructible static_assert and useless size cast ([4d32771](https://github.com/ZacKienzle2/Orderbooks/commit/4d3277153942096be207483a38e8ca835a7c201a))
 
-- **docs:** Drop bullet-continuation that markdownlint reads as plus-list ([a8aede7](https://github.com/ZacKienzle2/Orderbooks/commit/a8aede7a902db960771f21f147b17629fc6c2a5a))
+- **infra:** Make slab_arena tolerate types whose destructors libstdc++ does not optimise away ([bc173d6](https://github.com/ZacKienzle2/Orderbooks/commit/bc173d60997911af17b9ca130132ede2fef3372d))
 
-- **security:** Run pip-audit via pipx instead of the gh-action wrapper ([e0fdcea](https://github.com/ZacKienzle2/Orderbooks/commit/e0fdcea1d773cf8dabec58fcefc6d49b81a41cb2))
+- **docs:** Drop bullet-continuation that markdownlint reads as plus-list ([6eb7fea](https://github.com/ZacKienzle2/Orderbooks/commit/6eb7feac4754361bf965a067d757ed2eb703d7c8))
 
-- **ci:** Make link-check advisory and repoint pip-audit at v1 tag ([34687ab](https://github.com/ZacKienzle2/Orderbooks/commit/34687ab50f8ecc98f58b6559249c815aed0a5096))
+- **security:** Run pip-audit via pipx instead of the gh-action wrapper ([cd5e7df](https://github.com/ZacKienzle2/Orderbooks/commit/cd5e7dfa6ba6a408718be385247bcf1ae5b778fa))
 
-- **ci:** Clear lint stack residue across typos, shellcheck, and yamllint ([219f709](https://github.com/ZacKienzle2/Orderbooks/commit/219f709d11687b071473435e5f4ab5edf6cef9ec))
+- **ci:** Make link-check advisory and repoint pip-audit at v1 tag ([f052a96](https://github.com/ZacKienzle2/Orderbooks/commit/f052a963ed56491adafd3cc47d3e75bf6c971a96))
 
-- **infra:** Include <cstring> for std::memcpy in slab_arena ([6ed2ac3](https://github.com/ZacKienzle2/Orderbooks/commit/6ed2ac3f6d3579e3025e68dc685ad3f4ea4245e7))
+- **ci:** Clear lint stack residue across typos, shellcheck, and yamllint ([78c75a3](https://github.com/ZacKienzle2/Orderbooks/commit/78c75a3a2c19e778f5e86468ae5fc405078fdd29))
 
-- **ci:** Rewrite .zizmor.yml against the 1.5.x rules schema ([84ed900](https://github.com/ZacKienzle2/Orderbooks/commit/84ed900bd7c97cccff1fa292d83e259f5cf74feb))
+- **infra:** Include <cstring> for std::memcpy in slab_arena ([547e3d1](https://github.com/ZacKienzle2/Orderbooks/commit/547e3d18f9e5a278aeb4baacdbd2333a7f31e377))
 
-- **ci:** Correct git-cliff invocation, harness pytest skip, and actionlint shellcheck flags ([36dced4](https://github.com/ZacKienzle2/Orderbooks/commit/36dced4a791ab3d477cfea1c830d3b8ad28ed592))
+- **ci:** Rewrite .zizmor.yml against the 1.5.x rules schema ([ac60c5c](https://github.com/ZacKienzle2/Orderbooks/commit/ac60c5c4fb9036d92ade35f2b5583821ae2e7dc1))
 
-- **cmake:** Omit -pie linker flag on Apple toolchains ([ce3c9ee](https://github.com/ZacKienzle2/Orderbooks/commit/ce3c9ee19420c7e6476e907ee293b4d87056be79))
+- **ci:** Correct git-cliff invocation, harness pytest skip, and actionlint shellcheck flags ([3308b6e](https://github.com/ZacKienzle2/Orderbooks/commit/3308b6e2779db8821942a0b4b45490850dab1eb9))
 
-- **ci:** Repoint orhun/git-cliff-action at its v4 tag ([5b0e554](https://github.com/ZacKienzle2/Orderbooks/commit/5b0e5549d7e36c4336857ae7aefee0ab10b0f892))
+- **cmake:** Omit -pie linker flag on Apple toolchains ([528bfa2](https://github.com/ZacKienzle2/Orderbooks/commit/528bfa224ee9ebe9afbf4e89ec4c086b50d21a38))
 
-- **docs:** Wrap bare URLs, fix stale ADR cross-link, drop placeholder file refs ([3afb8a4](https://github.com/ZacKienzle2/Orderbooks/commit/3afb8a4d90fa9261866efa10e47420ba89abdf9f))
+- **ci:** Repoint orhun/git-cliff-action at its v4 tag ([5af792c](https://github.com/ZacKienzle2/Orderbooks/commit/5af792c79326e26358c2744ba530b54dac764e4c))
 
-- **scripts:** Replace ls | grep with native glob in adr-new ([90d97c7](https://github.com/ZacKienzle2/Orderbooks/commit/90d97c7c7fe2b75f60838ef79c009f391b189acf))
+- **docs:** Wrap bare URLs, fix stale ADR cross-link, drop placeholder file refs ([8c5fb13](https://github.com/ZacKienzle2/Orderbooks/commit/8c5fb136eddfaeea78d6a921444fc298cb56d14e))
 
-- **typos:** Allowlist domain-specific abbreviations on the matching path ([c3d20ee](https://github.com/ZacKienzle2/Orderbooks/commit/c3d20eed0a4b1fcdf977e020439c046108d13ac0))
+- **scripts:** Replace ls | grep with native glob in adr-new ([26c4379](https://github.com/ZacKienzle2/Orderbooks/commit/26c43796df9e7b6de4ff4bb1969d4cf97236baa5))
 
-- **build:** Declare LOB_BUILD_TESTS before Dependencies includes find_package ([e736f5f](https://github.com/ZacKienzle2/Orderbooks/commit/e736f5f18f86aafce3640e70540a64954c4c8392))
+- **typos:** Allowlist domain-specific abbreviations on the matching path ([c1a334b](https://github.com/ZacKienzle2/Orderbooks/commit/c1a334bbf07ee3f8e9f48ef0fe6edf95138abf21))
 
-- **bench:** Remove inline pause / resume and per-invocation static state ([aa75d8d](https://github.com/ZacKienzle2/Orderbooks/commit/aa75d8da57fcefa2cf8cb3e038d0587733eb95a4))
+- **build:** Declare LOB_BUILD_TESTS before Dependencies includes find_package ([d3bc7f4](https://github.com/ZacKienzle2/Orderbooks/commit/d3bc7f477a92edd50640a02ff3f0a4aab26a6153))
 
-- **build:** Satisfy strict warnings on Apple Clang and pin vcpkg baseline ([f11772f](https://github.com/ZacKienzle2/Orderbooks/commit/f11772f87ad7b75c4155bbac560b22c34cb693c1))
+- **bench:** Remove inline pause / resume and per-invocation static state ([1c1d483](https://github.com/ZacKienzle2/Orderbooks/commit/1c1d4839e4daf29490386f8346cd3e255f7c8006))
 
-- **build:** Correct vcpkg baselines, macOS triplet, hardening probes, and CI tooling ([2f04209](https://github.com/ZacKienzle2/Orderbooks/commit/2f04209a62835e2d1f9c69ac9db6cfb1f7b41e05))
+- **build:** Satisfy strict warnings on Apple Clang and pin vcpkg baseline ([5557413](https://github.com/ZacKienzle2/Orderbooks/commit/555741311e511be4e8d10e85adea32c90d850246))
 
-- **pre-commit:** Use system binaries for tools that ship native binaries ([1bc544c](https://github.com/ZacKienzle2/Orderbooks/commit/1bc544c03cd6b551dd0d88893506c63958c4100f))
+- **build:** Correct vcpkg baselines, macOS triplet, hardening probes, and CI tooling ([652da6c](https://github.com/ZacKienzle2/Orderbooks/commit/652da6cb75cc6349dac95ff738fa5aa2c29a55f9))
+
+- **pre-commit:** Use system binaries for tools that ship native binaries ([c8677c0](https://github.com/ZacKienzle2/Orderbooks/commit/c8677c029f05aef3ce954503511ad8df9abe946b))
 
 
 ### Maintenance
 
-- **changelog:** Regenerate from conventional commits (#12) ([1c554ed](https://github.com/ZacKienzle2/Orderbooks/commit/1c554ed9946b2fc0d3f4b4e6b8e4ce356375a9d0))
+- **changelog:** Regenerate from conventional commits (#13) ([def5813](https://github.com/ZacKienzle2/Orderbooks/commit/def581347b029cea441c10e396e84245e4e47c9b))
 
-- **lint:** Relax commitlint subject-case and markdownlint MD012 for bot PRs ([5f80b35](https://github.com/ZacKienzle2/Orderbooks/commit/5f80b35d3b8e91a3256685641195f7510e9f2d3a))
+- **changelog:** Regenerate from conventional commits (#12) ([241d665](https://github.com/ZacKienzle2/Orderbooks/commit/241d665524721955fb48ecfef90d255e3dfbf44e))
 
-- **changelog:** Regenerate from conventional commits (#11) ([1f10a15](https://github.com/ZacKienzle2/Orderbooks/commit/1f10a1557eb27d705175953877ef5ae3408b218a))
+- **lint:** Relax commitlint subject-case and markdownlint MD012 for bot PRs ([458c378](https://github.com/ZacKienzle2/Orderbooks/commit/458c378573fd561781cdc61fc8eec559396c95c4))
 
-- **viz:** Make orderbooks_viz an installable package ([3206433](https://github.com/ZacKienzle2/Orderbooks/commit/32064338d425bc74a41a812d36663d43d6707e53))
+- **changelog:** Regenerate from conventional commits (#11) ([8a18c32](https://github.com/ZacKienzle2/Orderbooks/commit/8a18c32dc4d541d1f6d2ff91910893aef65e427d))
 
-- **pre-commit:** Exclude vendored and ephemeral trees from gitleaks ([af193d2](https://github.com/ZacKienzle2/Orderbooks/commit/af193d2dc0e1e84c016c688ff63ecf3843fcad32))
+- **viz:** Make orderbooks_viz an installable package ([9df81eb](https://github.com/ZacKienzle2/Orderbooks/commit/9df81ebc62f76581f9b207859068cd430e9a9083))
 
-- **repo:** Scaffold project metadata, governance, and lint configs ([746a9a8](https://github.com/ZacKienzle2/Orderbooks/commit/746a9a8b762551d4c888f03015810ae00595d7ec))
+- **pre-commit:** Exclude vendored and ephemeral trees from gitleaks ([584ce8a](https://github.com/ZacKienzle2/Orderbooks/commit/584ce8a006579236ac91fcb09b641e2b92a7b079))
+
+- **repo:** Scaffold project metadata, governance, and lint configs ([351ae55](https://github.com/ZacKienzle2/Orderbooks/commit/351ae550ae59e12f7cd0ada4cce9c76842e2c7fc))
 
 
 ### Performance
 
-- **engine:** Upgrade cancel/modify order prefetch to a write hint ([54d7bb0](https://github.com/ZacKienzle2/Orderbooks/commit/54d7bb0f6c5424966a4042ed876449ee97a23519))
+- **fix:** Fold tag scan and delimiter search into one pass (#54) ([a5a21c2](https://github.com/ZacKienzle2/Orderbooks/commit/a5a21c27377ee657811024984134081601e058d4))
 
-- **viz:** Cache EventLog by reference via st.cache_resource ([f6b52c3](https://github.com/ZacKienzle2/Orderbooks/commit/f6b52c3695a12a161f9fed08ef669b4add79c0c0))
+- **spsc:** Batched zero-copy ring drain on the shard worker (#53) ([99296c2](https://github.com/ZacKienzle2/Orderbooks/commit/99296c2fba0ab913c2e9c51ddebf2aac2b946998))
 
-- **viz:** Fill event_log columns via np.fromiter and fail loud on missing keys ([fb45fa0](https://github.com/ZacKienzle2/Orderbooks/commit/fb45fa03ecf650b513e2a2c13991e112d00d9f8e))
+- **id-index:** Co-locate key and value to cut a cache line per probe (#51) ([1c9a317](https://github.com/ZacKienzle2/Orderbooks/commit/1c9a3177ac5270a12902fff35541d3ead6cf33ee))
 
-- **id-index:** Defer key/value first-touch to the consuming thread ([b500bce](https://github.com/ZacKienzle2/Orderbooks/commit/b500bce36d993933920189fa3206e770c4f41293))
+- **runtime:** Batch the shard worker's quiescence counter (#47) ([548d340](https://github.com/ZacKienzle2/Orderbooks/commit/548d34067d44fae383f822e3890333ead87b8558))
 
-- **id-index:** Replace unordered_dense with SoA open-addressed table ([2ca6bdd](https://github.com/ZacKienzle2/Orderbooks/commit/2ca6bdd6a04ecd2e4c4c47e99aefd924a8d6ef58))
+- **engine:** Skip top-of-book recompute when the top cannot move (#44) ([95d7c7d](https://github.com/ZacKienzle2/Orderbooks/commit/95d7c7d205ce42d9711a9aa20514f064bfdae5e5))
 
-- **arena:** Defer freelist init to first allocate for NUMA first-touch ([7f80457](https://github.com/ZacKienzle2/Orderbooks/commit/7f80457a2473d7537ffcffa79402f12335603609))
+- **engine:** Relink resting price-move modify in place (#43) ([1701a78](https://github.com/ZacKienzle2/Orderbooks/commit/1701a78143503541cc45c93f60682845e375071a))
 
-- **bitmap:** Branchless cascading clear across all four tiers ([746652e](https://github.com/ZacKienzle2/Orderbooks/commit/746652e23f24e74077d6502aff4addf3e5f47b7a))
+- **engine:** Revert match-sweep prefetch after A/B regression (#42) ([6bf95ee](https://github.com/ZacKienzle2/Orderbooks/commit/6bf95eecfdaf694aa22cbc9ab9d60af67cedbf09))
 
-- **viz:** Cache event_log read in the Streamlit dashboard ([23a057e](https://github.com/ZacKienzle2/Orderbooks/commit/23a057ed91916c8c042b8e6e2aa39d704b055b2a))
+- **engine:** Prefetch successor in match sweep, hoist self-cross test (#40) ([b54bb3e](https://github.com/ZacKienzle2/Orderbooks/commit/b54bb3e375543a0c62b0adfa5cfb1dbbbfa7c1de))
 
-- **viz:** O(log n) top-of-book lookup in depth.at_seq via searchsorted ([a361d54](https://github.com/ZacKienzle2/Orderbooks/commit/a361d54072923a4c1b4b6c57d0f8f0ad490f3bf1))
+- **arena:** Back the slab arena with 2 MiB huge pages (#36) ([93f0600](https://github.com/ZacKienzle2/Orderbooks/commit/93f060069603a6e37fc8db48fbe8a5940ea59ad8))
 
-- **viz:** Orjson parse + columnar DataFrame build in event_log ([31e0f52](https://github.com/ZacKienzle2/Orderbooks/commit/31e0f5266aebcb82dad19721b8d295dac00643c1))
+- **engine:** Upgrade cancel/modify order prefetch to a write hint ([bbbc8e3](https://github.com/ZacKienzle2/Orderbooks/commit/bbbc8e3370d2f3a1a13f8a1d5d36b5502a22c1d7))
 
-- **engine,book:** Align bid/ask/arena to cache lines and tag hot/cold paths ([ff04695](https://github.com/ZacKienzle2/Orderbooks/commit/ff046950c0a2644120e1e7e341347f3568b1462f))
+- **viz:** Cache EventLog by reference via st.cache_resource ([e57c08d](https://github.com/ZacKienzle2/Orderbooks/commit/e57c08de89197d39134a8d20012cdf10ed2dca86))
 
-- **cmake:** Probe -falign-functions/loops and fast-math flags in Release ([3386563](https://github.com/ZacKienzle2/Orderbooks/commit/3386563c0503df7ab01215c852489319c5456378))
+- **viz:** Fill event_log columns via np.fromiter and fail loud on missing keys ([62cd213](https://github.com/ZacKienzle2/Orderbooks/commit/62cd213f837de26a0cd6a417514795fbd0c3f696))
 
-- **spsc:** Cache the remote cursor locally to skip cross-core loads on the common path ([ed4badc](https://github.com/ZacKienzle2/Orderbooks/commit/ed4badcaf2bfa3c278dc6b4968dde09d114ee10e))
+- **id-index:** Defer key/value first-touch to the consuming thread ([24b585b](https://github.com/ZacKienzle2/Orderbooks/commit/24b585b5e821f548bccba5336510b9657e677fe0))
 
-- **engine:** Drive cold-path scans from the bitmap ([ba2e2ac](https://github.com/ZacKienzle2/Orderbooks/commit/ba2e2ac7f31004d0f4786de50feb488cb6b4beae))
+- **id-index:** Replace unordered_dense with SoA open-addressed table ([2ce806e](https://github.com/ZacKienzle2/Orderbooks/commit/2ce806e0d601081caabe1fbfad0ef3fd30668f20))
 
-- **engine:** Prefetch the order line after id_index lookup on cancel and modify ([6b77fd0](https://github.com/ZacKienzle2/Orderbooks/commit/6b77fd0b7836839ccd1e3a7f2b25cc4f082e684f))
+- **arena:** Defer freelist init to first allocate for NUMA first-touch ([f285a0e](https://github.com/ZacKienzle2/Orderbooks/commit/f285a0e3263788e36190a3f39191f5bfe82fd0f4))
 
-- **json-recorder:** Replace ostream operator<< chain with std::to_chars + single write ([3416e64](https://github.com/ZacKienzle2/Orderbooks/commit/3416e64652e6bcda1bcec0f63c56d8c2f7d1e423))
+- **bitmap:** Branchless cascading clear across all four tiers ([aad0576](https://github.com/ZacKienzle2/Orderbooks/commit/aad0576e79e392fb0a662f9a7f66072271103c2b))
 
-- **infra:** Hierarchical descent for next_set_at_or_after and its mirror ([d684b7f](https://github.com/ZacKienzle2/Orderbooks/commit/d684b7fe251ffb6b6c6e69c4da6c10f9de43e46f))
+- **viz:** Cache event_log read in the Streamlit dashboard ([d0cdc49](https://github.com/ZacKienzle2/Orderbooks/commit/d0cdc49a7479c8bdb5ba47a254256582898053c4))
 
-- **engine:** Short-circuit publish_top via a dirty flag ([6beab8d](https://github.com/ZacKienzle2/Orderbooks/commit/6beab8d0df04aa35a389b741bfd798db24ff58c5))
+- **viz:** O(log n) top-of-book lookup in depth.at_seq via searchsorted ([ee3052e](https://github.com/ZacKienzle2/Orderbooks/commit/ee3052ef78645c412c91c9b913fdbd0c0712f5aa))
 
-- **engine:** Isolate hot mutable state on its own cache line ([dac55b0](https://github.com/ZacKienzle2/Orderbooks/commit/dac55b0331ca96bcebff47b8fb28c719272e8153))
+- **viz:** Orjson parse + columnar DataFrame build in event_log ([d4501e8](https://github.com/ZacKienzle2/Orderbooks/commit/d4501e87fe4d0e40f8618ae5dbab8b0a727bbf75))
 
-- **infra:** Drop constant-time size tracking on order_fifo ([9807c55](https://github.com/ZacKienzle2/Orderbooks/commit/9807c55729c43d1662a0b002a9491de2ad452ea6))
+- **engine,book:** Align bid/ask/arena to cache lines and tag hot/cold paths ([24c8bce](https://github.com/ZacKienzle2/Orderbooks/commit/24c8bce572a07637c666c30c31ac370e88b93f17))
+
+- **cmake:** Probe -falign-functions/loops and fast-math flags in Release ([3ff3fa9](https://github.com/ZacKienzle2/Orderbooks/commit/3ff3fa954b60c74562cdfeed3d62e97f97ee57e9))
+
+- **spsc:** Cache the remote cursor locally to skip cross-core loads on the common path ([18a5379](https://github.com/ZacKienzle2/Orderbooks/commit/18a5379b47e03fd37ebc86fc885658d93effb3eb))
+
+- **engine:** Drive cold-path scans from the bitmap ([fb70558](https://github.com/ZacKienzle2/Orderbooks/commit/fb7055872247560394dc2d4d34396ee8e6a6a068))
+
+- **engine:** Prefetch the order line after id_index lookup on cancel and modify ([edc6c7d](https://github.com/ZacKienzle2/Orderbooks/commit/edc6c7d9852915a2fee1570d4d16854f3af89e7c))
+
+- **json-recorder:** Replace ostream operator<< chain with std::to_chars + single write ([9c2eb75](https://github.com/ZacKienzle2/Orderbooks/commit/9c2eb75fbe2a99e619255db3884e4c203ec582fb))
+
+- **infra:** Hierarchical descent for next_set_at_or_after and its mirror ([10e9a4b](https://github.com/ZacKienzle2/Orderbooks/commit/10e9a4bda1ebbb5605a6b2be450a05daa6fff217))
+
+- **engine:** Short-circuit publish_top via a dirty flag ([3cefb9a](https://github.com/ZacKienzle2/Orderbooks/commit/3cefb9ab90486fd0f3bf25ef3a7a47034f88d741))
+
+- **engine:** Isolate hot mutable state on its own cache line ([3ffcba3](https://github.com/ZacKienzle2/Orderbooks/commit/3ffcba33d7357ea3bcd29085fa28bfd26e160be9))
+
+- **infra:** Drop constant-time size tracking on order_fifo ([2a874ab](https://github.com/ZacKienzle2/Orderbooks/commit/2a874ab4eede95dedbf4ad648bf30ee266947b77))
 
 
 ### Tests
 
-- **snapshot:** Cover the sink-throw path through engine::snapshot ([b4dfb60](https://github.com/ZacKienzle2/Orderbooks/commit/b4dfb60645469d67f23ee94cd4091ce85c44d1ab))
+- **engine:** Randomized torture stream with invariant audits (#49) ([ab78aa8](https://github.com/ZacKienzle2/Orderbooks/commit/ab78aa8346bd2a4e7345c4e6223d22ca8023817d))
 
-- **engine:** Quantity conservation and aggregate / bitmap consistency ([f9973a2](https://github.com/ZacKienzle2/Orderbooks/commit/f9973a2f3fb5b935de973d008a6086ffc959c4bc))
+- **snapshot:** Cover the sink-throw path through engine::snapshot ([19a60db](https://github.com/ZacKienzle2/Orderbooks/commit/19a60db8f03cea427e649556cdbde3d6e4ff1d91))
 
-- **engine:** Differential property tests against a std-map reference ([234024a](https://github.com/ZacKienzle2/Orderbooks/commit/234024a5ed391e11daad880f1d1ab07f5a86dd1b))
+- **engine:** Quantity conservation and aggregate / bitmap consistency ([2f27824](https://github.com/ZacKienzle2/Orderbooks/commit/2f278249ec3328cf611afc937225b6d82eca1f5a))
+
+- **engine:** Differential property tests against a std-map reference ([d784ae3](https://github.com/ZacKienzle2/Orderbooks/commit/d784ae3eabcb5e371d614984ea302640d4b9e1ed))
 
 
 [Unreleased]: https://github.com/ZacKienzle2/Orderbooks/compare/...HEAD
