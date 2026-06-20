@@ -41,6 +41,7 @@ endif()
 add_subdirectory(src/lob)
 add_subdirectory(apps/replay)
 add_subdirectory(apps/loadgen)
+add_subdirectory(apps/gateway)
 
 if(LOB_BUILD_TESTS)
   enable_testing()
