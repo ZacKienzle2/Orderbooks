@@ -82,20 +82,33 @@ inline void drive_shard(std::size_t idx,
     std::snprintf(name, sizeof(name), "lob-shard-%02zu", idx);
     (void)set_this_thread_name(name);
 
+    // The processed counter is read only by a draining producer, never on the
+    // matching path, so its update is batched. Draining up to a batch of
+    // commands before one release store amortises the atomic read-modify-write
+    // and its fence over the batch, while a single release store still
+    // publishes every engine mutation in it to the producer's acquire load.
+    constexpr unsigned batch = 64;
     command c;
     unsigned idle = 0;
     for (;;) {
-        if (ingress.try_pop(c)) {
+        unsigned n = 0;
+        while (n < batch && ingress.try_pop(c)) {
             apply_command(eng, c);
-            processed.fetch_add(1, std::memory_order_release);
+            ++n;
+        }
+        if (n > 0) {
+            processed.fetch_add(n, std::memory_order_release);
             idle = 0;
             continue;
         }
         if (stop.load(std::memory_order_acquire)) {
+            unsigned m = 0;
             while (ingress.try_pop(c)) {
                 apply_command(eng, c);
-                processed.fetch_add(1, std::memory_order_release);
+                ++m;
             }
+            if (m > 0)
+                processed.fetch_add(m, std::memory_order_release);
             return;
         }
         if (idle < cfg.spin_budget) {
