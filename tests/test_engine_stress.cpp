@@ -103,8 +103,7 @@ TEST_CASE("engine holds its invariants under a randomized torture stream", "[eng
 
     counting_pub pub;
     eng_t eng{pub,
-              lob::engine_config{.tick_size = 1,
-                                 .max_order_qty = 1ULL << 32,
+              lob::engine_config{.max_order_qty = 1ULL << 32,
                                  .self_cross = policy,
                                  .top_throttle = throttle}};
     std::uint64_t rng =
