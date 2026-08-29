@@ -277,6 +277,11 @@ int run_client(std::uint16_t port, std::uint64_t orders) {
                 static_cast<unsigned long long>(hist.value_at_percentile(50.0)),
                 static_cast<unsigned long long>(hist.value_at_percentile(99.0)),
                 static_cast<unsigned long long>(hist.max()));
+    if (hist.overflow_count() > 0) {
+        std::printf("latency WARNING: %llu samples exceeded the histogram range; "
+                    "max and upper percentiles understate the true tail\n",
+                    static_cast<unsigned long long>(hist.overflow_count()));
+    }
     return correct ? 0 : 1;
 }
 
