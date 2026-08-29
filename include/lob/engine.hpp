@@ -266,9 +266,10 @@ class engine {
         constexpr auto Opp = (Side == side::bid) ? side::ask : side::bid;
 
         // FOK precheck. Walk opposite levels from best toward `m.px` and sum
-        // their aggregates, aborting the whole order if the total is short.
+        // the quantity the match loop could actually consume, aborting the
+        // whole order if the total is short.
         if (m.t == tif::fok) {
-            if (!can_fully_fill_<Opp>(m.px, m.qty))
+            if (!can_fully_fill_<Opp>(m.px, m.qty, m.account_id))
                 return;
         }
 
@@ -421,34 +422,67 @@ class engine {
     }
 
     template <side Opp>
-    [[nodiscard]] bool can_fully_fill_(tick_t aggressor_px, qty_t want) const noexcept {
+    [[nodiscard]] bool
+    can_fully_fill_(tick_t aggressor_px, qty_t want, account_id_t acct) const noexcept {
         // Walk opposite-side levels from best toward aggressor_px, summing
-        // their aggregates. For bid aggressor we walk ask levels from
-        // lowest toward aggressor_px (inclusive). For ask aggressor we walk
-        // bid levels from highest toward aggressor_px (inclusive).
+        // the quantity the match loop could consume. For bid aggressor we
+        // walk ask levels from lowest toward aggressor_px (inclusive). For
+        // ask aggressor we walk bid levels from highest toward aggressor_px
+        // (inclusive).
+        //
+        // With no account, or under decrement_trade, every unit resting at a
+        // crossing level consumes the aggressor (by fill or by self-trade
+        // netting), so the O(1) level aggregate is exact. With an account
+        // under the cancelling policies the aggregate overstates what is
+        // fillable, because it includes the aggressor's own resting orders,
+        // which the match loop destroys (cancel_oldest) or aborts on
+        // (cancel_newest) rather than fills. Walk the level FIFOs instead:
+        // skip own-account makers under cancel_oldest, and stop the whole
+        // walk at the first own-account maker under cancel_newest, exactly
+        // where the match loop itself would stop.
+        const bool aggregate_exact =
+            acct == 0 || cfg_.self_cross == self_cross_policy::decrement_trade;
         qty_t total = 0;
+        bool aborted = false;
+        const auto consume_level = [&](const auto& bs, tick_t px) noexcept {
+            if (aggregate_exact) {
+                total += bs.aggregate_at(px);
+                return total >= want;
+            }
+            for (const auto& o : bs.level_at(px).fifo) {
+                if (o.account_id == acct) {
+                    if (cfg_.self_cross == self_cross_policy::cancel_newest) {
+                        aborted = true;
+                        return true;
+                    }
+                    continue;
+                }
+                total += o.remaining;
+                if (total >= want)
+                    return true;
+            }
+            return false;
+        };
         if constexpr (Opp == side::ask) {
             // aggressor is bid; walk asks ascending from best to aggressor_px
             auto px = book_.asks().best();
             while (px.has_value() && *px <= aggressor_px) {
-                total += book_.asks().aggregate_at(*px);
-                if (total >= want)
-                    return true;
+                if (consume_level(book_.asks(), *px))
+                    break;
                 px = book_.asks().next_populated_at_or_after(*px + 1);
             }
         } else {
             // aggressor is ask; walk bids descending from best to aggressor_px
             auto px = book_.bids().best();
             while (px.has_value() && *px >= aggressor_px) {
-                total += book_.bids().aggregate_at(*px);
-                if (total >= want)
-                    return true;
+                if (consume_level(book_.bids(), *px))
+                    break;
                 if (*px == 0)
                     break;
                 px = book_.bids().prev_populated_at_or_before(*px - 1);
             }
         }
-        return total >= want;
+        return !aborted && total >= want;
     }
 
     // Conservatively reports whether a mutation at price px on side s could

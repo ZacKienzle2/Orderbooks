@@ -143,7 +143,7 @@ struct reference_engine {
   private:
     template <side Side>
     void handle_(const submit_msg& m) noexcept {
-        if (m.t == tif::fok && !can_fully_fill_<Side>(m.px, m.qty))
+        if (m.t == tif::fok && !can_fully_fill_<Side>(m.px, m.qty, m.account_id))
             return;
         qty_t remaining = m.qty;
         match_<Side>(m, remaining);
@@ -155,28 +155,49 @@ struct reference_engine {
     }
 
     template <side Side>
-    [[nodiscard]] bool can_fully_fill_(tick_t aggressor_px, qty_t want) const noexcept {
+    [[nodiscard]] bool
+    can_fully_fill_(tick_t aggressor_px, qty_t want, account_id_t acct) const noexcept {
+        // Mirrors lob::engine::can_fully_fill_. With no account, or under
+        // decrement_trade, every resting unit at a crossing level consumes
+        // the aggressor, so plain sums are exact. Under the cancelling
+        // policies the aggressor's own makers are destroyed (cancel_oldest)
+        // or abort the walk (cancel_newest) instead of filling, so they
+        // must not count.
+        const bool all_consumable =
+            acct == 0 || cfg.self_cross == self_cross_policy::decrement_trade;
         qty_t total = 0;
+        bool aborted = false;
+        auto consume_fifo = [&](const std::list<rec>& fifo) noexcept {
+            for (const auto& r : fifo) {
+                if (!all_consumable && r.account_id == acct) {
+                    if (cfg.self_cross == self_cross_policy::cancel_newest) {
+                        aborted = true;
+                        return true;
+                    }
+                    continue;
+                }
+                total += r.remaining;
+                if (total >= want)
+                    return true;
+            }
+            return false;
+        };
         if constexpr (Side == side::bid) {
             for (const auto& [px, fifo] : asks) {
                 if (px > aggressor_px)
                     break;
-                for (const auto& r : fifo)
-                    total += r.remaining;
-                if (total >= want)
-                    return true;
+                if (consume_fifo(fifo))
+                    break;
             }
         } else {
             for (const auto& [px, fifo] : bids) {
                 if (px < aggressor_px)
                     break;
-                for (const auto& r : fifo)
-                    total += r.remaining;
-                if (total >= want)
-                    return true;
+                if (consume_fifo(fifo))
+                    break;
             }
         }
-        return total >= want;
+        return !aborted && total >= want;
     }
 
     template <side Side>
