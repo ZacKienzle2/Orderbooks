@@ -100,6 +100,80 @@ TEST_CASE("engine GTC stream preserves quantity conservation", "[engine][invaria
     REQUIRE(sum_submitted == (2 * sum_filled) + sum_cancelled + sum_resting);
 }
 
+// FOK is all-or-nothing by definition. For every FOK submit, the quantity the
+// aggressor executes (fills it takes, plus self-trade netting it initiates
+// under decrement_trade) must be exactly 0 or exactly m.qty. The stream mixes
+// TIFs, sides, cancels and modifies across several accounts at a narrow price
+// band, so FOK aggressors regularly meet their own resting orders under every
+// self-cross policy. This closes the class of prechecks that misjudge what a
+// self-crossing FOK can actually consume, rather than any single instance.
+TEST_CASE("engine FOK executes all-or-nothing under every self-cross policy",
+          "[engine][invariant][fok]") {
+    const auto policy = GENERATE(lob::self_cross_policy::cancel_newest,
+                                 lob::self_cross_policy::cancel_oldest,
+                                 lob::self_cross_policy::decrement_trade);
+    const auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
+    std::mt19937_64 rng{seed};
+
+    pub_t pub;
+    eng_t eng{pub, lob::engine_config{.self_cross = policy}};
+
+    // Concentrate liquidity so crossings and self-crossings are frequent.
+    std::uniform_int_distribution<lob::tick_t> px{100, 140};
+    std::uniform_int_distribution<lob::qty_t> qty{1, 50};
+    std::uniform_int_distribution<int> side_dist{0, 1};
+    std::uniform_int_distribution<int> tif_dist{0, 2};
+    std::uniform_int_distribution<int> op_dist{0, 9};
+    std::uniform_int_distribution<int> acct_dist{1, 3};
+
+    std::vector<lob::order_id_t> live;
+    lob::order_id_t next_id{1};
+
+    for (std::size_t step = 0; step < commands; ++step) {
+        const auto roll = op_dist(rng);
+        if (!live.empty() && roll >= 8) {
+            std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
+            const auto k = pick(rng);
+            eng.on_cancel({.id = live[k]});
+            live[k] = live.back();
+            live.pop_back();
+        } else if (!live.empty() && roll == 7) {
+            std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
+            const auto k = pick(rng);
+            eng.on_modify({.id = live[k], .new_px = px(rng), .new_qty = qty(rng)});
+        } else {
+            const auto id = next_id++;
+            live.push_back(id);
+            const auto m = lob::submit_msg{
+                .id = id,
+                .px = px(rng),
+                .qty = qty(rng),
+                .s = (side_dist(rng) == 0) ? lob::side::bid : lob::side::ask,
+                .t = static_cast<lob::tif>(tif_dist(rng)),
+                ._pad = 0,
+                .account_id = static_cast<lob::account_id_t>(acct_dist(rng)),
+            };
+            const auto fills_before = pub.fills.size();
+            const auto self_trades_before = pub.self_trades.size();
+            eng.on_submit(m);
+            if (m.t == lob::tif::fok) {
+                lob::qty_t executed = 0;
+                for (auto i = fills_before; i < pub.fills.size(); ++i) {
+                    if (pub.fills[i].taker == id)
+                        executed += pub.fills[i].qty;
+                }
+                for (auto i = self_trades_before; i < pub.self_trades.size(); ++i) {
+                    if (pub.self_trades[i].aggressor == id)
+                        executed += pub.self_trades[i].qty;
+                }
+                INFO("policy=" << static_cast<int>(policy) << " seed=" << seed << " step=" << step
+                               << " id=" << id << " qty=" << m.qty << " executed=" << executed);
+                REQUIRE((executed == 0 || executed == m.qty));
+            }
+        }
+    }
+}
+
 // Structural invariant: at any moment, the cached level aggregate equals the
 // sum of remaining quantities across the level's FIFO. The dense ladder and
 // the bitmap stay in lockstep (a populated level implies a set bit, and vice
