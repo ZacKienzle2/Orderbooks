@@ -53,6 +53,7 @@ static_assert(std::is_trivially_copyable_v<wire_ack>);
 struct accum_pub {
     std::uint64_t filled{0};
     lob::tick_t last_px{0};
+    bool rejected{false};
 
     void publish(const lob::fill_msg& f) noexcept {
         filled += f.qty;
@@ -65,9 +66,12 @@ struct accum_pub {
 
     void publish(const lob::self_trade_msg&) noexcept {}
 
+    void publish(const lob::reject_msg&) noexcept { rejected = true; }
+
     void reset() noexcept {
         filled = 0;
         last_px = 0;
+        rejected = false;
     }
 };
 
@@ -127,6 +131,12 @@ void apply_order(lob::engine<accum_pub, Ticks, MaxOrders>& eng,
         status = ack_processed;
         break;
     }
+    // The engine publishes a reject_msg when a residual cannot rest (arena
+    // exhausted). Without folding it into the ack the client would read
+    // "accepted" for an order the book holds none of. Fills that landed
+    // before the residual was refused still report in filled.
+    if (pub.rejected)
+        status = ack_rejected;
     ack = wire_ack{.id = wo.id, .filled = pub.filled, .last_px = pub.last_px, .status = status};
 }
 

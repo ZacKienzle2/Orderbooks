@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <list>
 #include <map>
 #include <optional>
@@ -43,11 +44,17 @@ struct reference_engine {
     ask_book asks;
     std::unordered_map<order_id_t, rec*> idx;
     engine_config cfg;
+    // Resting-order capacity, mirroring the fast engine's MaxOrders arena.
+    // Differential runs set it to the fast engine's template argument so
+    // both engines reject the same residuals; standalone uses leave it
+    // effectively unbounded.
+    std::size_t max_orders{std::numeric_limits<std::size_t>::max()};
     seq_t seq{0};
     std::vector<fill_msg> fills;
     std::vector<top_msg> tops;
     std::vector<trade_msg> trades;
     std::vector<self_trade_msg> self_trades;
+    std::vector<reject_msg> rejects;
     bool have_top{false};
     tick_t last_bid_px{0};
     tick_t last_ask_px{0};
@@ -56,7 +63,9 @@ struct reference_engine {
     bool top_dirty{false};
     std::uint8_t suppress_top_depth{0};
 
-    explicit reference_engine(engine_config c) noexcept : cfg{c} {}
+    explicit reference_engine(
+        engine_config c, std::size_t max_ord = std::numeric_limits<std::size_t>::max()) noexcept
+        : cfg{c}, max_orders{max_ord} {}
 
     [[nodiscard]] std::optional<tick_t> best_bid() const noexcept {
         if (bids.empty())
@@ -305,6 +314,18 @@ struct reference_engine {
 
     template <side Side>
     void rest_(const submit_msg& m, qty_t remaining) noexcept {
+        // Mirrors lob::engine::rest_ under arena exhaustion, publishing the
+        // lost residual instead of dropping it silently.
+        if (idx.size() >= max_orders) {
+            ++seq;
+            rejects.push_back(reject_msg{.id = m.id,
+                                         .account = m.account_id,
+                                         .px = m.px,
+                                         .qty = remaining,
+                                         .reason = reject_reason::arena_full,
+                                         .seq = seq});
+            return;
+        }
         rec r{.id = m.id,
               .remaining = remaining,
               .px = m.px,

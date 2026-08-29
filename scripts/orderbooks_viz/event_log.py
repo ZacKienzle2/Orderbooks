@@ -27,18 +27,21 @@ class EventLog:
         tops: bid_px, ask_px, bid_qty, ask_qty, seq.
         trades: px, qty, seq.
         self_trades: aggressor, resting, account, px, qty, seq.
+        rejects: id, account, px, qty, reason, seq.
     """
 
     fills: pd.DataFrame
     tops: pd.DataFrame
     trades: pd.DataFrame
     self_trades: pd.DataFrame
+    rejects: pd.DataFrame
 
 
 _FILL_COLS = ("seq", "maker", "taker", "px", "qty")
 _TOP_COLS = ("seq", "bid_px", "ask_px", "bid_qty", "ask_qty")
 _TRADE_COLS = ("seq", "px", "qty")
 _SELF_TRADE_COLS = ("seq", "aggressor", "resting", "account", "px", "qty")
+_REJECT_COLS = ("seq", "id", "account", "px", "qty", "reason")
 
 
 def _loads(line: bytes | str) -> Any:
@@ -76,11 +79,13 @@ def _split(records: Iterable[dict]) -> EventLog:
     tops: list[dict] = []
     trades: list[dict] = []
     self_trades: list[dict] = []
+    rejects: list[dict] = []
     dispatch = {
         "fill": fills.append,
         "top": tops.append,
         "trade": trades.append,
         "self_trade": self_trades.append,
+        "reject": rejects.append,
     }
     for r in records:
         handler = dispatch.get(r.get("kind"))
@@ -91,6 +96,7 @@ def _split(records: Iterable[dict]) -> EventLog:
         tops=pd.DataFrame(_columnar(tops, _TOP_COLS)),
         trades=pd.DataFrame(_columnar(trades, _TRADE_COLS)),
         self_trades=pd.DataFrame(_columnar(self_trades, _SELF_TRADE_COLS)),
+        rejects=pd.DataFrame(_columnar(rejects, _REJECT_COLS)),
     )
 
 

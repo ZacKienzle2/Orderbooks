@@ -50,6 +50,8 @@ class engine {
                   "publisher::publish(trade_msg) must be noexcept");
     static_assert(noexcept(std::declval<P&>().publish(std::declval<const self_trade_msg&>())),
                   "publisher::publish(self_trade_msg) must be noexcept");
+    static_assert(noexcept(std::declval<P&>().publish(std::declval<const reject_msg&>())),
+                  "publisher::publish(reject_msg) must be noexcept");
 
   public:
     engine(P& pub, engine_config cfg) noexcept : pub_(pub), cfg_(cfg) {
@@ -426,8 +428,20 @@ class engine {
     template <side Side>
     void rest_(const submit_msg& m, qty_t remaining) noexcept {
         auto* o = book_.arena().allocate();
-        if (o == nullptr)
-            return;  // arena exhausted; gateway-side concern
+        if (o == nullptr) [[unlikely]] {
+            // Arena exhausted; the residual cannot rest. Publish the loss
+            // instead of dropping it silently, so a gateway can reject its
+            // ack and downstream risk sees the shortfall. The book is
+            // untouched, so no top update follows.
+            ++state_.seq;
+            pub_.publish(reject_msg{.id = m.id,
+                                    .account = m.account_id,
+                                    .px = m.px,
+                                    .qty = remaining,
+                                    .reason = reject_reason::arena_full,
+                                    .seq = state_.seq});
+            return;
+        }
         o->id = m.id;
         o->remaining = remaining;
         o->px = m.px;

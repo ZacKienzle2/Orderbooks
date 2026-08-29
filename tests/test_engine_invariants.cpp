@@ -93,11 +93,66 @@ TEST_CASE("engine GTC stream preserves quantity conservation", "[engine][invaria
     lob::qty_t sum_filled = 0;
     for (const auto& f : pub.fills)
         sum_filled += f.qty;
+    lob::qty_t sum_rejected = 0;
+    for (const auto& r : pub.rejects)
+        sum_rejected += r.qty;
     const auto sum_resting = resting_total_on_book(eng);
 
     INFO("seed=" << seed << " submitted=" << sum_submitted << " filled=" << sum_filled
-                 << " cancelled=" << sum_cancelled << " resting=" << sum_resting);
-    REQUIRE(sum_submitted == (2 * sum_filled) + sum_cancelled + sum_resting);
+                 << " cancelled=" << sum_cancelled << " resting=" << sum_resting
+                 << " rejected=" << sum_rejected);
+    REQUIRE(sum_submitted == (2 * sum_filled) + sum_cancelled + sum_resting + sum_rejected);
+}
+
+// Arena exhaustion is an explicit event, not silence. Fill a tiny engine to
+// its MaxOrders capacity, then verify the next submit that must rest emits a
+// reject_msg carrying the lost residual and leaves the book unchanged.
+TEST_CASE("engine publishes a reject when the arena is exhausted", "[engine][invariant][reject]") {
+    constexpr std::size_t small_cap = 8;
+    pub_t pub;
+    lob::engine<pub_t, ticks, small_cap> eng{pub, lob::engine_config{}};
+
+    for (lob::order_id_t id = 1; id <= small_cap; ++id) {
+        eng.on_submit({.id = id,
+                       .px = 10,
+                       .qty = 5,
+                       .s = lob::side::bid,
+                       .t = lob::tif::gtc,
+                       ._pad = 0,
+                       .account_id = 3});
+    }
+    REQUIRE(pub.rejects.empty());
+    const auto agg_before = eng.book_view().bids().aggregate_at(10);
+    const auto seq_before = eng.last_seq();
+
+    eng.on_submit({.id = 99,
+                   .px = 10,
+                   .qty = 7,
+                   .s = lob::side::bid,
+                   .t = lob::tif::gtc,
+                   ._pad = 0,
+                   .account_id = 3});
+
+    REQUIRE(pub.rejects.size() == 1);
+    CHECK(pub.rejects[0].id == 99);
+    CHECK(pub.rejects[0].account == 3);
+    CHECK(pub.rejects[0].px == 10);
+    CHECK(pub.rejects[0].qty == 7);
+    CHECK(pub.rejects[0].reason == lob::reject_reason::arena_full);
+    CHECK(pub.rejects[0].seq == seq_before + 1);
+    CHECK(eng.book_view().bids().aggregate_at(10) == agg_before);
+
+    // A cancel frees a slot, so the next submit rests again with no reject.
+    eng.on_cancel({.id = 1});
+    eng.on_submit({.id = 100,
+                   .px = 10,
+                   .qty = 5,
+                   .s = lob::side::bid,
+                   .t = lob::tif::gtc,
+                   ._pad = 0,
+                   .account_id = 3});
+    REQUIRE(pub.rejects.size() == 1);
+    CHECK(eng.book_view().bids().aggregate_at(10) == agg_before);
 }
 
 // FOK is all-or-nothing by definition. For every FOK submit, the quantity the

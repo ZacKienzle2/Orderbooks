@@ -12,12 +12,17 @@ namespace lob {
 // hot path; every method must be noexcept and ideally inlines to a single
 // SPSC ring push.
 template <class P>
-concept publisher = requires(
-    P p, const fill_msg& f, const top_msg& t, const trade_msg& tr, const self_trade_msg& st) {
+concept publisher = requires(P p,
+                             const fill_msg& f,
+                             const top_msg& t,
+                             const trade_msg& tr,
+                             const self_trade_msg& st,
+                             const reject_msg& rj) {
     { p.publish(f) } noexcept -> std::same_as<void>;
     { p.publish(t) } noexcept -> std::same_as<void>;
     { p.publish(tr) } noexcept -> std::same_as<void>;
     { p.publish(st) } noexcept -> std::same_as<void>;
+    { p.publish(rj) } noexcept -> std::same_as<void>;
 };
 
 // clock_source: monotonic sequence-stamp provider. Engine assigns seq_t to

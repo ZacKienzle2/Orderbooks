@@ -30,6 +30,8 @@ struct null_publisher {
     void publish(const lob::trade_msg&) noexcept {}
 
     void publish(const lob::self_trade_msg&) noexcept {}
+
+    void publish(const lob::reject_msg&) noexcept {}
 };
 
 using runtime_t = lob::shard_egress_runtime<ticks, max_ord, shards, ingress, egress>;

@@ -29,6 +29,8 @@ struct counting_pub {
     void publish(const lob::trade_msg&) noexcept {}
 
     void publish(const lob::self_trade_msg&) noexcept {}
+
+    void publish(const lob::reject_msg&) noexcept {}
 };
 
 using eng_t = lob::engine<counting_pub, ticks, max_ord>;
@@ -103,9 +105,8 @@ TEST_CASE("engine holds its invariants under a randomized torture stream", "[eng
 
     counting_pub pub;
     eng_t eng{pub,
-              lob::engine_config{.max_order_qty = 1ULL << 32,
-                                 .self_cross = policy,
-                                 .top_throttle = throttle}};
+              lob::engine_config{
+                  .max_order_qty = 1ULL << 32, .self_cross = policy, .top_throttle = throttle}};
     std::uint64_t rng =
         0xC0FFEEULL + static_cast<std::uint64_t>(policy) * 0x1000193ULL + (throttle ? 1ULL : 0ULL);
     std::vector<lob::order_id_t> live;

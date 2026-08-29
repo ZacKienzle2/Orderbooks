@@ -40,6 +40,9 @@ class publisher_sink {
         case event::kind::self_trade:
             pub_->publish(e.body.self_trade);
             break;
+        case event::kind::reject:
+            pub_->publish(e.body.reject);
+            break;
         }
     }
 

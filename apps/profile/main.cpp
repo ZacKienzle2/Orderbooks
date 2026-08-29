@@ -46,6 +46,8 @@ struct null_pub {
     void publish(const lob::trade_msg&) noexcept {}
 
     void publish(const lob::self_trade_msg&) noexcept {}
+
+    void publish(const lob::reject_msg&) noexcept {}
 };
 
 constexpr std::size_t ticks = 4096;

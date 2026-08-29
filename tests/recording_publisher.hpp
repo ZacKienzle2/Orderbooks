@@ -14,6 +14,7 @@ struct recording_publisher {
     std::vector<top_msg> tops;
     std::vector<trade_msg> trades;
     std::vector<self_trade_msg> self_trades;
+    std::vector<reject_msg> rejects;
 
     void publish(const fill_msg& m) noexcept { fills.push_back(m); }
 
@@ -23,11 +24,14 @@ struct recording_publisher {
 
     void publish(const self_trade_msg& m) noexcept { self_trades.push_back(m); }
 
+    void publish(const reject_msg& m) noexcept { rejects.push_back(m); }
+
     void clear() noexcept {
         fills.clear();
         tops.clear();
         trades.clear();
         self_trades.clear();
+        rejects.clear();
     }
 };
 
