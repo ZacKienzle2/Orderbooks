@@ -224,6 +224,10 @@ class engine {
             return clear_state_and_fail_();
         if (hdr.max_orders != MaxOrders)
             return clear_state_and_fail_();
+        // The header byte comes from an external source, and casting a value
+        // outside the enumerators is UB before any switch could reject it.
+        if (hdr.self_cross > static_cast<std::uint8_t>(self_cross_policy::decrement_trade))
+            return clear_state_and_fail_();
 
         clear_state_();
         cfg_.self_cross = static_cast<self_cross_policy>(hdr.self_cross);
@@ -661,7 +665,18 @@ class engine {
     }
 
     [[gnu::cold]] bool replay_record_(const snapshot_order_record& rec) noexcept {
+        // Records come from an external source. Reject anything the engine
+        // could never have emitted before the bytes reach an enum cast, an
+        // unchecked ladder index, or a resting zero-quantity order. px must
+        // be on the ladder, s and t must be enumerators, and a resting order
+        // always has quantity.
         if (rec.px >= Ticks)
+            return false;
+        if (rec.s > static_cast<std::uint8_t>(side::ask))
+            return false;
+        if (rec.t > static_cast<std::uint8_t>(tif::fok))
+            return false;
+        if (rec.remaining == 0)
             return false;
         auto* o = book_.arena().allocate();
         if (o == nullptr)

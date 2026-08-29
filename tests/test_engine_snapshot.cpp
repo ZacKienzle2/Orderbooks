@@ -213,3 +213,95 @@ TEST_CASE("engine restore rejects a truncated snapshot", "[engine][snapshot]") {
     eng_t engine_b{pub_b, lob::engine_config{}};
     REQUIRE_FALSE(engine_b.restore(truncated));
 }
+
+namespace {
+
+template <class T>
+void put_bytes(lob::vector_snapshot_buffer& buf, const T& v) {
+    const void* p = &v;
+    buf.write(std::span<const std::byte>{static_cast<const std::byte*>(p), sizeof v});
+}
+
+lob::snapshot_header valid_header(std::uint64_t num_orders) {
+    lob::snapshot_header hdr{};
+    hdr.ticks = ticks;
+    hdr.max_orders = max_ord;
+    hdr.num_orders = num_orders;
+    return hdr;
+}
+
+lob::snapshot_order_record valid_record() {
+    return {.id = 1, .remaining = 5, .px = 10, .s = 0, .t = 0, ._pad0 = 0, .account_id = 0};
+}
+
+void require_cleared(const eng_t& eng) {
+    REQUIRE(!eng.book_view().bids().best().has_value());
+    REQUIRE(!eng.book_view().asks().best().has_value());
+}
+
+}  // namespace
+
+// Snapshot bytes come from an external source. A value the engine could
+// never have emitted must be rejected before it reaches an enum cast or an
+// unchecked ladder index, and the rejection must leave the engine cleared.
+TEST_CASE("engine restore rejects out-of-range header and record fields", "[engine][snapshot]") {
+    pub_t pub;
+    eng_t eng{pub, lob::engine_config{}};
+
+    SECTION("valid handcrafted blob restores") {
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, valid_header(1));
+        put_bytes(buf, valid_record());
+        REQUIRE(eng.restore(buf));
+        REQUIRE(eng.book_view().bids().aggregate_at(10) == 5);
+    }
+
+    SECTION("self_cross byte beyond the enumerators") {
+        auto hdr = valid_header(0);
+        hdr.self_cross = 3;
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, hdr);
+        REQUIRE_FALSE(eng.restore(buf));
+        require_cleared(eng);
+    }
+
+    SECTION("record px off the ladder") {
+        auto rec = valid_record();
+        rec.px = ticks;
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, valid_header(1));
+        put_bytes(buf, rec);
+        REQUIRE_FALSE(eng.restore(buf));
+        require_cleared(eng);
+    }
+
+    SECTION("record side byte beyond the enumerators") {
+        auto rec = valid_record();
+        rec.s = 2;
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, valid_header(1));
+        put_bytes(buf, rec);
+        REQUIRE_FALSE(eng.restore(buf));
+        require_cleared(eng);
+    }
+
+    SECTION("record tif byte beyond the enumerators") {
+        auto rec = valid_record();
+        rec.t = 3;
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, valid_header(1));
+        put_bytes(buf, rec);
+        REQUIRE_FALSE(eng.restore(buf));
+        require_cleared(eng);
+    }
+
+    SECTION("record with zero remaining quantity") {
+        auto rec = valid_record();
+        rec.remaining = 0;
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, valid_header(1));
+        put_bytes(buf, rec);
+        REQUIRE_FALSE(eng.restore(buf));
+        require_cleared(eng);
+    }
+}
