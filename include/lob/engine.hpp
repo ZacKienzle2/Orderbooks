@@ -26,7 +26,9 @@ namespace lob {
 //
 // Hot-path methods (on_submit, on_cancel, on_modify) are noexcept by
 // contract. The gateway is responsible for upstream validation of px, qty,
-// side, tif; the engine treats out-of-range inputs as UB.
+// side, tif, and ids; the engine treats out-of-range inputs as UB. Order
+// ids live in [1, 2^64 - 2]: zero is modify_msg::new_id's keep-the-id
+// sentinel and 2^64 - 1 is the id_index empty-slot sentinel.
 //
 // Matching follows strict price-time priority. When an aggressor crosses
 // the opposite best, the engine walks that level's FIFO from the front,
@@ -705,9 +707,13 @@ class engine {
     [[gnu::cold]] bool replay_record_(const snapshot_order_record& rec) noexcept {
         // Records come from an external source. Reject anything the engine
         // could never have emitted before the bytes reach an enum cast, an
-        // unchecked ladder index, or a resting zero-quantity order. px must
-        // be on the ladder, s and t must be enumerators, and a resting order
-        // always has quantity.
+        // unchecked ladder index, the id_index, or a resting zero-quantity
+        // order. px must be on the ladder, s and t must be enumerators, a
+        // resting order always has quantity, and ids live in [1, 2^64 - 2]
+        // because zero is modify's keep-the-id sentinel and 2^64 - 1 is the
+        // id_index empty-slot sentinel, which would poison probe chains.
+        if (rec.id == 0 || rec.id == std::numeric_limits<order_id_t>::max())
+            return false;
         if (rec.px >= Ticks)
             return false;
         if (rec.s > static_cast<std::uint8_t>(side::ask))
