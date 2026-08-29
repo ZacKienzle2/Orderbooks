@@ -52,6 +52,19 @@ TEST_CASE("latency_histogram clamps values above the trackable maximum", "[histo
     REQUIRE(h.value_at_percentile(100.0) >= 1'000);
 }
 
+TEST_CASE("latency_histogram counts clamped samples as overflow", "[histogram]") {
+    lob::latency_histogram h{1'000, 2};
+    REQUIRE(h.overflow_count() == 0);
+    h.record(500);
+    REQUIRE(h.overflow_count() == 0);
+    h.record(5'000);
+    h.record(1'000'000);
+    REQUIRE(h.overflow_count() == 2);
+    REQUIRE(h.count() == 3);
+    h.reset();
+    REQUIRE(h.overflow_count() == 0);
+}
+
 TEST_CASE("latency_histogram reset clears all state", "[histogram]") {
     lob::latency_histogram h{1'000, 2};
     h.record(500);

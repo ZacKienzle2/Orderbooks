@@ -49,7 +49,13 @@ class latency_histogram {
     }
 
     void record(std::uint64_t value) noexcept {
-        value = std::min(value, highest_);
+        if (value > highest_) [[unlikely]] {
+            // Clamp into the top bucket but count the clamp, so a run whose
+            // tail escaped the configured range is visible instead of
+            // silently reporting a flattened maximum.
+            ++overflow_;
+            value = highest_;
+        }
         ++counts_[counts_index_(value)];
         ++total_;
         min_ = std::min(min_, value);
@@ -61,11 +67,17 @@ class latency_histogram {
             c = 0;
         }
         total_ = 0;
+        overflow_ = 0;
         min_ = UINT64_MAX;
         max_ = 0;
     }
 
     [[nodiscard]] std::uint64_t count() const noexcept { return total_; }
+
+    // Samples that exceeded highest_trackable_value and were clamped into the
+    // top bucket. Nonzero means max() and the upper percentiles understate
+    // the true tail; reconstruct with a larger range if it matters.
+    [[nodiscard]] std::uint64_t overflow_count() const noexcept { return overflow_; }
 
     [[nodiscard]] std::uint64_t min() const noexcept { return total_ == 0 ? 0 : min_; }
 
@@ -182,6 +194,7 @@ class latency_histogram {
     std::vector<std::uint64_t> counts_;
     std::uint64_t highest_{0};
     std::uint64_t total_{0};
+    std::uint64_t overflow_{0};
     std::uint64_t min_{UINT64_MAX};
     std::uint64_t max_{0};
     std::uint64_t sub_bucket_count_{0};
