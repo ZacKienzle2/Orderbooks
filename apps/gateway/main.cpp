@@ -309,7 +309,12 @@ int run_pipeline_client(std::uint16_t port, std::uint64_t orders, std::size_t wi
     set_nonblocking(cfd);
 
     const std::uint64_t pairs = orders / 2;
-    const std::size_t win = window == 0 ? 1 : window;
+    // The window bounds the bytes in flight on the loopback socket. Orders
+    // out and acks back total 112 bytes per pair, so 512 pairs keeps under
+    // 60 KiB in each direction, inside any default socket buffer. An
+    // unclamped window would let both sides block writing to each other.
+    constexpr std::size_t max_window = 512;
+    const std::size_t win = std::clamp<std::size_t>(window, 1, max_window);
     lob::order_id_t next = 1;
     std::uint64_t submitted = 0;
     std::uint64_t fills = 0;
@@ -402,6 +407,10 @@ int main(int argc, char** argv) {
     }
 
     if (a.listen_port >= 0) {
+        if (a.listen_port > 65535) {
+            std::fprintf(stderr, "gateway: --listen port must be 0..65535\n");
+            return 1;
+        }
         std::uint16_t bound = 0;
         const int lfd = listen_socket(static_cast<std::uint16_t>(a.listen_port), bound);
         if (lfd < 0) {
