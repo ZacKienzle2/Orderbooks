@@ -1,0 +1,61 @@
+name: Cachegrind
+
+# On-demand, deterministic cache-miss attribution for the engine hot paths.
+# Cachegrind simulates the cache per instruction, so it needs no PMU and its
+# numbers are exact and reproducible on any shared runner, which is why it is
+# the methodology of record for miss attribution (ADR-0034). Run it manually
+# after a hot-path change to see which functions own the D1 misses.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ops:
+        description: "Native-scale op count; the simulator runs ops/100"
+        required: false
+        default: "20000000"
+      depth:
+        description: "Resting depth for the deep workload"
+        required: false
+        default: "40000"
+
+permissions:
+  contents: read
+
+jobs:
+  cachegrind:
+    name: Cachegrind miss attribution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install valgrind and boost headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends valgrind libboost-dev
+
+      - name: Run cachegrind plugin
+        env:
+          OPS: ${{ inputs.ops }}
+          DEPTH: ${{ inputs.depth }}
+        run: |
+          set -euo pipefail
+          scripts/profile.sh --plugin cachegrind --ops "${OPS}" --depth "${DEPTH}" \
+            | tee cachegrind-report.txt
+
+      - name: Upload report and raw profiles
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: cachegrind-report
+          path: |
+            cachegrind-report.txt
+            /tmp/cachegrind.out.*
+          retention-days: 30
