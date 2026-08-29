@@ -290,6 +290,89 @@ TEST_CASE("engine self-cross policy skipped when account ids differ", "[engine][
     REQUIRE(eng.book_view().asks().aggregate_at(100) == 6);
 }
 
+TEST_CASE("engine FOK precheck excludes own liquidity under cancel_oldest",
+          "[engine][fok][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 7));
+    eng.on_submit(sub_with_account(2, 100, 10, lob::side::ask, 9));
+    pub.clear();
+
+    // The aggregate at 100 is 20, but the account-7 maker would be cancelled
+    // by the self-cross policy, not filled, so only 10 is fillable. The FOK
+    // must reject outright and leave both makers resting.
+    eng.on_submit(sub_with_account(99, 100, 15, lob::side::bid, 7, lob::tif::fok));
+
+    REQUIRE(pub.fills.empty());
+    REQUIRE(pub.self_trades.empty());
+    REQUIRE(eng.book_view().asks().aggregate_at(100) == 20);
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine FOK precheck stops at own maker under cancel_newest",
+          "[engine][fok][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 9));
+    eng.on_submit(sub_with_account(2, 100, 5, lob::side::ask, 7));
+    eng.on_submit(sub_with_account(3, 100, 5, lob::side::ask, 9));
+    pub.clear();
+
+    // Non-own liquidity totals 15, but cancel_newest aborts the aggressor at
+    // the account-7 maker, so only the 10 in front of it is reachable. The
+    // FOK must reject rather than fill 10 of 15 and abort.
+    eng.on_submit(sub_with_account(99, 100, 15, lob::side::bid, 7, lob::tif::fok));
+
+    REQUIRE(pub.fills.empty());
+    REQUIRE(eng.book_view().asks().aggregate_at(100) == 20);
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine FOK fills fully through a cancelled own maker under cancel_oldest",
+          "[engine][fok][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 7));
+    eng.on_submit(sub_with_account(2, 100, 15, lob::side::ask, 9));
+    pub.clear();
+
+    // The own maker in front is cancelled and the account-9 maker behind it
+    // covers the full request, so the FOK executes exactly 15.
+    eng.on_submit(sub_with_account(99, 100, 15, lob::side::bid, 7, lob::tif::fok));
+
+    REQUIRE(pub.fills.size() == 1);
+    REQUIRE(pub.fills[0].maker == 2);
+    REQUIRE(pub.fills[0].qty == 15);
+    REQUIRE(pub.self_trades.empty());
+    REQUIRE(!eng.book_view().asks().best().has_value());
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine FOK counts own liquidity under decrement_trade", "[engine][fok][self-cross]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
+
+    eng.on_submit(sub_with_account(1, 100, 10, lob::side::ask, 7));
+    pub.clear();
+
+    // Short by 5: only 10 rests at 100, so the FOK rejects untouched.
+    eng.on_submit(sub_with_account(98, 100, 15, lob::side::bid, 7, lob::tif::fok));
+    REQUIRE(pub.self_trades.empty());
+    REQUIRE(eng.book_view().asks().aggregate_at(100) == 10);
+
+    // Exact: own liquidity is consumable by netting, so the FOK proceeds and
+    // the full 10 nets as a self trade.
+    eng.on_submit(sub_with_account(99, 100, 10, lob::side::bid, 7, lob::tif::fok));
+    REQUIRE(pub.fills.empty());
+    REQUIRE(pub.self_trades.size() == 1);
+    REQUIRE(pub.self_trades[0].qty == 10);
+    REQUIRE(!eng.book_view().asks().best().has_value());
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
 TEST_CASE("engine sequence numbers are monotonic across events", "[engine][seq]") {
     pub_t pub;
     test_eng_t eng{pub, lob::engine_config{}};
