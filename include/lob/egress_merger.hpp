@@ -76,7 +76,12 @@ template <multi_egress_source Source, merge_sink Sink>
 class egress_merger {
   public:
     egress_merger(Source& src, Sink& sink, merger_config cfg = {})
-        : src_(&src), sink_(&sink), cfg_(cfg) {}
+        : src_(&src), sink_(&sink), cfg_(cfg) {
+        // A zero batch claims nothing and the merger would spin forever
+        // forwarding no events; clamp to the smallest useful bound.
+        if (cfg_.batch_max == 0)
+            cfg_.batch_max = 1;
+    }
 
     egress_merger(const egress_merger&) = delete;
     egress_merger(egress_merger&&) = delete;
@@ -148,11 +153,12 @@ class egress_merger {
                 sink_->on_event(e, seq_);
                 ++seq_;
             });
-            if (n > 0) {
-                merged_.store(seq_, std::memory_order_relaxed);
-                any = true;
-            }
+            any |= n > 0;
         }
+        // One relaxed store per productive round rather than one per shard;
+        // merged() is a monitoring tally, not a synchronisation point.
+        if (any)
+            merged_.store(seq_, std::memory_order_relaxed);
         return any;
     }
 
