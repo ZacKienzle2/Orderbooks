@@ -78,6 +78,9 @@ Editing by hand: copy `template.md` to the next free number, fill in the placeho
 | [0032](0032-batch-worker-processed-counter.md) | Accepted | Batch the shard worker's processed counter |
 | [0033](0033-aos-id-index-layout.md) | Accepted | AoS slot layout for the id_index |
 | [0034](0034-engine-cache-floor.md) | Accepted | Engine hot path is at its cache-miss floor |
+| [0035](0035-reject-event-on-publisher-seam.md) | Accepted | Arena exhaustion publishes a reject event |
+| [0036](0036-disjoint-seq-ranges-per-shard.md) | Accepted | Shards seed disjoint event-sequence ranges |
+| [0037](0037-clordid-chaining-on-cancel-replace.md) | Accepted | Modify carries the next ClOrdID |
 
 ## References
 
