@@ -136,3 +136,48 @@ TEST_CASE("shard_router cancel and modify reach the same shard as submit", "[sha
         REQUIRE_FALSE(r.shard(i).book_view().asks().best().has_value());
     }
 }
+
+TEST_CASE("shard_router seeds disjoint seq ranges per shard", "[shard]") {
+    pub_t pub;
+    router_t r{pub, lob::engine_config{}};
+
+    // Every shard starts at its shard_seq_base and stamps within its range.
+    for (std::size_t i = 0; i < shards; ++i) {
+        REQUIRE(r.shard(i).last_seq() == lob::shard_seq_base(i, shards));
+    }
+
+    // Drive a crossing on one symbol per shard, then check every emitted seq
+    // is globally unique and falls inside its shard's range.
+    std::array<lob::symbol_id_t, shards> sym_for_shard{};
+    std::array<bool, shards> found{};
+    std::size_t found_count = 0;
+    for (lob::symbol_id_t sym = 1; found_count < shards; ++sym) {
+        const auto sh = r.shard_index_for(sym);
+        if (!found[sh]) {
+            sym_for_shard[sh] = sym;
+            found[sh] = true;
+            ++found_count;
+        }
+    }
+    lob::order_id_t id = 1;
+    for (std::size_t i = 0; i < shards; ++i) {
+        r.on_submit(sym_for_shard[i], sub(id++, 100, 10, lob::side::ask));
+        r.on_submit(sym_for_shard[i], sub(id++, 100, 10, lob::side::bid));
+    }
+
+    REQUIRE(pub.fills.size() == shards);
+    std::unordered_set<lob::seq_t> seen;
+    for (const auto& f : pub.fills) {
+        REQUIRE(seen.insert(f.seq).second);
+    }
+    for (const auto& t : pub.tops) {
+        REQUIRE(seen.insert(t.seq).second);
+    }
+    for (std::size_t i = 0; i < shards; ++i) {
+        const auto base = lob::shard_seq_base(i, shards);
+        const auto span = lob::shard_seq_base(1, shards);
+        const auto s = r.shard(i).last_seq();
+        REQUIRE(s > base);
+        REQUIRE(s - base < span);
+    }
+}

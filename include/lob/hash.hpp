@@ -3,6 +3,7 @@
 
 #include <lob/types.hpp>
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 
@@ -24,6 +25,19 @@ namespace lob {
 // distribution quality.
 [[nodiscard]] constexpr std::size_t shard_index(symbol_id_t sym, std::size_t num_shards) noexcept {
     return splitmix64(sym) & (num_shards - 1);
+}
+
+// Seed for shard i's engine sequence counter. Every shard counting from zero
+// collides the seq stamps the moment their event streams merge, so shard i
+// takes the disjoint range [i * 2^(64 - log2(N)), (i + 1) * 2^(64 - log2(N)))
+// and a merged stream keeps globally unique, per-shard-monotonic stamps.
+// num_shards must be a power of two, matching shard_index.
+[[nodiscard]] constexpr seq_t shard_seq_base(std::size_t shard_idx,
+                                             std::size_t num_shards) noexcept {
+    if (num_shards <= 1)
+        return 0;
+    const auto log2_shards = static_cast<unsigned>(std::countr_zero(num_shards));
+    return static_cast<seq_t>(shard_idx) << (64U - log2_shards);
 }
 
 }  // namespace lob

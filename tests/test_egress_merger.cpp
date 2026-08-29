@@ -1,4 +1,5 @@
 #include <lob/egress_merger.hpp>
+#include <lob/hash.hpp>
 #include <lob/messages.hpp>
 #include <lob/shard_egress_runtime.hpp>
 #include <lob/types.hpp>
@@ -7,6 +8,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <unordered_set>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -168,4 +170,18 @@ TEST_CASE("egress_merger delivers every event across shards exactly once", "[mer
     for (std::size_t i = 0; i < sink.seqs.size(); ++i) {
         REQUIRE(sink.seqs[i] == i);
     }
+
+    // Shards seed disjoint seq ranges, so within one kind the engine stamps
+    // in the merged stream are globally unique (a fill and its trade share a
+    // stamp by design, so uniqueness is per kind), and the stream spans more
+    // than one shard's range.
+    std::unordered_set<std::uint64_t> top_seqs;
+    std::unordered_set<std::uint64_t> range_buckets;
+    for (const auto& e : sink.events) {
+        if (e.k == lob::event::kind::top) {
+            REQUIRE(top_seqs.insert(e.body.top.seq).second);
+            range_buckets.insert(e.body.top.seq / lob::shard_seq_base(1, shards));
+        }
+    }
+    REQUIRE(range_buckets.size() > 1);
 }
