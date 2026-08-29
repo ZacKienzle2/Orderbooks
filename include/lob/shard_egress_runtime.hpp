@@ -82,6 +82,11 @@ class shard_egress_runtime {
         running_ = true;
     }
 
+    // join() can throw system_error only for a self-join deadlock or an
+    // invalid handle. joinable() rules out the latter, and calling stop()
+    // from a worker thread is a contract violation, so an escape through
+    // this noexcept boundary terminating the process is the intended
+    // fail-fast rather than a leak of a recoverable error.
     void stop() noexcept {
         if (!running_) {
             return;
