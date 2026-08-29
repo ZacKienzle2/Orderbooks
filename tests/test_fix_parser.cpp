@@ -99,6 +99,7 @@ TEST_CASE("parses an OrderCancelReplaceRequest into a modify command", "[fix]") 
     REQUIRE(r.err == lob::fix::error::ok);
     REQUIRE(r.cmd.k == lob::command::kind::modify);
     CHECK(r.cmd.body.modify.id == 1001);
+    CHECK(r.cmd.body.modify.new_id == 1003);
     CHECK(r.cmd.body.modify.new_px == 99);
     CHECK(r.cmd.body.modify.new_qty == 70);
 }
@@ -259,4 +260,16 @@ TEST_CASE("still reports incomplete for an in-range BodyLength short of bytes", 
 
     const auto r = lob::fix::parse(bytes_of(wire));
     CHECK(r.err == lob::fix::error::incomplete);
+}
+
+TEST_CASE("rejects a CancelReplace without a ClOrdID", "[fix]") {
+    // Tag 11 carries the order's next identity; without it a replace would
+    // strand every later request that names the order by the new id.
+    const std::string wire = make_fix("35=G\x01"
+                                      "41=1001\x01"
+                                      "54=1\x01"
+                                      "38=70\x01"
+                                      "44=99\x01");
+    const auto r = lob::fix::parse(bytes_of(wire));
+    CHECK(r.err == lob::fix::error::missing_field);
 }
