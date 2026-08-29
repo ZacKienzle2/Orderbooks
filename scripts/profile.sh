@@ -73,7 +73,15 @@ find_include() {
 cxx="${CXX:-clang++}"
 inc="$(find_include)"
 src="${root}/apps/profile/main.cpp"
-common=(-std=c++20 -march=native -I "${root}/include" -isystem "${inc}")
+# Passing /usr/include through -isystem reorders it ahead of the compiler's
+# own header chain and breaks libstdc++'s include_next of the libc headers
+# (fatal error: stdlib.h not found), so the default system directory is
+# never added explicitly.
+inc_flags=()
+if [[ "${inc}" != "/usr/include" ]]; then
+  inc_flags=(-isystem "${inc}")
+fi
+common=(-std=c++20 -march=native -I "${root}/include" "${inc_flags[@]}")
 bin_rel="/tmp/lob_profile_rel"
 bin_san="/tmp/lob_profile_san"
 
@@ -145,7 +153,7 @@ plugin_cachegrind() {
   # native so the simulator never meets an instruction it cannot decode.
   local bin_cg="/tmp/lob_profile_cg"
   if [[ ! -x "${bin_cg}" || "${src}" -nt "${bin_cg}" ]]; then
-    "${cxx}" -std=c++20 -march=x86-64-v3 -I "${root}/include" -isystem "${inc}" \
+    "${cxx}" -std=c++20 -march=x86-64-v3 -I "${root}/include" "${inc_flags[@]}" \
       -O2 -g -DNDEBUG "${src}" -o "${bin_cg}"
   fi
   # The simulator runs ~100x slower than native; scale the op count so a
