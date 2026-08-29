@@ -9,18 +9,24 @@
 # the engine rather than to thread scheduling or a random op-dispatch.
 #
 # Plugins:
-#   perf       per-workload perf stat counters (cyc/op, IPC, branch and cache
-#              miss rates), the micro-optimisation signal.
-#   sanitize   an ASAN and UBSAN soak over the deep mix, the implementation-error
-#              signal.
-#   record     perf record source-line hot spots over the deep mix, the
-#              missed-opportunity signal.
+#   perf        per-workload perf stat counters (cyc/op, IPC, branch and cache
+#               miss rates), the micro-optimisation signal.
+#   sanitize    an ASAN and UBSAN soak over the deep mix, the
+#               implementation-error signal.
+#   record      perf record source-line hot spots over the deep mix, the
+#               missed-opportunity signal.
+#   cachegrind  deterministic per-function D1 miss attribution over the
+#               memory-bound workloads (deep, submit, modifyp), the
+#               where-do-the-misses-live signal. Needs no PMU, so it works on
+#               shared runners and virtual machines; this is the methodology
+#               behind ADR-0034. Ops are scaled down 100x for the simulator.
 #
 # Usage:
-#   scripts/profile.sh [--plugin perf|sanitize|record|all] [--ops N] [--depth D]
+#   scripts/profile.sh [--plugin perf|sanitize|record|cachegrind|all] [--ops N] [--depth D]
 #
-# Needs a Linux host with perf for the perf and record plugins. The cyc/op unit
-# is reference cycles; divide by the host frequency for nanoseconds.
+# Needs a Linux host with perf for the perf and record plugins, and valgrind
+# for the cachegrind plugin. The cyc/op unit is reference cycles; divide by
+# the host frequency for nanoseconds.
 
 set -euo pipefail
 
@@ -130,14 +136,45 @@ plugin_record() {
   perf report -i "${data}" --stdio -n --sort=srcline 2>/dev/null | grep -vE '^#|^$' | head -16
 }
 
+plugin_cachegrind() {
+  command -v valgrind >/dev/null 2>&1 || {
+    echo "valgrind not found; skipping cachegrind plugin" >&2
+    return 0
+  }
+  # A dedicated binary: -g for source attribution, x86-64-v3 rather than
+  # native so the simulator never meets an instruction it cannot decode.
+  local bin_cg="/tmp/lob_profile_cg"
+  if [[ ! -x "${bin_cg}" || "${src}" -nt "${bin_cg}" ]]; then
+    "${cxx}" -std=c++20 -march=x86-64-v3 -I "${root}/include" -isystem "${inc}" \
+      -O2 -g -DNDEBUG "${src}" -o "${bin_cg}"
+  fi
+  # The simulator runs ~100x slower than native; scale the op count so a
+  # default invocation finishes in minutes while the miss ratios stay stable.
+  local cg_ops=$((ops / 100))
+  [[ "${cg_ops}" -lt 100000 ]] && cg_ops=100000
+  local w out_file
+  for w in deep submit modifyp; do
+    out_file="/tmp/cachegrind.out.${w}"
+    echo "== cachegrind ${w} (${cg_ops} ops, depth ${depth}) =="
+    valgrind --tool=cachegrind --cache-sim=yes \
+      --cachegrind-out-file="${out_file}" \
+      "${bin_cg}" --workload "${w}" --ops "${cg_ops}" --depth "${depth}" 2>&1 |
+      grep -E 'D1 *miss|D *refs|LLd *miss' || true
+    echo "-- top functions by data misses (${w}) --"
+    cg_annotate "${out_file}" 2>/dev/null | head -40
+  done
+}
+
 case "${plugin}" in
   perf) plugin_perf ;;
   sanitize) plugin_sanitize ;;
   record) plugin_record ;;
+  cachegrind) plugin_cachegrind ;;
   all)
     echo "== perf =="; plugin_perf
     echo "== sanitize =="; plugin_sanitize
     echo "== record =="; plugin_record
+    echo "== cachegrind =="; plugin_cachegrind
     ;;
   *) echo "unknown plugin: ${plugin}" >&2; exit 2 ;;
 esac

@@ -40,10 +40,26 @@ scripts/profile.sh --ops 40000000 --depth 80000
   that an optimisation can introduce.
 - `record` runs `perf record` and prints the top source lines by time over the
   deep mix. This is the missed-opportunity signal, naming the lines to attack.
+- `cachegrind` runs the memory-bound workloads (`deep`, `submit`, `modifyp`)
+  under valgrind's cache simulator and prints per-function D1 miss
+  attribution. This is the where-do-the-misses-live signal and the
+  methodology behind ADR-0034's miss breakdown. It needs no PMU, so it is
+  exact on shared runners and virtual machines where `perf` cannot count;
+  the trade is a ~100x slowdown, which the plugin absorbs by scaling ops
+  down 100x.
 
 The `perf` and `record` plugins need a Linux host with `perf` and a PMU. A
 virtualised host often exposes counting (`perf stat`) but not sampling
-(`perf record`); the `record` plugin then reports that and is skipped.
+(`perf record`); the `record` plugin then reports that and is skipped. The
+`cachegrind` plugin needs only valgrind, and the `Cachegrind` workflow
+(`.github/workflows/cachegrind.yml`, manual dispatch) runs it on a CI runner
+and uploads the report plus raw profiles, so miss attribution is available
+push-button from any development host:
+
+```bash
+gh workflow run cachegrind.yml
+gh run download --name cachegrind-report
+```
 
 ## Reading the result
 
