@@ -347,15 +347,15 @@ void bench_fok_precheck_self_cross(benchmark::State& state) {
     engine_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
     constexpr lob::tick_t px = bench_ticks / 2;
     constexpr std::size_t depth = 512;
-    for (std::size_t i = 0; i < depth; ++i) {
+    for (lob::order_id_t oid = 1; oid <= depth; ++oid) {
         eng.on_submit(lob::submit_msg{
-            .id = static_cast<lob::order_id_t>(1 + i),
+            .id = oid,
             .px = px,
             .qty = 1,
             .s = lob::side::ask,
             .t = lob::tif::gtc,
             ._pad = 0,
-            .account_id = static_cast<lob::account_id_t>(1 + (i & 1U)),
+            .account_id = static_cast<lob::account_id_t>(1 + (oid & 1U)),
         });
     }
     lob::order_id_t taker_id = 1'000'000'000;
@@ -383,9 +383,9 @@ void bench_fok_precheck_aggregate(benchmark::State& state) {
     engine_t eng{pub, lob::engine_config{}};
     constexpr lob::tick_t px = bench_ticks / 2;
     constexpr std::size_t depth = 512;
-    for (std::size_t i = 0; i < depth; ++i) {
+    for (lob::order_id_t oid = 1; oid <= depth; ++oid) {
         eng.on_submit(lob::submit_msg{
-            .id = static_cast<lob::order_id_t>(1 + i),
+            .id = oid,
             .px = px,
             .qty = 1,
             .s = lob::side::ask,
