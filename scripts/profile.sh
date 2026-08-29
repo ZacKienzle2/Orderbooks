@@ -169,7 +169,9 @@ plugin_cachegrind() {
       "${bin_cg}" --workload "${w}" --ops "${cg_ops}" --depth "${depth}" 2>&1 |
       grep -E 'D1 *miss|D *refs|LLd *miss' || true
     echo "-- top functions by data misses (${w}) --"
-    cg_annotate "${out_file}" 2>/dev/null | head -40
+    # head closes the pipe early, cg_annotate exits on SIGPIPE, and pipefail
+    # would turn that into a script failure; the guard keeps truncation benign.
+    cg_annotate "${out_file}" 2>/dev/null | head -60 || true
   done
 }
 
