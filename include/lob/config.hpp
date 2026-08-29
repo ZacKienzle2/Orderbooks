@@ -18,8 +18,11 @@ struct engine_config {
     // multiples of tick_size. The dense ladder spans [0, Ticks) ticks.
     tick_t tick_size{1};
 
-    // Hard cap on a single submit_msg::qty; used by the FOK precheck and the
-    // gateway-side validator.
+    // Hard cap on a single order's quantity. The gateway validator enforces
+    // it on submit and modify, and restore() rejects snapshot records above
+    // it. The cap also bounds level aggregates. With MaxOrders orders of at
+    // most this quantity, a qty_t sum stays far below overflow (2^16 orders
+    // at the default cap reach 2^48).
     qty_t max_order_qty{1ULL << 32};
 
     // Behaviour when an incoming aggressor would match against a resting
