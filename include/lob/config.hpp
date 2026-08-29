@@ -14,10 +14,6 @@ enum class self_cross_policy : std::uint8_t {
 };
 
 struct engine_config {
-    // Smallest representable price increment. Engine prices are integer
-    // multiples of tick_size. The dense ladder spans [0, Ticks) ticks.
-    tick_t tick_size{1};
-
     // Hard cap on a single order's quantity. The gateway validator enforces
     // it on submit and modify, and restore() rejects snapshot records above
     // it. The cap also bounds level aggregates. With MaxOrders orders of at
