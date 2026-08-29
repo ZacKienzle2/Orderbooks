@@ -51,6 +51,16 @@ enum class error : std::uint8_t {
     bad_field_value,
 };
 
+// Upper bound on one message's BodyLength(9). Order-entry messages in the
+// supported subset are a few hundred bytes, so the cap is generous. Without
+// it an attacker-controlled or corrupted BodyLength larger than any buffer
+// the caller will ever accumulate maps to error::incomplete forever, and a
+// stream caller waiting for more bytes never resynchronises. Beyond the cap
+// the frame is rejected as bad_body_length, which the caller treats as a
+// framing failure (kill the session or hunt for the next BeginString) rather
+// than a wait-for-more-bytes condition.
+inline constexpr std::size_t max_message_size = 4096;
+
 struct result {
     error err{error::malformed};
     command cmd{};
@@ -176,6 +186,10 @@ template <typename T>
     }
     std::size_t body_len = 0;
     if (!to_uint(f.value, body_len)) {
+        r.err = error::bad_body_length;
+        return r;
+    }
+    if (body_len > max_message_size) {
         r.err = error::bad_body_length;
         return r;
     }

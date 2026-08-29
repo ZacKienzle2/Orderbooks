@@ -233,3 +233,30 @@ TEST_CASE("consumes exactly one message from a concatenated stream", "[fix]") {
     CHECK(r.consumed == first.size());
     CHECK(r.cmd.k == lob::command::kind::submit);
 }
+
+TEST_CASE("rejects a BodyLength beyond max_message_size instead of stalling", "[fix]") {
+    // An oversized BodyLength used to map to error::incomplete no matter how
+    // many bytes arrived, so a stream caller waiting for more input never
+    // resynchronised. It must reject as a framing error.
+    std::string wire = "8=FIX.4.4";
+    wire += k_soh;
+    wire += "9=999999999";
+    wire += k_soh;
+    wire += "35=D";
+    wire += k_soh;
+
+    const auto r = lob::fix::parse(bytes_of(wire));
+    CHECK(r.err == lob::fix::error::bad_body_length);
+}
+
+TEST_CASE("still reports incomplete for an in-range BodyLength short of bytes", "[fix]") {
+    std::string wire = "8=FIX.4.4";
+    wire += k_soh;
+    wire += "9=200";
+    wire += k_soh;
+    wire += "35=D";
+    wire += k_soh;
+
+    const auto r = lob::fix::parse(bytes_of(wire));
+    CHECK(r.err == lob::fix::error::incomplete);
+}
