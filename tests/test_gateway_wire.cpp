@@ -131,3 +131,21 @@ TEST_CASE("gateway acks rejected when the arena refuses to rest an order", "[gat
     CHECK(ack.filled == 0);
     CHECK(f.eng->book_view().bids().aggregate_at(10) == max_orders);
 }
+
+TEST_CASE("gateway acks killed for an IOC or FOK that executes nothing", "[gateway]") {
+    fixture f;
+
+    // Empty book: an IOC bid and an FOK bid both die without executing.
+    CHECK(f.apply(submit(1, 10, 5, 1)).status == lob_gateway::ack_killed);
+    CHECK(f.apply(submit(2, 10, 5, 2)).status == lob_gateway::ack_killed);
+    CHECK(!f.eng->book_view().bids().best().has_value());
+
+    // A GTC with no fill still acks accepted, because it rests.
+    CHECK(f.apply(submit(3, 10, 5, 0)).status == lob_gateway::ack_accepted);
+
+    // An FOK whose precheck fails dies killed, not accepted.
+    const lob_gateway::wire_order fok_ask{
+        .id = 4, .qty = 50, .px = 10, .new_px = 0, .op = 0, .side = 1, .tif = 2, .pad = 0};
+    CHECK(f.apply(fok_ask).status == lob_gateway::ack_killed);
+    CHECK(f.eng->book_view().bids().aggregate_at(10) == 5);
+}
