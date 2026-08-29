@@ -1,0 +1,103 @@
+#include <lob/config.hpp>
+#include <lob/engine.hpp>
+#include <lob/types.hpp>
+
+#include "../apps/gateway/wire.hpp"
+
+#include <cstdint>
+#include <memory>
+
+#include <catch2/catch_test_macros.hpp>
+
+namespace {
+
+constexpr std::size_t ticks = 64;
+constexpr std::size_t max_orders = 128;
+
+using engine_t = lob::engine<lob_gateway::accum_pub, ticks, max_orders>;
+
+struct fixture {
+    lob_gateway::accum_pub pub;
+    std::unique_ptr<engine_t> eng = std::make_unique<engine_t>(pub, lob::engine_config{});
+
+    lob_gateway::wire_ack apply(const lob_gateway::wire_order& wo) {
+        lob_gateway::wire_ack ack{};
+        lob_gateway::apply_order(*eng, pub, wo, ack);
+        return ack;
+    }
+};
+
+[[nodiscard]] lob_gateway::wire_order
+submit(std::uint64_t id, std::uint32_t px, std::uint64_t qty, std::uint8_t tif = 0) {
+    return lob_gateway::wire_order{
+        .id = id, .qty = qty, .px = px, .new_px = 0, .op = 0, .side = 0, .tif = tif, .pad = 0};
+}
+
+}  // namespace
+
+TEST_CASE("gateway rejects a submit with px at or beyond the tick ladder", "[gateway]") {
+    fixture f;
+    const auto seq_before = f.eng->last_seq();
+
+    for (const std::uint32_t px : {static_cast<std::uint32_t>(ticks),
+                                   static_cast<std::uint32_t>(ticks + 1),
+                                   std::uint32_t{0xffffffff}}) {
+        const auto ack = f.apply(submit(1, px, 5));
+        CHECK(ack.id == 1);
+        CHECK(ack.status == lob_gateway::ack_rejected);
+        CHECK(ack.filled == 0);
+    }
+
+    // The book is unmodified: no side has a best, no event consumed a seq,
+    // and the rejected id is not resting (a cancel of it is a no-op).
+    CHECK(!f.eng->book_view().bids().best().has_value());
+    CHECK(!f.eng->book_view().asks().best().has_value());
+    CHECK(f.eng->last_seq() == seq_before);
+}
+
+TEST_CASE("gateway rejects a modify with new_px at or beyond the tick ladder", "[gateway]") {
+    fixture f;
+    REQUIRE(f.apply(submit(7, 10, 5)).status == lob_gateway::ack_accepted);
+    const auto seq_before = f.eng->last_seq();
+
+    const lob_gateway::wire_order wo{
+        .id = 7, .qty = 5, .px = 0, .new_px = ticks, .op = 2, .side = 0, .tif = 0, .pad = 0};
+    const auto ack = f.apply(wo);
+    CHECK(ack.status == lob_gateway::ack_rejected);
+
+    // The resting order is untouched at its original price.
+    REQUIRE(f.eng->book_view().bids().best().has_value());
+    CHECK(*f.eng->book_view().bids().best() == 10);
+    CHECK(f.eng->book_view().bids().aggregate_at(10) == 5);
+    CHECK(f.eng->last_seq() == seq_before);
+}
+
+TEST_CASE("gateway rejects a submit with zero qty or an unknown tif", "[gateway]") {
+    fixture f;
+
+    CHECK(f.apply(submit(1, 10, 0)).status == lob_gateway::ack_rejected);
+    CHECK(f.apply(submit(2, 10, 5, 3)).status == lob_gateway::ack_rejected);
+    CHECK(f.apply(submit(3, 10, 5, 0xff)).status == lob_gateway::ack_rejected);
+
+    CHECK(!f.eng->book_view().bids().best().has_value());
+    CHECK(!f.eng->book_view().asks().best().has_value());
+}
+
+TEST_CASE("gateway accepts and dispatches a valid order stream", "[gateway]") {
+    fixture f;
+
+    // Resting ask, then a crossing bid that fills against it.
+    const lob_gateway::wire_order ask{
+        .id = 1, .qty = 5, .px = 10, .new_px = 0, .op = 0, .side = 1, .tif = 0, .pad = 0};
+    CHECK(f.apply(ask).status == lob_gateway::ack_accepted);
+
+    const auto ack = f.apply(submit(2, 10, 5, 1));
+    CHECK(ack.status == lob_gateway::ack_filled);
+    CHECK(ack.filled == 5);
+    CHECK(ack.last_px == 10);
+
+    // Cancel of an unknown id still acks as processed.
+    const lob_gateway::wire_order cxl{
+        .id = 99, .qty = 0, .px = 0, .new_px = 0, .op = 1, .side = 0, .tif = 0, .pad = 0};
+    CHECK(f.apply(cxl).status == lob_gateway::ack_processed);
+}

@@ -27,7 +27,8 @@ add_executable(
   test_shard_egress_runtime.cpp
   test_egress_merger.cpp
   test_publisher_sink.cpp
-  test_affinity.cpp)
+  test_affinity.cpp
+  test_gateway_wire.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(
   lob_tests
