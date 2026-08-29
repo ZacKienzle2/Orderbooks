@@ -20,6 +20,8 @@
 #include <lob/messages.hpp>
 #include <lob/types.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cerrno>
 #include <chrono>
 #include <cstddef>
@@ -31,6 +33,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -168,8 +171,53 @@ bool write_all(int fd, const void* buf, std::size_t n) noexcept {
     return true;
 }
 
+// Records staged per recv. One read fills the buffer with up to this many
+// orders, the engine runs all of them, and one write returns their acks, so a
+// pipelined client pays two syscalls per batch where a record-at-a-time loop
+// paid two per order. A closed-loop client that waits for each ack still works,
+// it simply fills one record per read and acks one per write.
+constexpr std::size_t io_batch = 256;
+
+// Decode one wire_order into its command, run it on the engine, and fill the
+// ack. Shared by the batched read loop so the dispatch lives in one place.
+void apply_order(lob::engine<accum_pub, ticks, max_orders>& eng,
+                 accum_pub& pub,
+                 const wire_order& wo,
+                 wire_ack& ack) noexcept {
+    pub.reset();
+    std::uint32_t status = 0;
+    switch (wo.op) {
+    case 0:
+        eng.on_submit(lob::submit_msg{.id = wo.id,
+                                      .px = wo.px,
+                                      .qty = wo.qty,
+                                      .s = wo.side == 0 ? lob::side::bid : lob::side::ask,
+                                      .t = static_cast<lob::tif>(wo.tif),
+                                      ._pad = 0,
+                                      .account_id = 0});
+        status = pub.filled > 0 ? 1U : 0U;
+        break;
+    case 1:
+        eng.on_cancel(lob::cancel_msg{.id = wo.id});
+        status = 2;
+        break;
+    default:
+        eng.on_modify(lob::modify_msg{.id = wo.id, .new_px = wo.new_px, .new_qty = wo.qty});
+        status = 2;
+        break;
+    }
+    ack = wire_ack{.id = wo.id, .filled = pub.filled, .last_px = pub.last_px, .status = status};
+}
+
 // Reads orders from one connection, runs each through the engine, and writes an
 // ack per order. Returns when the peer closes the connection.
+//
+// One recv stages as many whole orders as the socket has ready, the engine runs
+// the whole batch, and one write returns every ack. A recv can split the final
+// order across a buffer boundary, so the trailing partial-record bytes carry to
+// the front of the buffer and complete on the next read. Order is preserved, so
+// a resting order still rests before the order that crosses it in the same
+// batch.
 void serve_connection(int fd) {
     // Without TCP_NODELAY the ack write would wait on Nagle and delayed-ack,
     // adding tens of milliseconds to every round trip.
@@ -179,33 +227,36 @@ void serve_connection(int fd) {
     accum_pub pub;
     const auto eng =
         std::make_unique<lob::engine<accum_pub, ticks, max_orders>>(pub, lob::engine_config{});
-    wire_order wo{};
-    while (read_all(fd, &wo, sizeof wo)) {
-        pub.reset();
-        std::uint32_t status = 0;
-        switch (wo.op) {
-        case 0:
-            eng->on_submit(lob::submit_msg{.id = wo.id,
-                                           .px = wo.px,
-                                           .qty = wo.qty,
-                                           .s = wo.side == 0 ? lob::side::bid : lob::side::ask,
-                                           .t = static_cast<lob::tif>(wo.tif),
-                                           ._pad = 0,
-                                           .account_id = 0});
-            status = pub.filled > 0 ? 1U : 0U;
-            break;
-        case 1:
-            eng->on_cancel(lob::cancel_msg{.id = wo.id});
-            status = 2;
-            break;
-        default:
-            eng->on_modify(lob::modify_msg{.id = wo.id, .new_px = wo.new_px, .new_qty = wo.qty});
-            status = 2;
-            break;
+
+    std::array<std::uint8_t, io_batch * sizeof(wire_order)> rbuf{};
+    std::array<wire_ack, io_batch> acks{};
+    std::size_t carry = 0;  // trailing partial-record bytes held at rbuf front
+
+    for (;;) {
+        const auto r = ::read(fd, rbuf.data() + carry, rbuf.size() - carry);
+        if (r == 0)
+            return;  // peer closed
+        if (r < 0) {
+            if (would_block(errno)) {
+                cpu_relax();
+                continue;
+            }
+            return;
         }
-        const wire_ack ack{
-            .id = wo.id, .filled = pub.filled, .last_px = pub.last_px, .status = status};
-        if (!write_all(fd, &ack, sizeof ack))
+        const std::size_t avail = carry + static_cast<std::size_t>(r);
+        std::size_t off = 0;
+        std::size_t n = 0;
+        while (avail - off >= sizeof(wire_order)) {
+            wire_order wo{};
+            std::memcpy(&wo, rbuf.data() + off, sizeof wo);
+            off += sizeof(wire_order);
+            apply_order(*eng, pub, wo, acks[n]);
+            ++n;
+        }
+        carry = avail - off;
+        if (carry > 0)
+            std::memmove(rbuf.data(), rbuf.data() + off, carry);
+        if (n > 0 && !write_all(fd, acks.data(), n * sizeof(wire_ack)))
             return;
     }
 }
@@ -304,9 +355,90 @@ int run_client(std::uint16_t port, std::uint64_t orders) {
     return correct ? 0 : 1;
 }
 
+// Connects to the local gateway and drives the same resting-ask, crossing-bid
+// workload as run_client, but pipelined: a window of orders is written in one
+// batch and the matching window of acks is read back, so the gateway stages the
+// whole window in one recv and returns its acks in one write. This is the path
+// the batched serve_connection is built for, and it measures sustained wire
+// throughput rather than the one-in-flight round trip. The window is bounded so
+// the in-flight bytes stay well inside the socket buffers and the two sides
+// never deadlock writing to each other.
+int run_pipeline_client(std::uint16_t port, std::uint64_t orders, std::size_t window) {
+    const int cfd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (cfd < 0)
+        return 1;
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    while (::connect(cfd, reinterpret_cast<const sockaddr*>(&addr), sizeof addr) != 0) {  // NOLINT
+        std::this_thread::yield();
+    }
+    const int one = 1;
+    ::setsockopt(cfd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
+    set_nonblocking(cfd);
+
+    const std::uint64_t pairs = orders / 2;
+    const std::size_t win = window == 0 ? 1 : window;
+    lob::order_id_t next = 1;
+    std::uint64_t submitted = 0;
+    std::uint64_t fills = 0;
+    std::vector<wire_order> obuf;
+    std::vector<wire_ack> abuf;
+    const auto wall0 = std::chrono::steady_clock::now();
+    for (std::uint64_t done = 0; done < pairs;) {
+        const std::uint64_t w = std::min<std::uint64_t>(win, pairs - done);
+        obuf.clear();
+        for (std::uint64_t i = 0; i < w; ++i) {
+            obuf.push_back(wire_order{.id = next++,
+                                      .qty = 1,
+                                      .px = mid,
+                                      .new_px = 0,
+                                      .op = 0,
+                                      .side = 1,
+                                      .tif = 0,
+                                      .pad = 0});
+            obuf.push_back(wire_order{.id = next++,
+                                      .qty = 1,
+                                      .px = mid,
+                                      .new_px = 0,
+                                      .op = 0,
+                                      .side = 0,
+                                      .tif = 1,
+                                      .pad = 0});
+        }
+        if (!write_all(cfd, obuf.data(), obuf.size() * sizeof(wire_order)))
+            break;
+        abuf.resize(obuf.size());
+        if (!read_all(cfd, abuf.data(), abuf.size() * sizeof(wire_ack)))
+            break;
+        for (const wire_ack& a : abuf)
+            fills += a.filled;
+        submitted += obuf.size();
+        done += w;
+    }
+    const auto wall1 = std::chrono::steady_clock::now();
+    ::close(cfd);
+
+    const double secs = std::chrono::duration<double>(wall1 - wall0).count();
+    const bool correct = fills == pairs;
+    std::printf("correctness: %llu of %llu crossing bids filled [%s]\n",
+                static_cast<unsigned long long>(fills),
+                static_cast<unsigned long long>(pairs),
+                correct ? "OK" : "MISMATCH");
+    std::printf(
+        "wire throughput: orders=%llu  wall=%.3fs  %.3f Morders/s (pipelined, window=%zu)\n",
+        static_cast<unsigned long long>(submitted),
+        secs,
+        static_cast<double>(submitted) / secs / 1e6,
+        win);
+    return correct ? 0 : 1;
+}
+
 struct args {
     std::uint64_t orders{50'000};
     int listen_port{-1};
+    std::size_t pipeline{0};  // 0 = closed loop; >0 = pipelined window in pairs
     bool help{false};
 };
 
@@ -318,6 +450,8 @@ args parse_args(int argc, char** argv) {
             a.orders = std::strtoull(argv[++i], nullptr, 10);
         } else if (s == "--listen" && i + 1 < argc) {
             a.listen_port = static_cast<int>(std::strtol(argv[++i], nullptr, 10));
+        } else if (s == "--pipeline" && i + 1 < argc) {
+            a.pipeline = static_cast<std::size_t>(std::strtoull(argv[++i], nullptr, 10));
         } else if (s == "--help") {
             a.help = true;
         }
@@ -330,9 +464,10 @@ args parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     const args a = parse_args(argc, argv);
     if (a.help) {
-        std::printf("usage: lob_gateway [--orders N] [--listen PORT]\n"
-                    "  --orders N    orders for the self-test (default 2000000)\n"
-                    "  --listen PORT serve connections on PORT instead of self-testing\n");
+        std::printf("usage: lob_gateway [--orders N] [--listen PORT] [--pipeline W]\n"
+                    "  --orders N    orders for the self-test (default 50000)\n"
+                    "  --listen PORT serve connections on PORT instead of self-testing\n"
+                    "  --pipeline W  self-test with a pipelined client, window W pairs\n");
         return 0;
     }
 
@@ -369,7 +504,8 @@ int main(int argc, char** argv) {
             ::close(cfd);
         }
     });
-    const int rc = run_client(port, a.orders);
+    const int rc = a.pipeline > 0 ? run_pipeline_client(port, a.orders, a.pipeline)
+                                  : run_client(port, a.orders);
     server.join();
     ::close(lfd);
     return rc;
