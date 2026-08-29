@@ -25,13 +25,6 @@ concept publisher = requires(P p,
     { p.publish(rj) } noexcept -> std::same_as<void>;
 };
 
-// clock_source: monotonic sequence-stamp provider. Engine assigns seq_t to
-// every event from this source.
-template <class C>
-concept clock_source = requires(C c) {
-    { c.now() } noexcept -> std::same_as<seq_t>;
-};
-
 // snapshot_sink / snapshot_source live in <lob/snapshot.hpp> alongside the
 // wire format they describe.
 

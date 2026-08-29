@@ -99,14 +99,6 @@ class shard_router {
         return *engines_[shard_index_for(sym)];
     }
 
-    // SplitMix64: cheap full-avalanche hash. Plenty of distribution quality
-    // for power-of-two-modulus sharding; one mul + two xor-shifts per call.
-    [[nodiscard]] static constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
-        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
-        x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
-        return x ^ (x >> 31);
-    }
-
     // Records the thread id of the first dispatch call and asserts every
     // subsequent dispatch comes from the same thread. Debug-only: the
     // router is single-threaded by contract, but nothing else enforces it.
