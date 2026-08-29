@@ -13,12 +13,25 @@
 
 namespace lob {
 
+namespace detail {
+
+// Probe callable that spells the poll_batch requirement in the concept below.
+struct egress_event_probe {
+    void operator()(const event&) const noexcept {}
+};
+
+}  // namespace detail
+
 // A source of per-shard egress events. shard_egress_runtime is the canonical
-// model: try_poll pops one event from a shard's ring, and shard_count reports
-// how many shards there are.
+// model. try_poll pops one event from a shard's ring, poll_batch claims up to
+// max_n events from one ring in a single cursor claim, and shard_count
+// reports how many shards there are.
 template <class S>
 concept multi_egress_source = requires(S s, event& e) {
     { s.try_poll(std::size_t{0}, e) } noexcept -> std::same_as<bool>;
+    {
+        s.poll_batch(std::size_t{0}, 0U, detail::egress_event_probe{})
+    } noexcept -> std::same_as<unsigned>;
     { S::shard_count() } -> std::convertible_to<std::size_t>;
 };
 
@@ -36,6 +49,12 @@ struct merger_config {
     bool pin_thread{true};
     std::size_t core{0};
     unsigned spin_budget{1024};
+    // Upper bound on events claimed from one shard per round. The bound keeps
+    // the merge fair. An unbounded drain holds the round on one deep ring
+    // while later shards' events age behind it, so latency on shard n scales
+    // with the queue depth of shards 0..n-1, and the merged stream batches by
+    // shard rather than interleaving by arrival.
+    unsigned batch_max{64};
 };
 
 // Single-threaded fan-in over the per-shard egress rings of a runtime.
@@ -76,6 +95,11 @@ class egress_merger {
             return;
         }
         stop_.store(true, std::memory_order_release);
+        // join() can throw system_error only for a self-join deadlock or an
+        // invalid handle. joinable() rules out the latter, and calling stop()
+        // from the merger thread itself is a contract violation, so an escape
+        // through this noexcept boundary terminating the process is the
+        // intended fail-fast rather than a leak of a recoverable error.
         worker_.join();
     }
 
@@ -92,17 +116,16 @@ class egress_merger {
         }
         (void)set_this_thread_name("lob-merger");
 
-        event e;
         unsigned idle = 0;
         for (;;) {
-            if (drain_round_(e)) {
+            if (drain_round_()) {
                 idle = 0;
                 continue;
             }
             if (stop_.load(std::memory_order_acquire)) {
                 // Producers quiesced before stop, so the acquire makes every
                 // published event visible; drain each ring to empty and exit.
-                while (drain_round_(e)) {}
+                while (drain_round_()) {}
                 return;
             }
             if (idle < cfg_.spin_budget) {
@@ -114,12 +137,18 @@ class egress_merger {
         }
     }
 
-    bool drain_round_(event& e) noexcept {
+    // One fairness round over the shards. Each shard yields at most batch_max
+    // events per round, claimed and retired with a single ring cursor update,
+    // so a backlogged shard cannot stall the shards behind it and the merged
+    // stream interleaves by round rather than draining shard by shard.
+    bool drain_round_() noexcept {
         bool any = false;
         for (std::size_t s = 0; s < Source::shard_count(); ++s) {
-            while (src_->try_poll(s, e)) {
+            const auto n = src_->poll_batch(s, cfg_.batch_max, [this](const event& e) noexcept {
                 sink_->on_event(e, seq_);
                 ++seq_;
+            });
+            if (n > 0) {
                 merged_.store(seq_, std::memory_order_relaxed);
                 any = true;
             }
