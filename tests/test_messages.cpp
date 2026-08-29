@@ -14,6 +14,8 @@ TEST_CASE("outbound event POD widths", "[messages]") {
     STATIC_REQUIRE(std::is_trivially_copyable_v<lob::fill_msg>);
     STATIC_REQUIRE(std::is_trivially_copyable_v<lob::top_msg>);
     STATIC_REQUIRE(std::is_trivially_copyable_v<lob::trade_msg>);
+    STATIC_REQUIRE(std::is_trivially_copyable_v<lob::self_trade_msg>);
+    STATIC_REQUIRE(std::is_trivially_copyable_v<lob::reject_msg>);
 }
 
 TEST_CASE("command tagged union dispatch", "[messages]") {
@@ -31,6 +33,11 @@ TEST_CASE("command tagged union dispatch", "[messages]") {
     REQUIRE(mod.k == lob::command::kind::modify);
     REQUIRE(mod.body.modify.new_px == 200);
     REQUIRE(mod.body.modify.new_qty == 10);
+    REQUIRE(mod.body.modify.new_id == 0);
+
+    const auto chained =
+        lob::command::make_modify({.id = 7, .new_px = 200, .new_qty = 10, .new_id = 8});
+    REQUIRE(chained.body.modify.new_id == 8);
 }
 
 TEST_CASE("event tagged union dispatch", "[messages]") {
@@ -49,6 +56,21 @@ TEST_CASE("event tagged union dispatch", "[messages]") {
     const auto tr = lob::event::make_trade({.px = 100, .qty = 5, .seq = 44});
     REQUIRE(tr.k == lob::event::kind::trade);
     REQUIRE(tr.body.trade.px == 100);
+
+    const auto st = lob::event::make_self_trade(
+        {.aggressor = 3, .resting = 4, .account = 6, .px = 100, .qty = 2, .seq = 45});
+    REQUIRE(st.k == lob::event::kind::self_trade);
+    REQUIRE(st.body.self_trade.account == 6);
+
+    const auto rj = lob::event::make_reject({.id = 5,
+                                             .account = 6,
+                                             .px = 100,
+                                             .qty = 7,
+                                             .reason = lob::reject_reason::arena_full,
+                                             .seq = 46});
+    REQUIRE(rj.k == lob::event::kind::reject);
+    REQUIRE(rj.body.reject.qty == 7);
+    REQUIRE(rj.body.reject.reason == lob::reject_reason::arena_full);
 }
 
 TEST_CASE("command and event are trivially copyable for SPSC transport", "[messages]") {

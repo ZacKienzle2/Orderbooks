@@ -58,6 +58,22 @@ TEST_CASE("json_recorder encodes self_trade_msg", "[json_recorder]") {
         "\n");
 }
 
+TEST_CASE("json_recorder encodes reject_msg", "[json_recorder]") {
+    std::ostringstream out;
+    lob::json_recorder rec{out};
+    rec.publish(lob::reject_msg{
+        .id = 21,
+        .account = 4,
+        .px = 55,
+        .qty = 8,
+        .reason = lob::reject_reason::arena_full,
+        .seq = 12,
+    });
+    REQUIRE(out.str() ==
+            R"({"kind":"reject","seq":12,"id":21,"account":4,"px":55,"qty":8,"reason":0})"
+            "\n");
+}
+
 TEST_CASE("json_recorder encodes max-width fields without overflow", "[json_recorder]") {
     constexpr auto max64 = std::numeric_limits<std::uint64_t>::max();
     constexpr auto max_tick = std::numeric_limits<lob::tick_t>::max();
