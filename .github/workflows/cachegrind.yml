@@ -46,6 +46,9 @@ jobs:
         env:
           OPS: ${{ inputs.ops }}
           DEPTH: ${{ inputs.depth }}
+          # The runner's clang cannot always find the gcc toolchain's libstdc++
+          # headers; g++ is self-consistent with its own standard library.
+          CXX: g++
         run: |
           set -euo pipefail
           scripts/profile.sh --plugin cachegrind --ops "${OPS}" --depth "${DEPTH}" \
