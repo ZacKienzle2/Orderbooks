@@ -32,8 +32,9 @@ static_assert(sizeof(wire_order) == 32);
 static_assert(std::is_trivially_copyable_v<wire_order>);
 
 // Gateway -> client. One per order. filled and last_px summarise the order's
-// fills; status is 0 accepted, 1 filled, 2 cancel or modify processed, 3
-// rejected by validation with the book untouched.
+// fills; status is 0 accepted (resting), 1 filled (partially or fully, see
+// filled), 2 cancel or modify processed, 3 rejected with the book untouched,
+// 4 killed (an IOC or FOK that executed nothing and rests nothing).
 struct wire_ack {
     std::uint64_t id;
     std::uint64_t filled;
@@ -45,6 +46,7 @@ constexpr std::uint32_t ack_accepted = 0;
 constexpr std::uint32_t ack_filled = 1;
 constexpr std::uint32_t ack_processed = 2;
 constexpr std::uint32_t ack_rejected = 3;
+constexpr std::uint32_t ack_killed = 4;
 
 static_assert(sizeof(wire_ack) == 24);
 static_assert(std::is_trivially_copyable_v<wire_ack>);
@@ -120,7 +122,15 @@ void apply_order(lob::engine<accum_pub, Ticks, MaxOrders>& eng,
                                       .t = static_cast<lob::tif>(wo.tif),
                                       ._pad = 0,
                                       .account_id = 0});
-        status = pub.filled > 0 ? ack_filled : ack_accepted;
+        if (pub.filled > 0) {
+            status = ack_filled;
+        } else if (wo.tif != 0) {
+            // An IOC or FOK that executed nothing rests nothing; acking it
+            // "accepted" would read as a resting order that does not exist.
+            status = ack_killed;
+        } else {
+            status = ack_accepted;
+        }
         break;
     case 1:
         eng.on_cancel(lob::cancel_msg{.id = wo.id});
