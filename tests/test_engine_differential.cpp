@@ -157,6 +157,18 @@ void compare_self_trades(const std::vector<lob::self_trade_msg>& a,
     }
 }
 
+void compare_rejects(const std::vector<lob::reject_msg>& a, const std::vector<lob::reject_msg>& b) {
+    REQUIRE(a.size() == b.size());
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        REQUIRE(a[i].id == b[i].id);
+        REQUIRE(a[i].account == b[i].account);
+        REQUIRE(a[i].px == b[i].px);
+        REQUIRE(a[i].qty == b[i].qty);
+        REQUIRE(a[i].reason == b[i].reason);
+        REQUIRE(a[i].seq == b[i].seq);
+    }
+}
+
 void compare_tops(const std::vector<lob::top_msg>& a, const std::vector<lob::top_msg>& b) {
     REQUIRE(a.size() == b.size());
     for (std::size_t i = 0; i < a.size(); ++i) {
@@ -184,7 +196,7 @@ TEST_CASE("engine matches reference on random streams (no self-cross)", "[engine
 
     pub_t pub;
     fast_t fast{pub, lob::engine_config{}};
-    ref_t ref{lob::engine_config{}};
+    ref_t ref{lob::engine_config{}, max_ord};
 
     gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/0);  // account_id == 0 => engine skips self-cross dispatch
@@ -192,6 +204,7 @@ TEST_CASE("engine matches reference on random streams (no self-cross)", "[engine
     compare_fills(pub.fills, ref.fills);
     compare_trades(pub.trades, ref.trades);
     compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
     compare_tops(pub.tops, ref.tops);
     compare_book_state(fast, ref);
 }
@@ -202,7 +215,7 @@ TEST_CASE("engine matches reference under self_cross cancel_newest",
 
     pub_t pub;
     fast_t fast{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
-    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}};
+    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::cancel_newest}, max_ord};
 
     gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/4);
@@ -210,6 +223,7 @@ TEST_CASE("engine matches reference under self_cross cancel_newest",
     compare_fills(pub.fills, ref.fills);
     compare_trades(pub.trades, ref.trades);
     compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
     compare_tops(pub.tops, ref.tops);
     compare_book_state(fast, ref);
 }
@@ -220,7 +234,7 @@ TEST_CASE("engine matches reference under self_cross cancel_oldest",
 
     pub_t pub;
     fast_t fast{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
-    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}, max_ord};
 
     gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/4);
@@ -228,6 +242,7 @@ TEST_CASE("engine matches reference under self_cross cancel_oldest",
     compare_fills(pub.fills, ref.fills);
     compare_trades(pub.trades, ref.trades);
     compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
     compare_tops(pub.tops, ref.tops);
     compare_book_state(fast, ref);
 }
@@ -238,7 +253,7 @@ TEST_CASE("engine matches reference under self_cross decrement_trade",
 
     pub_t pub;
     fast_t fast{pub, lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
-    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}};
+    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::decrement_trade}, max_ord};
 
     gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
     replay(fast, ref, g, /*n_accounts=*/4);
@@ -246,6 +261,65 @@ TEST_CASE("engine matches reference under self_cross decrement_trade",
     compare_fills(pub.fills, ref.fills);
     compare_trades(pub.trades, ref.trades);
     compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
+    compare_tops(pub.tops, ref.tops);
+    compare_book_state(fast, ref);
+}
+
+TEST_CASE("engine matches reference at arena capacity", "[engine][differential][reject]") {
+    // Bids and asks in disjoint bands never cross, so the book only grows
+    // and the resting population passes MaxOrders. Both engines must reject
+    // the same residuals with the same stamps; the crossing mixes above
+    // never exhaust the arena, so without this case the reject seam has no
+    // differential coverage.
+    auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL);
+
+    pub_t pub;
+    fast_t fast{pub, lob::engine_config{}};
+    ref_t ref{lob::engine_config{}, max_ord};
+
+    std::mt19937_64 rng{seed};
+    std::uniform_int_distribution<lob::tick_t> bid_px{0, 100};
+    std::uniform_int_distribution<lob::tick_t> ask_px{156, ticks - 1};
+    std::uniform_int_distribution<lob::qty_t> qty{1, 50};
+    std::uniform_int_distribution<int> side_dist{0, 1};
+    std::uniform_int_distribution<int> op_dist{0, 9};
+
+    std::vector<lob::order_id_t> live;
+    lob::order_id_t next_id = 1;
+    for (std::size_t i = 0; i < 1'000; ++i) {
+        if (!live.empty() && op_dist(rng) == 0) {
+            std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
+            const auto k = pick(rng);
+            const lob::cancel_msg m{.id = live[k]};
+            live[k] = live.back();
+            live.pop_back();
+            fast.on_cancel(m);
+            ref.on_cancel(m);
+        } else {
+            const bool is_bid = side_dist(rng) == 0;
+            const lob::submit_msg m{
+                .id = next_id++,
+                .px = is_bid ? bid_px(rng) : ask_px(rng),
+                .qty = qty(rng),
+                .s = is_bid ? lob::side::bid : lob::side::ask,
+                .t = lob::tif::gtc,
+                ._pad = 0,
+                .account_id = 0,
+            };
+            live.push_back(m.id);
+            fast.on_submit(m);
+            ref.on_submit(m);
+        }
+    }
+
+    // The stream must actually have exhausted the arena, or this case
+    // proves nothing.
+    REQUIRE(pub.rejects.size() > 0);
+    compare_fills(pub.fills, ref.fills);
+    compare_trades(pub.trades, ref.trades);
+    compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
     compare_tops(pub.tops, ref.tops);
     compare_book_state(fast, ref);
 }

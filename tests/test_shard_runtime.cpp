@@ -30,6 +30,8 @@ struct null_publisher {
     void publish(const lob::trade_msg&) noexcept {}
 
     void publish(const lob::self_trade_msg&) noexcept {}
+
+    void publish(const lob::reject_msg&) noexcept {}
 };
 
 // Thread-safe tally. Worker threads call publish concurrently, so the
@@ -39,6 +41,7 @@ struct counting_publisher {
     std::atomic<std::size_t> tops{0};
     std::atomic<std::size_t> trades{0};
     std::atomic<std::size_t> self_trades{0};
+    std::atomic<std::size_t> rejects{0};
 
     void publish(const lob::fill_msg&) noexcept { fills.fetch_add(1, std::memory_order_relaxed); }
 
@@ -48,6 +51,10 @@ struct counting_publisher {
 
     void publish(const lob::self_trade_msg&) noexcept {
         self_trades.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    void publish(const lob::reject_msg&) noexcept {
+        rejects.fetch_add(1, std::memory_order_relaxed);
     }
 };
 

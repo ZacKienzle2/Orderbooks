@@ -117,3 +117,17 @@ TEST_CASE("gateway rejects quantities above the configured cap", "[gateway]") {
     CHECK(f.apply(big_modify).status == lob_gateway::ack_rejected);
     CHECK(f.eng->book_view().bids().aggregate_at(10) == cap);
 }
+
+TEST_CASE("gateway acks rejected when the arena refuses to rest an order", "[gateway]") {
+    fixture f;
+
+    // Fill the arena to MaxOrders resting bids, then the next submit that
+    // must rest cannot, and the ack must say so rather than "accepted".
+    for (std::uint64_t id = 1; id <= max_orders; ++id) {
+        REQUIRE(f.apply(submit(id, 10, 1)).status == lob_gateway::ack_accepted);
+    }
+    const auto ack = f.apply(submit(max_orders + 1, 10, 1));
+    CHECK(ack.status == lob_gateway::ack_rejected);
+    CHECK(ack.filled == 0);
+    CHECK(f.eng->book_view().bids().aggregate_at(10) == max_orders);
+}

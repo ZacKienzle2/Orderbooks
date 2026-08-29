@@ -87,6 +87,25 @@ struct self_trade_msg {
 
 static_assert(std::is_trivially_copyable_v<self_trade_msg>);
 
+enum class reject_reason : std::uint8_t {
+    arena_full = 0,
+};
+
+// Emitted when a submit's residual (or the resubmit leg of a crossing
+// modify) cannot rest. qty is the residual quantity lost. Without this
+// event the residual vanished silently and a gateway acked the order as
+// accepted while the book held none of it.
+struct reject_msg {
+    order_id_t id;
+    account_id_t account;
+    tick_t px;
+    qty_t qty;
+    reject_reason reason;
+    seq_t seq;
+};
+
+static_assert(std::is_trivially_copyable_v<reject_msg>);
+
 // ---------- Tagged unions for ring transport ----------
 
 struct command {
@@ -127,7 +146,7 @@ struct command {
 static_assert(std::is_trivially_copyable_v<command>);
 
 struct event {
-    enum class kind : std::uint8_t { fill = 0, top = 1, trade = 2, self_trade = 3 };
+    enum class kind : std::uint8_t { fill = 0, top = 1, trade = 2, self_trade = 3, reject = 4 };
 
     kind k;
 
@@ -136,6 +155,7 @@ struct event {
         top_msg top;
         trade_msg trade;
         self_trade_msg self_trade;
+        reject_msg reject;
 
         body_t() noexcept : fill{} {}
     } body;
@@ -165,6 +185,13 @@ struct event {
         event e;
         e.k = kind::self_trade;
         e.body.self_trade = m;
+        return e;
+    }
+
+    [[nodiscard]] static event make_reject(reject_msg m) noexcept {
+        event e;
+        e.k = kind::reject;
+        e.body.reject = m;
         return e;
     }
 };

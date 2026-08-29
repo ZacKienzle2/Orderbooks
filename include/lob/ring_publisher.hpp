@@ -46,6 +46,8 @@ class ring_publisher {
 
     void publish(const self_trade_msg& m) noexcept { push_(event::make_self_trade(m)); }
 
+    void publish(const reject_msg& m) noexcept { push_(event::make_reject(m)); }
+
     // Number of events dropped because the ring was full at publish time.
     [[nodiscard]] std::uint64_t dropped() const noexcept {
         return dropped_.load(std::memory_order_relaxed);

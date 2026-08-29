@@ -119,6 +119,26 @@ class json_recorder {
         out_.write(buf.data(), p - buf.data());
     }
 
+    void publish(const reject_msg& m) noexcept {
+        std::array<char, 384> buf{};
+        char* p = buf.data();
+        constexpr std::string_view head{R"({"kind":"reject","seq":)"};
+        p = append_(p, head);
+        p = append_num_(p, m.seq);
+        p = append_(p, R"(,"id":)");
+        p = append_num_(p, m.id);
+        p = append_(p, R"(,"account":)");
+        p = append_num_(p, m.account);
+        p = append_(p, R"(,"px":)");
+        p = append_num_(p, m.px);
+        p = append_(p, R"(,"qty":)");
+        p = append_num_(p, m.qty);
+        p = append_(p, R"(,"reason":)");
+        p = append_num_(p, static_cast<std::uint32_t>(m.reason));
+        p = append_(p, "}\n");
+        out_.write(buf.data(), p - buf.data());
+    }
+
   private:
     static char* append_(char* p, std::string_view s) noexcept {
         std::memcpy(p, s.data(), s.size());

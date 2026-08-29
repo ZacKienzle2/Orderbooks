@@ -22,6 +22,8 @@ struct noop_publisher {
     void publish(const lob::trade_msg&) noexcept {}
 
     void publish(const lob::self_trade_msg&) noexcept {}
+
+    void publish(const lob::reject_msg&) noexcept {}
 };
 
 constexpr std::size_t bench_ticks = 1U << 14;       // 16k tick ladder
