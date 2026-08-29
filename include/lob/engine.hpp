@@ -122,6 +122,14 @@ class engine {
             if (m.new_qty == o->remaining)
                 return;  // no-op beyond any id chain applied above
             // Qty-only fast path. Mutate the level aggregate in place.
+            //
+            // Spec choice, deliberate: a quantity change at the same price
+            // KEEPS time priority in both directions. Nasdaq and CME demote
+            // an increase to the back of the queue; this engine does not,
+            // because demotion turns the O(1) in-place mutation into an
+            // unlink and relink and the venues that demote do so as market
+            // policy, not matching necessity. A gateway targeting such a
+            // venue's semantics should send cancel + resubmit for increases.
             if (s == side::bid) {
                 auto& lvl = book_.bids().level_at(o->px);
                 lvl.aggregate = lvl.aggregate - o->remaining + m.new_qty;
