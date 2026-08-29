@@ -3,6 +3,8 @@
 #include <lob/shard_egress_runtime.hpp>
 #include <lob/types.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -36,6 +38,34 @@ lob::submit_msg sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::sid
     return {.id = id, .px = px, .qty = qty, .s = s, .t = lob::tif::gtc, ._pad = 0, .account_id = 0};
 }
 
+// Deterministic two-shard source preloaded before the merger starts, so the
+// merged order depends only on the merger's round schedule, never on producer
+// timing. Events are trade_msg records tagged with (shard in px, index in
+// qty) so the sink can reconstruct which shard each event came from.
+struct preloaded_source {
+    std::array<std::vector<lob::event>, 2> queues;
+    std::array<std::size_t, 2> heads{};
+
+    [[nodiscard]] bool try_poll(std::size_t s, lob::event& out) noexcept {
+        if (heads[s] >= queues[s].size())
+            return false;
+        out = queues[s][heads[s]++];
+        return true;
+    }
+
+    template <class F>
+    [[nodiscard]] unsigned poll_batch(std::size_t s, unsigned max_n, F fn) noexcept {
+        unsigned n = 0;
+        while (n < max_n && heads[s] < queues[s].size()) {
+            fn(queues[s][heads[s]++]);
+            ++n;
+        }
+        return n;
+    }
+
+    [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return 2; }
+};
+
 }  // namespace
 
 TEST_CASE("egress_merger forwards a crossing's events with a gap-free sequence", "[merger]") {
@@ -67,6 +97,49 @@ TEST_CASE("egress_merger forwards a crossing's events with a gap-free sequence",
     REQUIRE(merger.merged() == sink.events.size());
     for (std::size_t i = 0; i < sink.seqs.size(); ++i) {
         REQUIRE(sink.seqs[i] == i);
+    }
+}
+
+TEST_CASE("egress_merger interleaves backlogged shards in bounded batches", "[merger]") {
+    constexpr unsigned batch_max = 4;
+    constexpr std::size_t per_shard = 10;
+
+    preloaded_source src;
+    for (std::size_t s = 0; s < 2; ++s) {
+        for (std::size_t i = 0; i < per_shard; ++i) {
+            src.queues[s].push_back(lob::event::make_trade(lob::trade_msg{
+                .px = static_cast<lob::tick_t>(s), .qty = static_cast<lob::qty_t>(i), .seq = 0}));
+        }
+    }
+
+    recording_sink sink;
+    sink.events.reserve(2 * per_shard);
+    sink.seqs.reserve(2 * per_shard);
+    lob::egress_merger<preloaded_source, recording_sink> merger{
+        src, sink, lob::merger_config{.pin_thread = false, .batch_max = batch_max}};
+    merger.start();
+    merger.stop();
+
+    REQUIRE(sink.events.size() == 2 * per_shard);
+    // Both queues were full when the merger started, so every round claims
+    // batch_max from shard 0 then batch_max from shard 1. A drain-to-empty
+    // merger would instead emit all of shard 0 before any of shard 1.
+    std::array<std::size_t, 2> next{};
+    std::size_t i = 0;
+    while (i < sink.events.size()) {
+        for (std::size_t s = 0; s < 2; ++s) {
+            const auto run = std::min<std::size_t>(batch_max, per_shard - next[s]);
+            for (std::size_t j = 0; j < run; ++j, ++i) {
+                REQUIRE(static_cast<std::size_t>(sink.events[i].body.trade.px) == s);
+                REQUIRE(sink.events[i].body.trade.qty == next[s]);
+                ++next[s];
+            }
+        }
+    }
+    REQUIRE(next[0] == per_shard);
+    REQUIRE(next[1] == per_shard);
+    for (std::size_t k = 0; k + 1 < sink.events.size(); ++k) {
+        REQUIRE(sink.seqs[k + 1] == sink.seqs[k] + 1);
     }
 }
 

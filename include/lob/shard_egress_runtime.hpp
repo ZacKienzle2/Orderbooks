@@ -113,6 +113,16 @@ class shard_egress_runtime {
         return egress_[shard_idx].try_pop(out);
     }
 
+    // Consume up to max_n events from one shard's egress ring in a single
+    // cursor claim, invoking fn with each event in FIFO order and returning
+    // the count consumed. One release store retires the whole batch, where a
+    // try_poll loop pays one per event. Same single-consumer-per-shard
+    // contract as try_poll, and fn must not re-enter the ring.
+    template <class F>
+    [[nodiscard]] unsigned poll_batch(std::size_t shard_idx, unsigned max_n, F fn) noexcept {
+        return egress_[shard_idx].consume_batch(max_n, fn);
+    }
+
     // Block the producer thread until every command pushed so far has been
     // processed by its worker. See shard_runtime::drain for the ordering
     // argument; the acquire load that observes the final count synchronises
