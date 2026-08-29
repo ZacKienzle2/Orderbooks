@@ -75,3 +75,17 @@ TEST_CASE("latency_histogram reset clears all state", "[histogram]") {
     REQUIRE(h.value_at_percentile(50.0) == 0);
     REQUIRE(h.mean() <= 0.0);
 }
+
+TEST_CASE("latency_histogram honours a cap below the resolution floor", "[histogram]") {
+    // A cap smaller than the sub-bucket count used to be silently raised to
+    // the bucket layout's floor, so max() exceeded the configured maximum
+    // and overflow never counted in that band.
+    lob::latency_histogram h{100, 3};
+    h.record(50);
+    h.record(150);
+    h.record(1'000'000);
+    REQUIRE(h.count() == 3);
+    REQUIRE(h.overflow_count() == 2);
+    REQUIRE(h.max() == 100);
+    REQUIRE(h.value_at_percentile(50.0) >= 100);
+}

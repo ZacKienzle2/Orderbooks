@@ -41,20 +41,27 @@ class latency_histogram {
         sub_bucket_mask_ = sub_bucket_count_ - 1;
         leading_zero_count_base_ = 64U - sub_bucket_count_magnitude_;
 
-        highest_ = highest_trackable_value < sub_bucket_count_ ? sub_bucket_count_
-                                                               : highest_trackable_value;
+        // cap_ is the caller's contract: record() clamps and counts overflow
+        // against it. highest_ is the storage bound, floored at
+        // sub_bucket_count_ because the bucket layout cannot represent a
+        // smaller range; without the separate cap a request below the floor
+        // silently raised the clamp, so max() and the upper percentiles
+        // exceeded the configured maximum and overflow never counted in
+        // (cap_, floor].
+        cap_ = highest_trackable_value == 0 ? 1 : highest_trackable_value;
+        highest_ = cap_ < sub_bucket_count_ ? sub_bucket_count_ : cap_;
         bucket_count_ = buckets_needed_(highest_);
         const std::size_t len = (bucket_count_ + 1) * sub_bucket_half_count_;
         counts_.assign(len, 0);
     }
 
     void record(std::uint64_t value) noexcept {
-        if (value > highest_) [[unlikely]] {
-            // Clamp into the top bucket but count the clamp, so a run whose
-            // tail escaped the configured range is visible instead of
+        if (value > cap_) [[unlikely]] {
+            // Clamp to the configured maximum but count the clamp, so a run
+            // whose tail escaped the configured range is visible instead of
             // silently reporting a flattened maximum.
             ++overflow_;
-            value = highest_;
+            value = cap_;
         }
         ++counts_[counts_index_(value)];
         ++total_;
@@ -192,6 +199,7 @@ class latency_histogram {
     }
 
     std::vector<std::uint64_t> counts_;
+    std::uint64_t cap_{0};
     std::uint64_t highest_{0};
     std::uint64_t total_{0};
     std::uint64_t overflow_{0};
