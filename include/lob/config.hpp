@@ -25,6 +25,12 @@ struct engine_config {
     // order from the same account. See ADR-0012.
     self_cross_policy self_cross{self_cross_policy::cancel_newest};
 
+    // First sequence number this engine assigns minus one; the first event
+    // carries seq_base + 1. A standalone engine leaves it at zero. Sharded
+    // deployments seed each shard with lob::shard_seq_base so seq stamps
+    // stay globally unique after the per-shard streams merge.
+    seq_t seq_base{0};
+
     // When true, the engine emits a top-of-book event only when best price
     // or best quantity changes. When false, every state mutation emits one
     // (useful for testing).

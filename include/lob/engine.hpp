@@ -52,7 +52,9 @@ class engine {
                   "publisher::publish(self_trade_msg) must be noexcept");
 
   public:
-    engine(P& pub, engine_config cfg) noexcept : pub_(pub), cfg_(cfg) {}
+    engine(P& pub, engine_config cfg) noexcept : pub_(pub), cfg_(cfg) {
+        state_.seq = cfg_.seq_base;
+    }
 
     engine(const engine&) = delete;
     engine(engine&&) = delete;
@@ -664,6 +666,7 @@ class engine {
             }
         }
         state_ = hot_state{};
+        state_.seq = cfg_.seq_base;
     }
 
     [[gnu::cold]] bool replay_record_(const snapshot_order_record& rec) noexcept {

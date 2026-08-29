@@ -57,9 +57,14 @@ class shard_egress_runtime {
     using ingress_ring = spsc_ring<command, IngressCapacity>;
     using egress_ring = spsc_ring<event, EgressCapacity>;
 
+    // Each shard's engine is seeded with a disjoint seq range via
+    // shard_seq_base, overriding any caller-supplied seq_base. The per-shard
+    // streams meet again in a merger, and without disjoint ranges every
+    // shard counts from zero and the merged stream carries colliding stamps.
     explicit shard_egress_runtime(engine_config cfg, shard_runtime_config rt = {}) : rt_(rt) {
         for (std::size_t i = 0; i < NumShards; ++i) {
             pubs_[i].bind(egress_[i]);
+            cfg.seq_base = shard_seq_base(i, NumShards);
             engines_[i] = std::make_unique<engine_type>(pubs_[i], cfg);
         }
     }

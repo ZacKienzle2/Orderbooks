@@ -373,6 +373,16 @@ TEST_CASE("engine FOK counts own liquidity under decrement_trade", "[engine][fok
     REQUIRE(!eng.book_view().bids().best().has_value());
 }
 
+TEST_CASE("engine seq_base seeds the event sequence", "[engine][seq]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{.seq_base = 1'000}};
+
+    REQUIRE(eng.last_seq() == 1'000);
+    eng.on_submit(sub(1, 100, 5, lob::side::ask));
+    REQUIRE(pub.tops.back().seq == 1'001);
+    REQUIRE(eng.last_seq() == 1'001);
+}
+
 TEST_CASE("engine sequence numbers are monotonic across events", "[engine][seq]") {
     pub_t pub;
     test_eng_t eng{pub, lob::engine_config{}};

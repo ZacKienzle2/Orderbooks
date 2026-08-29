@@ -49,8 +49,14 @@ class shard_router {
   public:
     using engine_type = engine<P, Ticks, MaxOrders>;
 
+    // Each shard's engine is seeded with a disjoint seq range via
+    // shard_seq_base, overriding any caller-supplied seq_base. All shards
+    // publish into one P, so first-come seq ranges are the router's to
+    // partition; without this every shard counts from zero and the merged
+    // stream carries colliding stamps.
     shard_router(P& pub, engine_config cfg) {
         for (std::size_t i = 0; i < NumShards; ++i) {
+            cfg.seq_base = shard_seq_base(i, NumShards);
             engines_[i] = std::make_unique<engine_type>(pub, cfg);
         }
     }
