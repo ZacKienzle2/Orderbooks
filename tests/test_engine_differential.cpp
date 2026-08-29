@@ -203,6 +203,24 @@ TEST_CASE("engine matches reference under self_cross cancel_newest",
     compare_book_state(fast, ref);
 }
 
+TEST_CASE("engine matches reference under self_cross cancel_oldest",
+          "[engine][differential][self-cross]") {
+    auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
+
+    pub_t pub;
+    fast_t fast{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+    ref_t ref{lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+
+    gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
+    replay(fast, ref, g, /*n_accounts=*/4);
+
+    compare_fills(pub.fills, ref.fills);
+    compare_trades(pub.trades, ref.trades);
+    compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_tops(pub.tops, ref.tops);
+    compare_book_state(fast, ref);
+}
+
 TEST_CASE("engine matches reference under self_cross decrement_trade",
           "[engine][differential][self-cross]") {
     auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
