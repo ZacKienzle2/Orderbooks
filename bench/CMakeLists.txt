@@ -5,6 +5,7 @@ add_executable(
   bench_arena.cpp
   bench_spsc.cpp
   bench_engine.cpp
+  bench_id_index.cpp
   bench_fix_parser.cpp
   bench_latency_histogram.cpp
   bench_engine_latency.cpp)

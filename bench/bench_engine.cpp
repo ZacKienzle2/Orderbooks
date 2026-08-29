@@ -279,4 +279,79 @@ void bench_match_deep_sweep(benchmark::State& state) {
 
 BENCHMARK(bench_match_deep_sweep);
 
+// FOK precheck against a level holding the aggressor's own resting orders
+// under a cancelling policy, the path that walks the level FIFO instead of
+// reading the O(1) aggregate. The request exceeds the fillable quantity, so
+// the precheck rejects, nothing mutates, and the loop measures the walk
+// itself over a 512-deep level with alternating ownership.
+void bench_fok_precheck_self_cross(benchmark::State& state) {
+    noop_publisher pub;
+    engine_t eng{pub, lob::engine_config{.self_cross = lob::self_cross_policy::cancel_oldest}};
+    constexpr lob::tick_t px = bench_ticks / 2;
+    constexpr std::size_t depth = 512;
+    for (std::size_t i = 0; i < depth; ++i) {
+        eng.on_submit(lob::submit_msg{
+            .id = static_cast<lob::order_id_t>(1 + i),
+            .px = px,
+            .qty = 1,
+            .s = lob::side::ask,
+            .t = lob::tif::gtc,
+            ._pad = 0,
+            .account_id = static_cast<lob::account_id_t>(1 + (i & 1U)),
+        });
+    }
+    lob::order_id_t taker_id = 1'000'000'000;
+    for (auto _ : state) {
+        eng.on_submit(lob::submit_msg{
+            .id = taker_id++,
+            .px = px,
+            .qty = depth,  // half the level is own liquidity, so this is short
+            .s = lob::side::bid,
+            .t = lob::tif::fok,
+            ._pad = 0,
+            .account_id = 1,
+        });
+        benchmark::ClobberMemory();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+
+BENCHMARK(bench_fok_precheck_self_cross);
+
+// Control: the same shaped request with no account takes the aggregate path,
+// one O(1) read per crossing level.
+void bench_fok_precheck_aggregate(benchmark::State& state) {
+    noop_publisher pub;
+    engine_t eng{pub, lob::engine_config{}};
+    constexpr lob::tick_t px = bench_ticks / 2;
+    constexpr std::size_t depth = 512;
+    for (std::size_t i = 0; i < depth; ++i) {
+        eng.on_submit(lob::submit_msg{
+            .id = static_cast<lob::order_id_t>(1 + i),
+            .px = px,
+            .qty = 1,
+            .s = lob::side::ask,
+            .t = lob::tif::gtc,
+            ._pad = 0,
+            .account_id = 0,
+        });
+    }
+    lob::order_id_t taker_id = 1'000'000'000;
+    for (auto _ : state) {
+        eng.on_submit(lob::submit_msg{
+            .id = taker_id++,
+            .px = px,
+            .qty = depth + 1,  // one past the aggregate, so the precheck rejects
+            .s = lob::side::bid,
+            .t = lob::tif::fok,
+            ._pad = 0,
+            .account_id = 0,
+        });
+        benchmark::ClobberMemory();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+
+BENCHMARK(bench_fok_precheck_aggregate);
+
 }  // namespace
