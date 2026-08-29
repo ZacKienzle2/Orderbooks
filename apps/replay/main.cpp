@@ -72,6 +72,17 @@ args parse_args(int argc, char** argv) {
             usage(2);
         }
     }
+    // Both values feed preconditions downstream. self_cross is cast to the
+    // enum, which is UB outside the enumerators, and accounts seeds a
+    // uniform_int_distribution whose bounds require at least one account.
+    if (a.self_cross < 0 || a.self_cross > 2) {
+        std::cerr << "--self-cross must be 0, 1, or 2\n";
+        usage(2);
+    }
+    if (a.accounts == 0) {
+        std::cerr << "--accounts must be at least 1\n";
+        usage(2);
+    }
     return a;
 }
 
