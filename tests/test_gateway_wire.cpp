@@ -101,3 +101,19 @@ TEST_CASE("gateway accepts and dispatches a valid order stream", "[gateway]") {
         .id = 99, .qty = 0, .px = 0, .new_px = 0, .op = 1, .side = 0, .tif = 0, .pad = 0};
     CHECK(f.apply(cxl).status == lob_gateway::ack_processed);
 }
+
+TEST_CASE("gateway rejects quantities above the configured cap", "[gateway]") {
+    fixture f;
+    const auto cap = f.eng->config().max_order_qty;
+
+    CHECK(f.apply(submit(1, 10, cap + 1)).status == lob_gateway::ack_rejected);
+    CHECK(f.apply(submit(2, 10, ~std::uint64_t{0})).status == lob_gateway::ack_rejected);
+    CHECK(!f.eng->book_view().bids().best().has_value());
+
+    // A modify above the cap is rejected and the resting order is untouched.
+    REQUIRE(f.apply(submit(3, 10, cap)).status == lob_gateway::ack_accepted);
+    const lob_gateway::wire_order big_modify{
+        .id = 3, .qty = cap + 1, .px = 0, .new_px = 12, .op = 2, .side = 0, .tif = 0, .pad = 0};
+    CHECK(f.apply(big_modify).status == lob_gateway::ack_rejected);
+    CHECK(f.eng->book_view().bids().aggregate_at(10) == cap);
+}

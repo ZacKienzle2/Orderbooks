@@ -304,4 +304,14 @@ TEST_CASE("engine restore rejects out-of-range header and record fields", "[engi
         REQUIRE_FALSE(eng.restore(buf));
         require_cleared(eng);
     }
+
+    SECTION("record with remaining above max_order_qty") {
+        auto rec = valid_record();
+        rec.remaining = eng.config().max_order_qty + 1;
+        lob::vector_snapshot_buffer buf;
+        put_bytes(buf, valid_header(1));
+        put_bytes(buf, rec);
+        REQUIRE_FALSE(eng.restore(buf));
+        require_cleared(eng);
+    }
 }

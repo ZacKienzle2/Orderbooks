@@ -262,6 +262,8 @@ class engine {
 
     [[nodiscard]] const book<Ticks, MaxOrders>& book_view() const noexcept { return book_; }
 
+    [[nodiscard]] const engine_config& config() const noexcept { return cfg_; }
+
     [[nodiscard]] seq_t last_seq() const noexcept { return state_.seq; }
 
   private:
@@ -676,7 +678,7 @@ class engine {
             return false;
         if (rec.t > static_cast<std::uint8_t>(tif::fok))
             return false;
-        if (rec.remaining == 0)
+        if (rec.remaining == 0 || rec.remaining > cfg_.max_order_qty)
             return false;
         auto* o = book_.arena().allocate();
         if (o == nullptr)

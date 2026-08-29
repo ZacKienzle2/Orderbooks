@@ -71,22 +71,25 @@ struct accum_pub {
     }
 };
 
-// Validates one wire_order against the engine's tick ladder before dispatch.
-// The engine's hot path treats out-of-range px as UB (the tick ladder is
-// indexed unchecked and the bitmap guard is an assert compiled out under
-// NDEBUG), and casting an arbitrary byte to lob::tif is UB before any switch
-// sees it, so every field a command consumes is range-checked here. Rejected
-// orders are refused outright rather than clamped, since clamping would
-// silently reprice the client's order.
+// Validates one wire_order against the engine's tick ladder and quantity cap
+// before dispatch. The engine's hot path treats out-of-range px as UB (the
+// tick ladder is indexed unchecked and the bitmap guard is an assert compiled
+// out under NDEBUG), casting an arbitrary byte to lob::tif is UB before any
+// switch sees it, and quantities above engine_config::max_order_qty would
+// erode the level-aggregate overflow headroom, so every field a command
+// consumes is range-checked here. Rejected orders are refused outright rather
+// than clamped, since clamping would silently reprice or resize the client's
+// order.
 template <std::size_t Ticks>
-[[nodiscard]] bool validate_order(const wire_order& wo) noexcept {
+[[nodiscard]] bool validate_order(const wire_order& wo, lob::qty_t max_qty) noexcept {
     switch (wo.op) {
     case 0:
-        return wo.px < Ticks && wo.qty > 0 && wo.tif <= static_cast<std::uint8_t>(lob::tif::fok);
+        return wo.px < Ticks && wo.qty > 0 && wo.qty <= max_qty &&
+               wo.tif <= static_cast<std::uint8_t>(lob::tif::fok);
     case 1:
         return true;  // cancel consumes only the id
     default:
-        return wo.new_px < Ticks && wo.qty > 0;
+        return wo.new_px < Ticks && wo.qty > 0 && wo.qty <= max_qty;
     }
 }
 
@@ -99,7 +102,7 @@ void apply_order(lob::engine<accum_pub, Ticks, MaxOrders>& eng,
                  const wire_order& wo,
                  wire_ack& ack) noexcept {
     pub.reset();
-    if (!validate_order<Ticks>(wo)) {
+    if (!validate_order<Ticks>(wo, eng.config().max_order_qty)) {
         ack = wire_ack{.id = wo.id, .filled = 0, .last_px = 0, .status = ack_rejected};
         return;
     }
