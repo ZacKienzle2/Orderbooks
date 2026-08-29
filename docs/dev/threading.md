@@ -106,8 +106,16 @@ loss counter; size the ring to the worst-case burst and drain it promptly.
 When a downstream wants one feed rather than a per-shard poll loop,
 `egress_merger` runs a single thread that owns the consumer side of every
 egress ring and forwards events to one sink stamped with a gap-free global
-sequence. Quiesce the producing runtime before stopping the merger so its
-final pass drains every ring.
+sequence. Each round claims at most `merger_config::batch_max` events per
+shard in one ring cursor claim, so a backlogged shard cannot stall the
+shards behind it and the merged stream interleaves by round. Quiesce the
+producing runtime before stopping the merger so its final pass drains every
+ring.
+
+Each shard's engine seeds its event sequence from `lob::shard_seq_base`, so
+the engine seq stamps stay globally unique after the per-shard streams
+merge; the merger's own merge sequence is a separate gap-free counter over
+the forwarded order.
 
 ## Verifying correctness under threading
 
