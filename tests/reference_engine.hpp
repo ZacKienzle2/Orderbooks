@@ -184,7 +184,7 @@ struct reference_engine {
             acct == 0 || cfg.self_cross == self_cross_policy::decrement_trade;
         qty_t total = 0;
         bool aborted = false;
-        auto consume_fifo = [&](const std::list<rec>& fifo) noexcept {
+        auto consume_level = [&](const std::list<rec>& fifo) noexcept {
             for (const auto& r : fifo) {
                 if (!all_consumable && r.account_id == acct) {
                     if (cfg.self_cross == self_cross_policy::cancel_newest) {
@@ -203,14 +203,14 @@ struct reference_engine {
             for (const auto& [px, fifo] : asks) {
                 if (px > aggressor_px)
                     break;
-                if (consume_fifo(fifo))
+                if (consume_level(fifo))
                     break;
             }
         } else {
             for (const auto& [px, fifo] : bids) {
                 if (px < aggressor_px)
                     break;
-                if (consume_fifo(fifo))
+                if (consume_level(fifo))
                     break;
             }
         }

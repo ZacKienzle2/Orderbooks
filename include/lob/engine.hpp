@@ -481,12 +481,12 @@ class engine {
         // skip own-account makers under cancel_oldest, and stop the whole
         // walk at the first own-account maker under cancel_newest, exactly
         // where the match loop itself would stop.
-        const bool aggregate_exact =
+        const bool all_consumable =
             acct == 0 || cfg_.self_cross == self_cross_policy::decrement_trade;
         qty_t total = 0;
         bool aborted = false;
         const auto consume_level = [&](const auto& bs, tick_t px) noexcept {
-            if (aggregate_exact) {
+            if (all_consumable) {
                 total += bs.aggregate_at(px);
                 return total >= want;
             }

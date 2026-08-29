@@ -154,10 +154,10 @@ class json_recorder {
     // the trailing literal could overflow.
     template <class T>
     static char* append_num_(char* p, T v) noexcept {
-        std::array<char, 24> tmp{};
-        const auto r = std::to_chars(tmp.data(), tmp.data() + tmp.size(), v);
-        const auto n = static_cast<std::size_t>(r.ptr - tmp.data());
-        std::memcpy(p, tmp.data(), n);
+        std::array<char, 24> digits{};
+        const auto r = std::to_chars(digits.data(), digits.data() + digits.size(), v);
+        const auto n = static_cast<std::size_t>(r.ptr - digits.data());
+        std::memcpy(p, digits.data(), n);
         return p + n;
     }
 
