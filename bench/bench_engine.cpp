@@ -3,6 +3,7 @@
 #include <lob/messages.hpp>
 #include <lob/types.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -116,49 +117,81 @@ void bench_submit_warm(benchmark::State& state) {
 BENCHMARK(bench_submit_warm);
 
 void bench_cancel_warm(benchmark::State& state) {
+    // Manual timing over a batch of cancels, with the refill outside the
+    // measured window. The previous shape paused and resumed the timer
+    // around a refill inside every iteration, and PauseTiming costs on the
+    // order of a hundred nanoseconds per call, so the reported "cancel" was
+    // mostly timer tax rather than the ~tens-of-nanoseconds cancel itself.
     noop_publisher pub;
     engine_t eng{pub, lob::engine_config{}};
-    const std::size_t n = 4096;
+    constexpr std::size_t n = 4096;
+    constexpr std::size_t batch = 1024;
     populate_book(eng, n, 0xCAFEULL);
     lob::order_id_t id = 1;
     for (auto _ : state) {
-        eng.on_cancel(lob::cancel_msg{.id = id});
-        // Rotate the cancel target so the bench keeps working orders alive
-        // (re-submitting at the same id) and cancels do not run out of book.
-        state.PauseTiming();
+        const auto first = id;
+        const auto t0 = std::chrono::steady_clock::now();
+        for (std::size_t i = 0; i < batch; ++i) {
+            eng.on_cancel(lob::cancel_msg{.id = id});
+            id = (id % n) + 1;
+        }
+        const auto t1 = std::chrono::steady_clock::now();
+        state.SetIterationTime(std::chrono::duration<double>(t1 - t0).count());
+        // Untimed refill of exactly the ids just cancelled, deterministic px
+        // per id so the book shape stays stationary across iterations.
+        auto refill_id = first;
+        for (std::size_t i = 0; i < batch; ++i) {
+            eng.on_submit(lob::submit_msg{
+                .id = refill_id,
+                .px = static_cast<lob::tick_t>((refill_id * 2654435761ULL) % bench_ticks),
+                .qty = 1,
+                .s = (refill_id & 1U) != 0 ? lob::side::bid : lob::side::ask,
+                .t = lob::tif::gtc,
+                ._pad = 0,
+                .account_id = 0,
+            });
+            refill_id = (refill_id % n) + 1;
+        }
+        benchmark::ClobberMemory();
+    }
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(batch));
+}
+
+BENCHMARK(bench_cancel_warm)->UseManualTime();
+
+void bench_modify_qty_only(benchmark::State& state) {
+    // Quantity-only modify on a resting order, the in-place aggregate
+    // mutation. The ladder is deterministic so every modify carries the
+    // order's own resting px (the qty-only path requires new_px == px), and
+    // the quantity alternates so the genuine-no-op early return never
+    // fires. The previous shape sent new_px = 0, which repriced the whole
+    // book to tick zero, matched it away against itself, and then measured
+    // failed id lookups on dead orders.
+    noop_publisher pub;
+    engine_t eng{pub, lob::engine_config{}};
+    constexpr std::size_t n = 4096;
+    constexpr lob::tick_t base = bench_ticks / 2;
+    const auto px_of = [](lob::order_id_t oid) noexcept {
+        return static_cast<lob::tick_t>(base + 1 + (oid % 512));
+    };
+    for (lob::order_id_t oid = 1; oid <= n; ++oid) {
         eng.on_submit(lob::submit_msg{
-            .id = id,
-            .px = static_cast<lob::tick_t>((id * 2654435761ULL) % bench_ticks),
-            .qty = 1,
-            .s = (id & 1U) != 0 ? lob::side::bid : lob::side::ask,
+            .id = oid,
+            .px = px_of(oid),
+            .qty = 5,
+            .s = lob::side::ask,
             .t = lob::tif::gtc,
             ._pad = 0,
             .account_id = 0,
         });
-        state.ResumeTiming();
-        id = (id % n) + 1;
-        benchmark::ClobberMemory();
     }
-    state.SetItemsProcessed(state.iterations());
-}
-
-BENCHMARK(bench_cancel_warm);
-
-void bench_modify_qty_only(benchmark::State& state) {
-    noop_publisher pub;
-    engine_t eng{pub, lob::engine_config{}};
-    const std::size_t n = 4096;
-    populate_book(eng, n, 0xBADC0DEULL);
     lob::order_id_t id = 1;
-    lob::qty_t qty = 50;
+    lob::qty_t flip = 0;
     for (auto _ : state) {
-        eng.on_modify(lob::modify_msg{.id = id, .new_px = 0, .new_qty = qty});
-        // new_px = 0 collides with bench ladder midpoint shift, so the
-        // engine's no-op-detection compares against the order's px; if
-        // they match we get the qty-only fast path. The seed above places
-        // orders near mid +/- spread so px == 0 is not in the book.
+        eng.on_modify(lob::modify_msg{.id = id, .new_px = px_of(id), .new_qty = 5 + (flip & 1U)});
         id = (id % n) + 1;
-        qty = (qty + 1) % 100 + 1;
+        if (id == 1)
+            ++flip;
         benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations());
@@ -204,32 +237,53 @@ void bench_modify_price(benchmark::State& state) {
 BENCHMARK(bench_modify_price);
 
 void bench_match_crossing(benchmark::State& state) {
-    // Steady-state: pre-populate one side, repeatedly fire aggressors that
-    // cross 1-N levels of the opposite. The bench rebuilds the book inside
-    // each iteration once the resting side is exhausted, so the timed work
-    // is dominated by match_against_opposite_.
+    // Single-maker cross: an untimed maker rests at mid, then the timed IOC
+    // taker consumes it exactly, so every measured iteration walks the match
+    // loop, publishes a fill and a trade, empties the level, and clears the
+    // bitmap bit. The previous shape fired takers at a fixed mid price with
+    // no refill, so once the initial book receded past mid it measured the
+    // no-fill IOC path rather than a match.
     noop_publisher pub;
     engine_t eng{pub, lob::engine_config{}};
-    populate_book(eng, 4096, 0xF00DULL);
     prng g{0xACE1ULL};
-    lob::order_id_t taker_id = 1'000'000;
+    constexpr lob::tick_t mid = bench_ticks / 2;
+    constexpr std::size_t batch = 256;
+    lob::order_id_t maker_id = 1;
+    lob::order_id_t taker_id = 1'000'000'000;
+    std::vector<lob::qty_t> qtys(batch);
     for (auto _ : state) {
-        const auto r = g.next();
-        eng.on_submit(lob::submit_msg{
-            .id = taker_id++,
-            .px = static_cast<lob::tick_t>(bench_ticks / 2),
-            .qty = 1 + (r % 50),
-            .s = (r & 1U) != 0 ? lob::side::bid : lob::side::ask,
-            .t = lob::tif::ioc,
-            ._pad = 0,
-            .account_id = 0,
-        });
+        for (std::size_t i = 0; i < batch; ++i) {
+            qtys[i] = 1 + (g.next() % 50);
+            eng.on_submit(lob::submit_msg{
+                .id = maker_id++,
+                .px = mid,
+                .qty = qtys[i],
+                .s = lob::side::ask,
+                .t = lob::tif::gtc,
+                ._pad = 0,
+                .account_id = 0,
+            });
+        }
+        const auto t0 = std::chrono::steady_clock::now();
+        for (std::size_t i = 0; i < batch; ++i) {
+            eng.on_submit(lob::submit_msg{
+                .id = taker_id++,
+                .px = mid,
+                .qty = qtys[i],
+                .s = lob::side::bid,
+                .t = lob::tif::ioc,
+                ._pad = 0,
+                .account_id = 0,
+            });
+        }
+        const auto t1 = std::chrono::steady_clock::now();
+        state.SetIterationTime(std::chrono::duration<double>(t1 - t0).count());
         benchmark::ClobberMemory();
     }
-    state.SetItemsProcessed(state.iterations());
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(batch));
 }
 
-BENCHMARK(bench_match_crossing);
+BENCHMARK(bench_match_crossing)->UseManualTime();
 
 void bench_match_deep_sweep(benchmark::State& state) {
     // Deep single-level sweep. Rest a tall FIFO at one price, then fire one
@@ -260,6 +314,10 @@ void bench_match_deep_sweep(benchmark::State& state) {
     };
     refill();
     for (auto _ : state) {
+        // Manual timing keeps the untimed refill out of the measurement
+        // without the per-iteration PauseTiming tax, which is itself on the
+        // order of a hundred nanoseconds and previously inflated the sweep.
+        const auto t0 = std::chrono::steady_clock::now();
         eng.on_submit(lob::submit_msg{
             .id = taker_id++,
             .px = px,
@@ -269,15 +327,15 @@ void bench_match_deep_sweep(benchmark::State& state) {
             ._pad = 0,
             .account_id = 0,
         });
-        state.PauseTiming();
+        const auto t1 = std::chrono::steady_clock::now();
+        state.SetIterationTime(std::chrono::duration<double>(t1 - t0).count());
         refill();
-        state.ResumeTiming();
         benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(depth));
 }
 
-BENCHMARK(bench_match_deep_sweep);
+BENCHMARK(bench_match_deep_sweep)->UseManualTime();
 
 // FOK precheck against a level holding the aggressor's own resting orders
 // under a cancelling policy, the path that walks the level FIFO instead of
