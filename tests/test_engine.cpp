@@ -202,6 +202,47 @@ TEST_CASE("engine modify with price change loses time priority", "[engine][modif
     REQUIRE(eng.book_view().bids().aggregate_at(99) == 10);
 }
 
+TEST_CASE("engine modify renames the order to new_id", "[engine][modify]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{}};
+
+    eng.on_submit(sub(1, 100, 10, lob::side::bid));
+    eng.on_modify({.id = 1, .new_px = 100, .new_qty = 6, .new_id = 2});
+    REQUIRE(eng.book_view().bids().aggregate_at(100) == 6);
+
+    // The old id no longer names the order; the new one does.
+    eng.on_cancel({.id = 1});
+    REQUIRE(eng.book_view().bids().aggregate_at(100) == 6);
+    eng.on_cancel({.id = 2});
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine modify renames even when px and qty are unchanged", "[engine][modify]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{}};
+
+    eng.on_submit(sub(1, 100, 10, lob::side::bid));
+    eng.on_modify({.id = 1, .new_px = 100, .new_qty = 10, .new_id = 3});
+    REQUIRE(eng.book_view().bids().aggregate_at(100) == 10);
+
+    eng.on_cancel({.id = 3});
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine modify carries new_id through a crossing reprice", "[engine][modify]") {
+    pub_t pub;
+    test_eng_t eng{pub, lob::engine_config{}};
+
+    eng.on_submit(sub(1, 100, 5, lob::side::ask));
+    eng.on_submit(sub(2, 90, 5, lob::side::bid));
+    pub.clear();
+
+    eng.on_modify({.id = 2, .new_px = 100, .new_qty = 5, .new_id = 7});
+    REQUIRE(pub.fills.size() == 1);
+    REQUIRE(pub.fills[0].taker == 7);
+    REQUIRE(pub.fills[0].maker == 1);
+}
+
 TEST_CASE("engine top throttle suppresses identical tops", "[engine][top]") {
     pub_t pub;
     test_eng_t eng{pub, lob::engine_config{.top_throttle = true}};

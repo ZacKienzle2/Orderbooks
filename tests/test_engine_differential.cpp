@@ -72,7 +72,18 @@ lob::modify_msg gen_modify(gen_state& g) {
     std::uniform_int_distribution<std::size_t> pick{0, g.live.size() - 1};
     std::uniform_int_distribution<lob::tick_t> px{0, ticks - 1};
     std::uniform_int_distribution<lob::qty_t> qty{1, 50};
-    return {.id = g.live[pick(g.rng)], .new_px = px(g.rng), .new_qty = qty(g.rng)};
+    std::uniform_int_distribution<int> rename{0, 3};
+    const auto k = pick(g.rng);
+    const auto old_id = g.live[k];
+    lob::order_id_t new_id = 0;
+    // A quarter of modifies chain to a fresh id, cancel-replace style. The
+    // old id stops naming anything, so later ops drawn from the live list
+    // use the new one on both engines.
+    if (rename(g.rng) == 0) {
+        new_id = g.next_id++;
+        g.live[k] = new_id;
+    }
+    return {.id = old_id, .new_px = px(g.rng), .new_qty = qty(g.rng), .new_id = new_id};
 }
 
 void replay(fast_t& fast, ref_t& ref, gen_state& g, std::uint8_t n_accounts) {

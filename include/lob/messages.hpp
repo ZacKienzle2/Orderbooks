@@ -32,6 +32,11 @@ struct modify_msg {
     order_id_t id;
     tick_t new_px;
     qty_t new_qty;
+    // When nonzero, the order is renamed to new_id as part of the modify,
+    // FIX cancel-replace style (OrigClOrdID names the order, ClOrdID is its
+    // next identity). Zero keeps the existing id. The caller owns id
+    // uniqueness, exactly as it does for submit_msg::id.
+    order_id_t new_id{0};
 };
 
 static_assert(std::is_trivially_copyable_v<modify_msg>);

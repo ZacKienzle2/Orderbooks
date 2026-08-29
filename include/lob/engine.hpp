@@ -105,9 +105,20 @@ class engine {
         __builtin_prefetch(o, 1, 3);
         const auto s = o->s;
         const auto t = o->t;
+        // ClOrdID chain. A cancel-replace names the order by its current id
+        // and may assign the next one; rename the id_index entry first so
+        // every path below, including the crossing cancel + resubmit, works
+        // with the order's new identity. Priority is governed solely by the
+        // px / qty branches below.
+        const auto effective_id = (m.new_id == 0 || m.new_id == o->id) ? o->id : m.new_id;
+        if (effective_id != o->id) {
+            book_.index().erase(o->id);
+            o->id = effective_id;
+            book_.index().insert(effective_id, o);
+        }
         if (m.new_px == o->px) {
             if (m.new_qty == o->remaining)
-                return;  // genuine no-op
+                return;  // no-op beyond any id chain applied above
             // Qty-only fast path. Mutate the level aggregate in place.
             if (s == side::bid) {
                 auto& lvl = book_.bids().level_at(o->px);
@@ -163,8 +174,8 @@ class engine {
         assert(state_.suppress_top_depth < std::numeric_limits<std::uint8_t>::max() &&
                "engine: suppress_top_depth would overflow; composite nesting too deep");
         ++state_.suppress_top_depth;
-        on_cancel(cancel_msg{.id = m.id});
-        on_submit(submit_msg{.id = m.id,
+        on_cancel(cancel_msg{.id = effective_id});
+        on_submit(submit_msg{.id = effective_id,
                              .px = m.new_px,
                              .qty = m.new_qty,
                              .s = s,

@@ -119,6 +119,14 @@ struct reference_engine {
         const auto s = r->s;
         const auto t = r->t;
         const auto a = r->account_id;
+        // Mirrors lob::engine. Apply the ClOrdID chain before any path so
+        // the crossing cancel + resubmit works with the new identity.
+        const auto effective_id = (m.new_id == 0 || m.new_id == r->id) ? r->id : m.new_id;
+        if (effective_id != r->id) {
+            idx.erase(it);
+            r->id = effective_id;
+            idx[effective_id] = r;
+        }
         if (m.new_px == r->px) {
             if (m.new_qty == r->remaining)
                 return;
@@ -128,8 +136,8 @@ struct reference_engine {
             return;
         }
         ++suppress_top_depth;
-        on_cancel(cancel_msg{.id = m.id});
-        on_submit(submit_msg{.id = m.id,
+        on_cancel(cancel_msg{.id = effective_id});
+        on_submit(submit_msg{.id = effective_id,
                              .px = m.new_px,
                              .qty = m.new_qty,
                              .s = s,

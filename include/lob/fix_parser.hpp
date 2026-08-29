@@ -338,11 +338,15 @@ template <typename T>
         }
         r.cmd = command::make_cancel(cancel_msg{.id = orig_id});
     } else if (msg_type == "G") {
-        if (!has_orig || !has_qty || !has_px) {
+        // ClOrdID(11) is required alongside OrigClOrdID(41). The replace
+        // renames the order to the new ClOrdID, so dropping tag 11 here
+        // would strand later requests that name the order by it.
+        if (!has_clordid || !has_orig || !has_qty || !has_px) {
             r.err = error::missing_field;
             return r;
         }
-        r.cmd = command::make_modify(modify_msg{.id = orig_id, .new_px = px, .new_qty = qty});
+        r.cmd = command::make_modify(
+            modify_msg{.id = orig_id, .new_px = px, .new_qty = qty, .new_id = clordid});
     } else {
         r.err = error::unsupported_msg_type;
         return r;
