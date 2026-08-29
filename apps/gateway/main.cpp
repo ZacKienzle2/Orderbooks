@@ -20,6 +20,8 @@
 #include <lob/messages.hpp>
 #include <lob/types.hpp>
 
+#include "wire.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cerrno>
@@ -32,7 +34,6 @@
 #include <memory>
 #include <string>
 #include <thread>
-#include <type_traits>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -44,59 +45,14 @@
 
 namespace {
 
+using lob_gateway::accum_pub;
+using lob_gateway::apply_order;
+using lob_gateway::wire_ack;
+using lob_gateway::wire_order;
+
 constexpr std::size_t ticks = 4096;
 constexpr std::size_t max_orders = std::size_t{1} << 16;
 constexpr lob::tick_t mid = ticks / 2;
-
-// Client -> gateway. Fixed layout, trivially copyable, read straight off the
-// socket. op selects the command; new_px is used only by modify.
-struct wire_order {
-    std::uint64_t id;
-    std::uint64_t qty;
-    std::uint32_t px;
-    std::uint32_t new_px;
-    std::uint8_t op;    // 0 submit, 1 cancel, 2 modify
-    std::uint8_t side;  // 0 bid, 1 ask
-    std::uint8_t tif;   // 0 gtc, 1 ioc, 2 fok
-    std::uint8_t pad;
-};
-
-static_assert(sizeof(wire_order) == 32);
-static_assert(std::is_trivially_copyable_v<wire_order>);
-
-// Gateway -> client. One per order. filled and last_px summarise the order's
-// fills; status is 0 accepted, 1 filled, 2 cancel or modify processed.
-struct wire_ack {
-    std::uint64_t id;
-    std::uint64_t filled;
-    std::uint32_t last_px;
-    std::uint32_t status;
-};
-
-static_assert(sizeof(wire_ack) == 24);
-static_assert(std::is_trivially_copyable_v<wire_ack>);
-
-// Accumulates one order's fills so the gateway can summarise them in the ack.
-struct accum_pub {
-    std::uint64_t filled{0};
-    lob::tick_t last_px{0};
-
-    void publish(const lob::fill_msg& f) noexcept {
-        filled += f.qty;
-        last_px = f.px;
-    }
-
-    void publish(const lob::top_msg&) noexcept {}
-
-    void publish(const lob::trade_msg&) noexcept {}
-
-    void publish(const lob::self_trade_msg&) noexcept {}
-
-    void reset() noexcept {
-        filled = 0;
-        last_px = 0;
-    }
-};
 
 [[nodiscard]] std::uint64_t now_tsc() noexcept {
 #if defined(__x86_64__) || defined(__i386__)
@@ -177,37 +133,6 @@ bool write_all(int fd, const void* buf, std::size_t n) noexcept {
 // paid two per order. A closed-loop client that waits for each ack still works,
 // it simply fills one record per read and acks one per write.
 constexpr std::size_t io_batch = 256;
-
-// Decode one wire_order into its command, run it on the engine, and fill the
-// ack. Shared by the batched read loop so the dispatch lives in one place.
-void apply_order(lob::engine<accum_pub, ticks, max_orders>& eng,
-                 accum_pub& pub,
-                 const wire_order& wo,
-                 wire_ack& ack) noexcept {
-    pub.reset();
-    std::uint32_t status = 0;
-    switch (wo.op) {
-    case 0:
-        eng.on_submit(lob::submit_msg{.id = wo.id,
-                                      .px = wo.px,
-                                      .qty = wo.qty,
-                                      .s = wo.side == 0 ? lob::side::bid : lob::side::ask,
-                                      .t = static_cast<lob::tif>(wo.tif),
-                                      ._pad = 0,
-                                      .account_id = 0});
-        status = pub.filled > 0 ? 1U : 0U;
-        break;
-    case 1:
-        eng.on_cancel(lob::cancel_msg{.id = wo.id});
-        status = 2;
-        break;
-    default:
-        eng.on_modify(lob::modify_msg{.id = wo.id, .new_px = wo.new_px, .new_qty = wo.qty});
-        status = 2;
-        break;
-    }
-    ack = wire_ack{.id = wo.id, .filled = pub.filled, .last_px = pub.last_px, .status = status};
-}
 
 // Reads orders from one connection, runs each through the engine, and writes an
 // ack per order. Returns when the peer closes the connection.
