@@ -77,17 +77,28 @@ struct accum_pub {
     }
 };
 
-// Validates one wire_order against the engine's tick ladder and quantity cap
-// before dispatch. The engine's hot path treats out-of-range px as UB (the
-// tick ladder is indexed unchecked and the bitmap guard is an assert compiled
-// out under NDEBUG), casting an arbitrary byte to lob::tif is UB before any
-// switch sees it, and quantities above engine_config::max_order_qty would
-// erode the level-aggregate overflow headroom, so every field a command
-// consumes is range-checked here. Rejected orders are refused outright rather
-// than clamped, since clamping would silently reprice or resize the client's
-// order.
+// Order ids live in [1, 2^64 - 2]. Zero is the "keep the current id"
+// sentinel of modify_msg::new_id, and 2^64 - 1 is the id_index empty-slot
+// sentinel; inserting it would write a slot that reads as empty and truncate
+// other ids' probe chains, silently stranding live orders.
+[[nodiscard]] constexpr bool valid_order_id(std::uint64_t id) noexcept {
+    return id != 0 && id != ~std::uint64_t{0};
+}
+
+// Validates one wire_order against the engine's tick ladder, quantity cap,
+// and id domain before dispatch. The engine's hot path treats out-of-range px
+// as UB (the tick ladder is indexed unchecked and the bitmap guard is an
+// assert compiled out under NDEBUG), casting an arbitrary byte to lob::tif is
+// UB before any switch sees it, quantities above
+// engine_config::max_order_qty would erode the level-aggregate overflow
+// headroom, and the two reserved id values corrupt or alias index state, so
+// every field a command consumes is range-checked here. Rejected orders are
+// refused outright rather than clamped, since clamping would silently
+// reprice or resize the client's order.
 template <std::size_t Ticks>
 [[nodiscard]] bool validate_order(const wire_order& wo, lob::qty_t max_qty) noexcept {
+    if (!valid_order_id(wo.id))
+        return false;
     switch (wo.op) {
     case 0:
         return wo.px < Ticks && wo.qty > 0 && wo.qty <= max_qty &&

@@ -262,14 +262,17 @@ template <typename T>
             }
             break;
         case 11:  // ClOrdID
-            if (!to_uint(bf.value, clordid)) {
+            // Ids live in [1, 2^64 - 2]. Zero is modify_msg's keep-the-id
+            // sentinel and 2^64 - 1 is the id_index empty-slot sentinel;
+            // either would alias or corrupt index state downstream.
+            if (!to_uint(bf.value, clordid) || clordid == 0 || clordid == ~order_id_t{0}) {
                 r.err = error::bad_field_value;
                 return r;
             }
             has_clordid = true;
             break;
         case 41:  // OrigClOrdID
-            if (!to_uint(bf.value, orig_id)) {
+            if (!to_uint(bf.value, orig_id) || orig_id == 0 || orig_id == ~order_id_t{0}) {
                 r.err = error::bad_field_value;
                 return r;
             }

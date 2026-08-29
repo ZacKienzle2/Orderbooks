@@ -273,3 +273,26 @@ TEST_CASE("rejects a CancelReplace without a ClOrdID", "[fix]") {
     const auto r = lob::fix::parse(bytes_of(wire));
     CHECK(r.err == lob::fix::error::missing_field);
 }
+
+TEST_CASE("rejects the reserved order id values", "[fix]") {
+    // Zero collides with modify_msg's keep-the-id sentinel and 2^64 - 1 with
+    // the id_index empty-slot sentinel.
+    const std::string zero_id = make_fix("35=D\x01"
+                                         "11=0\x01"
+                                         "54=1\x01"
+                                         "38=5\x01"
+                                         "44=42\x01");
+    CHECK(lob::fix::parse(bytes_of(zero_id)).err == lob::fix::error::bad_field_value);
+
+    const std::string sentinel_id = make_fix("35=D\x01"
+                                             "11=18446744073709551615\x01"
+                                             "54=1\x01"
+                                             "38=5\x01"
+                                             "44=42\x01");
+    CHECK(lob::fix::parse(bytes_of(sentinel_id)).err == lob::fix::error::bad_field_value);
+
+    const std::string sentinel_orig = make_fix("35=F\x01"
+                                               "11=2\x01"
+                                               "41=18446744073709551615\x01");
+    CHECK(lob::fix::parse(bytes_of(sentinel_orig)).err == lob::fix::error::bad_field_value);
+}
