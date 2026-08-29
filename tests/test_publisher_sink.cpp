@@ -44,6 +44,13 @@ TEST_CASE("publisher_sink forwards each event kind to its publisher", "[sink]") 
     sink.on_event(lob::event::make_self_trade(lob::self_trade_msg{
                       .aggressor = 1, .resting = 2, .account = 5, .px = 10, .qty = 1, .seq = 4}),
                   3);
+    sink.on_event(lob::event::make_reject(lob::reject_msg{.id = 9,
+                                                          .account = 5,
+                                                          .px = 10,
+                                                          .qty = 6,
+                                                          .reason = lob::reject_reason::arena_full,
+                                                          .seq = 5}),
+                  4);
 
     REQUIRE(pub.fills.size() == 1);
     REQUIRE(pub.fills[0].maker == 1);
@@ -53,6 +60,9 @@ TEST_CASE("publisher_sink forwards each event kind to its publisher", "[sink]") 
     REQUIRE(pub.trades[0].px == 10);
     REQUIRE(pub.self_trades.size() == 1);
     REQUIRE(pub.self_trades[0].account == 5);
+    REQUIRE(pub.rejects.size() == 1);
+    REQUIRE(pub.rejects[0].id == 9);
+    REQUIRE(pub.rejects[0].qty == 6);
 }
 
 TEST_CASE("egress_merger streams a runtime crossing into the json recorder", "[sink]") {
