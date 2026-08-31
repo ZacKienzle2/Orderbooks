@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -31,7 +31,7 @@ jobs:
           persist-credentials: false
 
       - name: Run actionlint
-        uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8 # v2
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2
         with:
           fail-on-error: true
           shellcheck: true
@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -62,7 +62,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -103,7 +103,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -128,7 +128,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -160,7 +160,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -170,7 +170,7 @@ jobs:
           persist-credentials: false
 
       - name: Run typos
-        uses: crate-ci/typos@aca895bf05aec0cb7dffa6f94495e923224d9f17 # v1.46.2
+        uses: crate-ci/typos@4d9c206a77c041268485162b8e2579ad7a5cb9a3 # v1.50.0
         with:
           files: "."
 
@@ -180,7 +180,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2
         with:
           egress-policy: audit
 
@@ -190,7 +190,7 @@ jobs:
           persist-credentials: false
 
       - name: Link checker
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
           args: --no-progress --verbose --config lychee.toml './**/*.md'
           fail: false
