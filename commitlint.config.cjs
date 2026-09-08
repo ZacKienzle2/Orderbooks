@@ -7,6 +7,12 @@
  */
 module.exports = {
   extends: ["@commitlint/config-conventional"],
+  // Skip machine-generated dependency-bump commits. Dependabot keeps a
+  // conventional subject but appends release notes whose lines exceed the body
+  // length limit, which would otherwise block every automated update.
+  ignores: [
+    (message) => /^(build|ci|chore)\(deps(-dev)?\): (bump|update) /i.test(message),
+  ],
   rules: {
     "type-enum": [
       2,
@@ -26,10 +32,11 @@ module.exports = {
       ],
     ],
     "type-case": [2, "always", "lower-case"],
-    // Allow sentence-case subjects so dependabot's auto-generated
-    // "Bump X from Y to Z" titles pass the gate; still forbid all-caps
-    // and pascal-case which are signs of hand-typed shouting.
-    "subject-case": [2, "never", ["pascal-case", "upper-case"]],
+    "subject-case": [
+      2,
+      "never",
+      ["sentence-case", "start-case", "pascal-case", "upper-case"],
+    ],
     "subject-full-stop": [2, "never", "."],
     "header-max-length": [2, "always", 100],
     "body-leading-blank": [2, "always"],

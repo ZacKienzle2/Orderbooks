@@ -97,6 +97,12 @@ ignore = ["PLR0913", "PLR2004", "TRY003"]
 preview = true
 
 [tool.pyright]
+# pyright falls back to the shell's default interpreter when no environment is
+# configured, so every uv-managed dependency reads as an unresolved import.
+# venvPath and venv are relative, so they are the same for every developer on
+# the project; the caution in pyright's docs is about absolute paths.
+venvPath = "."
+venv = ".venv"
 include = ["scripts", "tests/harness"]
 exclude = ["**/.venv", "**/build", "**/build-*", "**/vcpkg_installed"]
 pythonVersion = "3.12"
