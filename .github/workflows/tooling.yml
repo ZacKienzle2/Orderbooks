@@ -1,15 +1,6 @@
 name: Tooling
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/**"
-      - "tests/harness/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".python-version"
-      - ".github/workflows/tooling.yml"
   pull_request:
     branches: [main]
     paths:

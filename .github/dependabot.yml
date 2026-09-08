@@ -20,3 +20,16 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      pre-commit-hooks:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+      include: scope
+    labels: ["dependencies", "pre-commit"]
