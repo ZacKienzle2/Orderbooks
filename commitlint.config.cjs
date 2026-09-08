@@ -7,6 +7,12 @@
  */
 module.exports = {
   extends: ["@commitlint/config-conventional"],
+  // Skip machine-generated dependency-bump commits. Dependabot keeps a
+  // conventional subject but appends release notes whose lines exceed the body
+  // length limit, which would otherwise block every automated update.
+  ignores: [
+    (message) => /^(build|ci|chore)\(deps(-dev)?\): (bump|update) /i.test(message),
+  ],
   rules: {
     "type-enum": [
       2,
