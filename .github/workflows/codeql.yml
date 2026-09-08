@@ -21,8 +21,10 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 360
+    # Code scanning analysis needs Advanced Security on a private
+    # repository, so the job itself is public-only.
     if: github.event.repository.private == false
+    timeout-minutes: 360
 
     strategy:
       fail-fast: false

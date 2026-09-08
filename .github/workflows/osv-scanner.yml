@@ -15,9 +15,11 @@ concurrency:
 jobs:
   scan:
     name: Scan dependencies via OSV
-    if: github.event.repository.private == false
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+    # OSV owns dependency advisories, so the scan runs everywhere.
+    # Code scanning takes the report from public repositories only.
     with:
+      upload-sarif: ${{ github.event.repository.private == false }}
       scan-args: |-
         --recursive
         --skip-git
