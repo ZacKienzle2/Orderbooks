@@ -12,8 +12,8 @@ The engine and the assembled runtime are a library with in-process drivers. A
 client cannot connect and submit an order; nothing terminates a wire protocol.
 That gap keeps the project a library rather than a system. The first network
 front end needs to accept orders over a socket, run them through the engine, and
-acknowledge each, so the order path is reachable end to end and a client can time
-a round trip.
+acknowledge each, so the order path is reachable end to end and a client can
+time a round trip.
 
 ## Decision Drivers
 
@@ -34,18 +34,19 @@ a round trip.
 ## Decision Outcome
 
 Chosen option: **a fixed-size binary protocol, one ack per order, over a single
-engine, busy-polled**, because it proves the wire path with a minimal, verifiable
-surface and leaves protocol richness and sharding to later increments.
+engine, busy-polled**, because it proves the wire path with a minimal,
+verifiable surface and leaves protocol richness and sharding to later
+increments.
 
 A client sends 32-byte `wire_order` records; the gateway reads each straight off
 the socket into the struct, dispatches it as a submit, cancel, or modify, and
 writes back a 24-byte `wire_ack` carrying the filled quantity and a status. The
-one-ack-per-order shape lets a client run closed loop and both check correctness,
-every crossing bid must fill, and time the round trip. The connection sets
-`TCP_NODELAY` and busy-polls on non-blocking sockets, so the round trip is not
-charged Nagle, delayed-ack, or the scheduler's wake-up. A built-in self-test
-listens on an ephemeral loopback port, serves on a thread, and drives the client,
-so the path is exercised without an external tool.
+one-ack-per-order shape lets a client run closed loop and both check
+correctness, every crossing bid must fill, and time the round trip. The
+connection sets `TCP_NODELAY` and busy-polls on non-blocking sockets, so the
+round trip is not charged Nagle, delayed-ack, or the scheduler's wake-up. A
+built-in self-test listens on an ephemeral loopback port, serves on a thread,
+and drives the client, so the path is exercised without an external tool.
 
 The gateway runs one engine, not the sharded runtime, to keep the first wire
 increment small; routing egress back to the owning connection across shards is a
@@ -64,8 +65,8 @@ record is the form a latency-sensitive venue actually accepts.
   cores and kernel-bypass.
 - Negative: one engine and one connection at a time; many connections and the
   sharded runtime behind the gateway are not yet wired.
-- Negative: the binary protocol is host byte order and unauthenticated, fit for a
-  trusted link, not the public internet.
+- Negative: the binary protocol is host byte order and unauthenticated, fit for
+  a trusted link, not the public internet.
 - Negative: busy-polling spins a core while a connection is idle, which suits a
   dedicated gateway core but wastes a shared one.
 
@@ -85,8 +86,8 @@ record is the form a latency-sensitive venue actually accepts.
 ### Straight onto the sharded runtime
 
 - Pro: would scale to many symbols at once.
-- Con: needs egress routed back to the owning connection per shard, a routing map
-  and lifetime problem out of proportion to proving the path.
+- Con: needs egress routed back to the owning connection per shard, a routing
+  map and lifetime problem out of proportion to proving the path.
 
 ## More Information
 

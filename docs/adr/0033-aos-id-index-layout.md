@@ -34,16 +34,16 @@ question is whether the key and value belong in one slot or two arrays.
 ## Decision Outcome
 
 Chosen option: **one 16-byte slot per entry, an array of structures**, because
-co-locating a key with its value turns the two-line probe into a one-line
-probe, which a measurement confirms cuts L1 misses on every index operation.
+co-locating a key with its value turns the two-line probe into a one-line probe,
+which a measurement confirms cuts L1 misses on every index operation.
 
 Interleaved A/B on the profiler (build both binaries, then alternate them inside
 one process invocation to cancel host drift, minimum of six pinned runs at depth
 40k), reading `perf stat` L1 dcache load misses per op:
 
-- submit  L1 miss/op 7.51 to 6.60, a 12 percent drop.
+- submit L1 miss/op 7.51 to 6.60, a 12 percent drop.
 - modifyp L1 miss/op 7.63 to 6.59, a 14 percent drop.
-- deep    L1 miss/op 9.65 to 8.22, a 15 percent drop.
+- deep L1 miss/op 9.65 to 8.22, a 15 percent drop.
 
 The realistic deep mix runs 3.3 percent faster and modifyp 2.9 percent faster.
 cancel takes one extra cycle from the wider slot copy in the backward-shift

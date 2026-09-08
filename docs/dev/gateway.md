@@ -1,11 +1,11 @@
 # Order-entry gateway
 
-`lob_gateway` (`apps/gateway`) is a binary order-entry gateway over TCP. A client
-sends fixed-size `wire_order` records; the gateway decodes each into an engine
-command, runs it, and writes back one `wire_ack` summarising the result. The
-protocol is one ack per order, so a client times the ack to measure round-trip
-latency. It makes the engine a connectable order-entry endpoint rather than a
-library.
+`lob_gateway` (`apps/gateway`) is a binary order-entry gateway over TCP. A
+client sends fixed-size `wire_order` records; the gateway decodes each into an
+engine command, runs it, and writes back one `wire_ack` summarising the result.
+The protocol is one ack per order, so a client times the ack to measure
+round-trip latency. It makes the engine a connectable order-entry endpoint
+rather than a library.
 
 ## Wire protocol
 
@@ -17,10 +17,10 @@ wire_order  (32 bytes)  id, qty, px, new_px, op, side, tif, pad
 wire_ack    (24 bytes)  id, filled, last_px, status
 ```
 
-`op` is 0 submit, 1 cancel, 2 modify. `status` is 0 accepted (resting), 1
-filled (partially or fully, see `filled`), 2 cancel or modify processed, 3
-rejected, 4 killed (an IOC or FOK that executed nothing and rests nothing).
-`filled` and `last_px` summarise the order's fills.
+`op` is 0 submit, 1 cancel, 2 modify. `status` is 0 accepted (resting), 1 filled
+(partially or fully, see `filled`), 2 cancel or modify processed, 3 rejected, 4
+killed (an IOC or FOK that executed nothing and rests nothing). `filled` and
+`last_px` summarise the order's fills.
 
 Every order is validated before it reaches the engine: `px` and `new_px` must
 sit on the tick ladder, `qty` must be positive and at most
@@ -31,16 +31,17 @@ residual cannot rest because the order arena is full.
 ## Run
 
 Self-test (listens on an ephemeral loopback port, serves on a thread, drives a
-client that runs a resting-ask, crossing-bid workload and checks every bid fills):
+client that runs a resting-ask, crossing-bid workload and checks every bid
+fills):
 
 ```bash
 cmake --build --preset linux-clang-rel --target lob_gateway --parallel
 ./build/linux-clang-rel/apps/gateway/lob_gateway --orders 50000
 ```
 
-Pipelined self-test (a window of order pairs in flight per batch, exercising
-the gateway's batched read and ack paths; the window is clamped so the
-in-flight bytes stay inside the socket buffers):
+Pipelined self-test (a window of order pairs in flight per batch, exercising the
+gateway's batched read and ack paths; the window is clamped so the in-flight
+bytes stay inside the socket buffers):
 
 ```bash
 ./build/linux-clang-rel/apps/gateway/lob_gateway --orders 1000000 --pipeline 64

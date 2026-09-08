@@ -5,28 +5,16 @@
   "description": "Low-latency limit order book and matching engine.",
   "homepage": "https://github.com/ZacKienzle2/Orderbooks",
   "license": "MIT",
-  "dependencies": [
-    "boost-intrusive",
-    "fmt"
-  ],
+  "dependencies": ["boost-intrusive", "fmt"],
   "features": {
     "tests": {
       "description": "Catch2 v3 + RapidCheck property tests + reference engine.",
-      "dependencies": [
-        "catch2",
-        "rapidcheck"
-      ]
+      "dependencies": ["catch2", "rapidcheck"]
     },
     "bench": {
       "description": "Google Benchmark microbenches + nanobench tail reports.",
-      "dependencies": [
-        "benchmark",
-        "nanobench"
-      ]
+      "dependencies": ["benchmark", "nanobench"]
     }
   },
-  "default-features": [
-    "tests",
-    "bench"
-  ]
+  "default-features": ["tests", "bench"]
 }

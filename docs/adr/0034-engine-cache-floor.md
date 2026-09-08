@@ -11,16 +11,16 @@ deciders: ["Zac Kienzle"]
 After the AoS id_index (ADR-0033), the engine hot paths remain memory-latency
 bound (submit near 200 cyc, modifyp near 80 cyc, deep mix near 260 cyc). The
 question was whether the remaining D1 misses can be driven lower, and if so by
-what. cachegrind on the deep workload, a deterministic per-line cache
-simulation that needs no PMU, attributes the D1 read misses and so names the
-targets directly.
+what. cachegrind on the deep workload, a deterministic per-line cache simulation
+that needs no PMU, attributes the D1 read misses and so names the targets
+directly.
 
-cachegrind (deep, 200k ops, depth 40k) attributes D1 read misses to the
-id_index hash bucket (~31 percent), the intrusive FIFO hook write that links a
-new order after the level's prior tail (~17 percent), level and order field
-access (~19 percent), and the profiler harness's own record array (~16 percent,
-not the engine). Last-level read misses are 0.6 percent of D1 read misses, so
-the misses are cheap L1-to-L2 hits near 12 cycles and almost none reach DRAM.
+cachegrind (deep, 200k ops, depth 40k) attributes D1 read misses to the id_index
+hash bucket (~31 percent), the intrusive FIFO hook write that links a new order
+after the level's prior tail (~17 percent), level and order field access (~19
+percent), and the profiler harness's own record array (~16 percent, not the
+engine). Last-level read misses are 0.6 percent of D1 read misses, so the misses
+are cheap L1-to-L2 hits near 12 cycles and almost none reach DRAM.
 
 ## Decision Drivers
 

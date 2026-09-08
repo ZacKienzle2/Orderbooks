@@ -63,15 +63,15 @@ FixNamespaceComments: true
 
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<lob/.*>'
+  - Regex: "^<lob/.*>"
     Priority: 1
-  - Regex: '^<boost/.*>'
+  - Regex: "^<boost/.*>"
     Priority: 3
-  - Regex: '^<[a-zA-Z0-9_]+>$'
+  - Regex: "^<[a-zA-Z0-9_]+>$"
     Priority: 4
   - Regex: '^<.*\.h(pp)?>'
     Priority: 5
-  - Regex: '.*'
+  - Regex: ".*"
     Priority: 2
 
 IndentCaseLabels: false
@@ -86,7 +86,7 @@ NamespaceIndentation: None
 PackConstructorInitializers: NextLine
 PointerAlignment: Left
 QualifierAlignment: Custom
-QualifierOrder: ['static', 'inline', 'constexpr', 'const', 'volatile', 'type', 'restrict']
+QualifierOrder: ["static", "inline", "constexpr", "const", "volatile", "type", "restrict"]
 
 ReflowComments: true
 SeparateDefinitionBlocks: Always

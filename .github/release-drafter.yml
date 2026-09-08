@@ -70,7 +70,7 @@ autolabeler:
     title:
       - '/^[a-z]+(\([^)]+\))?!:/'
     body:
-      - '/BREAKING[ -]CHANGE:/'
+      - "/BREAKING[ -]CHANGE:/"
   - label: "feature"
     title:
       - "/^feat(\\([^)]+\\))?:/"

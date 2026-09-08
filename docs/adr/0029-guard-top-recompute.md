@@ -46,13 +46,13 @@ and no new incremental bookkeeping.
 The engine caches the last published best price per side and a flag for whether
 each side held any order at that top. A mutation at price px on side s can move
 the top only when no top is established yet, the side was empty at the last top,
-or px is at or beyond the side's best, that is px >= best_bid for a bid or
-px <= best_ask for an ask. A change strictly worse than the best on a non-empty
-side leaves both the best price and the best level's quantity untouched, so it
-is skipped and the recompute never runs. A match always consumes the best level,
-so the match and self-cross paths keep marking the top unconditionally. The
-cached best stays current because the test is conservative; every operation that
-could move the top sets the flag, runs the recompute, and refreshes the cache.
+or px is at or beyond the side's best, that is px >= best_bid for a bid or px <=
+best_ask for an ask. A change strictly worse than the best on a non-empty side
+leaves both the best price and the best level's quantity untouched, so it is
+skipped and the recompute never runs. A match always consumes the best level, so
+the match and self-cross paths keep marking the top unconditionally. The cached
+best stays current because the test is conservative; every operation that could
+move the top sets the flag, runs the recompute, and refreshes the cache.
 
 The guard applies only when the top throttle is on. With it off the engine emits
 a top per mutation by contract, so mark_top_ then sets the flag unconditionally.

@@ -84,13 +84,13 @@ correctness.
 ### Relaxed absolute store per command
 
 - Pro: cheaper than a fetch_add, still per command.
-- Con: a relaxed store breaks the release-acquire publication drain depends on to
-  see the engine mutations.
+- Con: a relaxed store breaks the release-acquire publication drain depends on
+  to see the engine mutations.
 
 ## More Information
 
 - Implementation: `include/lob/shard_worker.hpp`, `drive_shard`.
-- Tests: `tests/test_shard_egress_runtime.cpp` and `tests/test_shard_runtime.cpp`
-  exercise drain and quiescence.
-- Related: ADR-0008 (SPSC boundary) and ADR-0019 (threaded shard runtime) for the
-  ring and worker this sits on.
+- Tests: `tests/test_shard_egress_runtime.cpp` and
+  `tests/test_shard_runtime.cpp` exercise drain and quiescence.
+- Related: ADR-0008 (SPSC boundary) and ADR-0019 (threaded shard runtime) for
+  the ring and worker this sits on.

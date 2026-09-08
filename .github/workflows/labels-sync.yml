@@ -38,9 +38,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           yaml-file: .github/labels.yml
           skip-delete: false
-          dry-run:
-            ${{ github.event_name != 'push' && github.event_name !=
-            'workflow_dispatch' }}
+          dry-run: ${{ github.event_name != 'push' && github.event_name != 'workflow_dispatch' }}
           exclude: |
             help*
             *issue

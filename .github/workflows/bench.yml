@@ -55,8 +55,7 @@ jobs:
         run: cmake --preset linux-clang-rel
 
       - name: Build bench
-        run:
-          cmake --build --preset linux-clang-rel --target lob_bench --parallel
+        run: cmake --build --preset linux-clang-rel --target lob_bench --parallel
 
       - name: Run bench
         run: |

@@ -17,7 +17,8 @@ cmake --build --preset linux-clang-rel --target lob_bench --parallel
 
 ## Tail latencies
 
-`bench/bench_*_tail.cpp` use [nanobench](https://nanobench.ankerl.com/) for p50 / p99 / p99.9.
+`bench/bench_*_tail.cpp` use [nanobench](https://nanobench.ankerl.com/) for p50
+/ p99 / p99.9.
 
 `bench/bench_engine_latency.cpp` times each `engine::on_submit` with the x86
 time-stamp counter, records the per-operation samples into the in-process HDR
@@ -31,7 +32,8 @@ divide by the host's nominal frequency for nanoseconds.
 ./scripts/perfstat.sh
 ```
 
-Output: `artifacts/perf/perf-<utc>.txt`. Events: `cycles, instructions, branches, branch-misses, L1-dcache-load(-misses), LLC-load(-misses), dTLB-load-misses, iTLB-load-misses`.
+Output: `artifacts/perf/perf-<utc>.txt`. Events:
+`cycles, instructions, branches, branch-misses, L1-dcache-load(-misses), LLC-load(-misses), dTLB-load-misses, iTLB-load-misses`.
 
 ## Latency ceiling gate
 

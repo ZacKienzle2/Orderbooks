@@ -10,8 +10,8 @@ informed: []
 
 ## Context and Problem Statement
 
-What is the situation that motivates the decision? Frame the problem in
-neutral terms without prescribing a solution. Identify the forces in play.
+What is the situation that motivates the decision? Frame the problem in neutral
+terms without prescribing a solution. Identify the forces in play.
 
 ## Decision Drivers
 
