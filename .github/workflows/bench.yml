@@ -1,18 +1,6 @@
 name: Bench
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "include/**"
-      - "src/**"
-      - "bench/**"
-      - "cmake/**"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - "vcpkg.json"
-      - "vcpkg-configuration.json"
-      - ".github/workflows/bench.yml"
   pull_request:
     branches: [main]
     paths:

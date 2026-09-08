@@ -1,22 +1,6 @@
 name: CMake
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "include/**"
-      - "src/**"
-      - "apps/**"
-      - "tests/**"
-      - "bench/**"
-      - "cmake/**"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - "vcpkg.json"
-      - "vcpkg-configuration.json"
-      - ".clang-format"
-      - ".clang-tidy"
-      - ".github/workflows/cmake.yml"
   pull_request:
     branches: [main]
     paths:
