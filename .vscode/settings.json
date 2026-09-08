@@ -4,10 +4,7 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "files.trimFinalNewlines": true,
-  "editor.rulers": [
-    72,
-    100
-  ],
+  "editor.rulers": [72, 100],
   "editor.tabSize": 4,
   "editor.insertSpaces": true,
   "editor.formatOnSave": true,
@@ -27,9 +24,7 @@
     "--compile-commands-dir=build/macos-clang-dev",
     "--query-driver=/usr/bin/clang++,/opt/homebrew/bin/clang++,/usr/local/bin/clang++"
   ],
-  "clangd.fallbackFlags": [
-    "-std=c++20"
-  ],
+  "clangd.fallbackFlags": ["-std=c++20"],
   "cmake.configureOnOpen": false,
   "cmake.useCMakePresets": "always",
   "[cpp]": {
@@ -53,9 +48,7 @@
   },
   "[markdown]": {
     "editor.wordWrap": "off",
-    "editor.rulers": [
-      120
-    ],
+    "editor.rulers": [120],
     "editor.tabSize": 2,
     "editor.formatOnSave": false
   },

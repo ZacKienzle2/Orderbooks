@@ -5,6 +5,4 @@
 # matching checks here while inheriting the rest of the project policy.
 InheritParentConfig: true
 Checks: >
-  -clang-analyzer-deadcode.DeadStores,
-  -cert-msc32-c,
-  -cert-msc51-cpp
+  -clang-analyzer-deadcode.DeadStores, -cert-msc32-c, -cert-msc51-cpp

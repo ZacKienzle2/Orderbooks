@@ -1,6 +1,8 @@
 # Visualisation guide
 
-`scripts/orderbooks_viz/` reads the JSON-Lines event stream emitted by the `lob_replay` binary (and any other publisher built against `lob::json_recorder`) and produces static plots plus an interactive dashboard.
+`scripts/orderbooks_viz/` reads the JSON-Lines event stream emitted by the
+`lob_replay` binary (and any other publisher built against `lob::json_recorder`)
+and produces static plots plus an interactive dashboard.
 
 ## Pipeline
 
@@ -33,7 +35,8 @@ bitmap_occupancy.render(log, output="artifacts/figures/occupancy.png")
 flow_heatmap.render(log, output="artifacts/figures/flow.png")
 ```
 
-Each renderer returns the `matplotlib.figure.Figure`; passing `output=` saves it at 150 dpi.
+Each renderer returns the `matplotlib.figure.Figure`; passing `output=` saves it
+at 150 dpi.
 
 ## Latency
 
@@ -50,7 +53,8 @@ latency.render(df, output="artifacts/figures/latency.png")
 uv run streamlit run scripts/orderbooks_viz/dashboard.py -- --log artifacts/sim.jsonl
 ```
 
-Tabs: top-of-book series, scrubbable depth snapshot, fill density heatmap, occupancy heatmap.
+Tabs: top-of-book series, scrubbable depth snapshot, fill density heatmap,
+occupancy heatmap.
 
 ## Running the smoke tests
 
@@ -58,4 +62,5 @@ Tabs: top-of-book series, scrubbable depth snapshot, fill density heatmap, occup
 uv run pytest -q tests/harness/test_viz_smoke.py
 ```
 
-Tests assert the renderers produce a non-empty figure; visual correctness is by human inspection.
+Tests assert the renderers produce a non-empty figure; visual correctness is by
+human inspection.

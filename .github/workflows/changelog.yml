@@ -56,8 +56,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/changelog-auto
-          commit-message:
-            "chore(changelog): regenerate from conventional commits"
+          commit-message: "chore(changelog): regenerate from conventional commits"
           title: "chore(changelog): regenerate from conventional commits"
           body: |
             Automated changelog regeneration from `git-cliff`. Reviewer just needs

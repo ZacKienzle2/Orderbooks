@@ -28,7 +28,8 @@ printf '%s %s\n' "$(git config user.email)" \
 git config gpg.ssh.allowedSignersFile ~/.config/git/allowed_signers
 ```
 
-GitHub docs: <https://docs.github.com/authentication/managing-commit-signature-verification/about-commit-signature-verification#ssh-commit-signature-verification>.
+GitHub docs:
+<https://docs.github.com/authentication/managing-commit-signature-verification/about-commit-signature-verification#ssh-commit-signature-verification>.
 
 ## GPG signing
 
@@ -42,7 +43,8 @@ git config commit.gpgsign true
 git config tag.gpgsign true
 ```
 
-GitHub docs: <https://docs.github.com/authentication/managing-commit-signature-verification>.
+GitHub docs:
+<https://docs.github.com/authentication/managing-commit-signature-verification>.
 
 ## DCO sign-off
 

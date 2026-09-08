@@ -32,8 +32,8 @@ states a hard number, not just a delta against a moving reference.
 
 ## Considered Options
 
-- A self-contained script that reads the run's own benchmark JSON and fails
-  when a percentile exceeds a fixed ceiling.
+- A self-contained script that reads the run's own benchmark JSON and fails when
+  a percentile exceeds a fixed ceiling.
 - Seeding and maintaining `bench/baseline.json` on the runner so the existing
   relative gate activates.
 - A statistical-process-control gate that tracks a rolling distribution of past
@@ -53,19 +53,19 @@ discards the single noisy spike a shared runner produces. p50 and p99.9 carry
 default ceilings with wide headroom over a healthy run, while p99 and the raw
 maximum stay unset by default because they are the noisiest signals and the
 histogram reports a saturated maximum at its trackable ceiling. Exit codes form
-the contract, 0 within ceiling, 1 on a breach, and 2 on a configuration or
-input fault, so a renamed benchmark fails loudly rather than disabling the gate.
+the contract, 0 within ceiling, 1 on a breach, and 2 on a configuration or input
+fault, so a renamed benchmark fails loudly rather than disabling the gate.
 
 ### Consequences
 
-- Positive: the gate runs on every build with no baseline, so the latency
-  claim is enforced continuously rather than asserted in prose.
-- Positive: an absolute ceiling catches a regression that lands with a
-  refreshed baseline, which the relative gate cannot see.
+- Positive: the gate runs on every build with no baseline, so the latency claim
+  is enforced continuously rather than asserted in prose.
+- Positive: an absolute ceiling catches a regression that lands with a refreshed
+  baseline, which the relative gate cannot see.
 - Positive: no new dependency and no stored state; the script is plain standard
   library over the existing JSON.
-- Negative: a fixed ceiling is coarse, so it catches gross regressions but not
-  a small steady creep, which the relative gate still covers.
+- Negative: a fixed ceiling is coarse, so it catches gross regressions but not a
+  small steady creep, which the relative gate still covers.
 - Negative: the ceilings are host-relative reference cycles, so a move to a
   materially different runner needs the defaults retuned.
 
@@ -80,8 +80,8 @@ input fault, so a renamed benchmark fails loudly rather than disabling the gate.
 ### Seed and maintain a baseline
 
 - Pro: reuses the existing relative gate and catches small creep.
-- Con: stays dormant until the baseline is captured on the runner, and absorbs
-  a regression that lands alongside a baseline refresh.
+- Con: stays dormant until the baseline is captured on the runner, and absorbs a
+  regression that lands alongside a baseline refresh.
 
 ### Statistical-process-control gate
 

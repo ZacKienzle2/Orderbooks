@@ -36,8 +36,8 @@ depend on a market-data feed.
 ## Decision Outcome
 
 Chosen option: **a two-phase harness over the real runtime**, because it
-measures both questions correctly with no new dependency and reuses the assembled
-pipeline.
+measures both questions correctly with no new dependency and reuses the
+assembled pipeline.
 
 `apps/loadgen` constructs a `shard_egress_runtime`, an `egress_merger`, and a
 sink that records latency. Each iteration submits a resting ask and a crossing
@@ -47,11 +47,11 @@ the ingress rings saturate, so this is the workers' sustained rate. The latency
 phase runs a closed loop with one pair in flight, waiting for each order's fill
 to echo before sending the next, so the pipeline stays unsaturated and the
 measured time is processing latency, not queueing. The producer parks an rdtsc
-stamp keyed by the bid's order id before submitting, and the sink differences the
-egress stamp against it to time the order's whole journey. Only the latency-phase
-orders are stamped, so the histogram holds only unloaded samples. The flow is
-generated and the symbols spread across shards through the runtime's own
-SplitMix64 routing, so no market data is required.
+stamp keyed by the bid's order id before submitting, and the sink differences
+the egress stamp against it to time the order's whole journey. Only the
+latency-phase orders are stamped, so the histogram holds only unloaded samples.
+The flow is generated and the symbols spread across shards through the runtime's
+own SplitMix64 routing, so no market data is required.
 
 ### Consequences
 
@@ -78,8 +78,8 @@ SplitMix64 routing, so no market data is required.
 ### Single max-rate phase for both
 
 - Pro: simplest, one loop.
-- Con: the latency taken under saturation is dominated by queueing and overstates
-  processing latency by orders of magnitude.
+- Con: the latency taken under saturation is dominated by queueing and
+  overstates processing latency by orders of magnitude.
 
 ### External socket load tool
 

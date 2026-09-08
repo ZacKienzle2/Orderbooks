@@ -1,8 +1,7 @@
 # Orderbooks
 
-Low-latency limit order book and matching engine. C++20 over
-Boost.Intrusive, designed for sub-microsecond order processing on
-Linux x86_64.
+Low-latency limit order book and matching engine. C++20 over Boost.Intrusive,
+designed for sub-microsecond order processing on Linux x86_64.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C.svg?logo=cplusplus)](https://en.cppreference.com/w/cpp/20)
@@ -19,23 +18,22 @@ Linux x86_64.
 ### Engine
 
 - Strict price-time priority FIFO matching at every level.
-- Dense tick-ladder order book with hierarchical bitmap for `O(1)`
-  best-bid / best-ask lookup.
-- Time-in-force coverage: GTC, IOC, FOK. Post-only and pegged on the
-  roadmap.
+- Dense tick-ladder order book with hierarchical bitmap for `O(1)` best-bid /
+  best-ask lookup.
+- Time-in-force coverage: GTC, IOC, FOK. Post-only and pegged on the roadmap.
 - Configurable self-cross policy: cancel-newest, cancel-oldest, decrement-trade.
 
 ### Allocation and data structures
 
 - Slab arena over preallocated, cache-aligned storage; intrusive freelist
   removes runtime `new`/`delete` from the hot path.
-- `boost::intrusive::list` FIFOs at each price level; no node allocation
-  per order.
-- Open-addressed robin-hood map (`ankerl::unordered_dense::segmented_map`)
-  for order-id to order lookup on cancel and modify.
+- `boost::intrusive::list` FIFOs at each price level; no node allocation per
+  order.
+- Open-addressed robin-hood map (`ankerl::unordered_dense::segmented_map`) for
+  order-id to order lookup on cancel and modify.
 - 2 MiB huge-page backing for the slab arena where the host allows, cutting
-  data-TLB pressure during bursts, with a transparent fallback to regular
-  pages and no change to the first-touch NUMA policy.
+  data-TLB pressure during bursts, with a transparent fallback to regular pages
+  and no change to the first-touch NUMA policy.
 
 ### Concurrency
 
@@ -44,24 +42,24 @@ Linux x86_64.
   cache-line padded heads and tails, no false sharing.
 - Multi-symbol scalability via per-symbol shard router over independent
   per-symbol engines.
-- Threaded shard runtime that drives each shard on its own worker thread,
-  pinned to its own core, draining a dedicated SPSC ingress ring.
-- Optional per-shard egress rings so each shard publishes events into its
-  own SPSC ring, keeping the publish path lock-free and contention-free.
-- Single-threaded merging consumer that fans the per-shard egress rings
-  into one sequenced event stream for a downstream recorder or publisher.
-- Publisher-concept seam bridging the merged stream onto any publisher, so
-  the runtime streams straight into the JSON Lines recorder unchanged.
+- Threaded shard runtime that drives each shard on its own worker thread, pinned
+  to its own core, draining a dedicated SPSC ingress ring.
+- Optional per-shard egress rings so each shard publishes events into its own
+  SPSC ring, keeping the publish path lock-free and contention-free.
+- Single-threaded merging consumer that fans the per-shard egress rings into one
+  sequenced event stream for a downstream recorder or publisher.
+- Publisher-concept seam bridging the merged stream onto any publisher, so the
+  runtime streams straight into the JSON Lines recorder unchanged.
 
 ### Wire format
 
-- Zero-copy FIX 4.4 tag-value parser over `std::span<const std::byte>`,
-  no allocations, no `std::string`. Tracked under a separate ADR.
+- Zero-copy FIX 4.4 tag-value parser over `std::span<const std::byte>`, no
+  allocations, no `std::string`. Tracked under a separate ADR.
 
 ### Determinism and recovery
 
-- Monotonic sequence number on every command and event; replay from any
-  prefix reproduces engine state bit-exactly.
+- Monotonic sequence number on every command and event; replay from any prefix
+  reproduces engine state bit-exactly.
 - Snapshot sink serialises the book to a flat POD layout for warm-start.
 
 ### Observability
@@ -70,14 +68,14 @@ Linux x86_64.
 - In-process HDR latency histogram (`lob::latency_histogram`) with O(1)
   allocation-free record and exact percentile queries for the engine's own
   timing loops.
-- `scripts/perfstat.sh` wraps `perf stat` for IPC, branch-miss and
-  L1-miss telemetry under a fixed-seed workload.
+- `scripts/perfstat.sh` wraps `perf stat` for IPC, branch-miss and L1-miss
+  telemetry under a fixed-seed workload.
 - CI bench job gates throughput regressions against `bench/baseline.json`.
 
 ## Build
 
-Requires CMake 3.28, vcpkg in manifest mode, and a C++20 compiler
-(GCC 13+, Clang 17+, Apple Clang 15+).
+Requires CMake 3.28, vcpkg in manifest mode, and a C++20 compiler (GCC 13+,
+Clang 17+, Apple Clang 15+).
 
 ```bash
 git clone https://github.com/ZacKienzle2/Orderbooks
@@ -105,8 +103,8 @@ cmake --build --preset linux-clang-rel --target lob_bench
 ## Tooling harness
 
 A `.venv` exists for repo tooling only: `pre-commit`, `clang-format`,
-`cmake-format`, `ruff`, `pytest` for harness scripts, `pandas` and
-`matplotlib` for latency analysis. It is not a runtime dependency.
+`cmake-format`, `ruff`, `pytest` for harness scripts, `pandas` and `matplotlib`
+for latency analysis. It is not a runtime dependency.
 
 ```bash
 uv sync --frozen
@@ -131,8 +129,8 @@ See [CODEOWNERS](.github/CODEOWNERS).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Conventional Commits 1.0.0 and
-DCO sign-off required.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Conventional Commits 1.0.0 and DCO
+sign-off required.
 
 ## License
 
@@ -140,4 +138,5 @@ DCO sign-off required.
 
 ## Related
 
-[SECURITY](SECURITY.md) | [SUPPORT](SUPPORT.md) | [GOVERNANCE](GOVERNANCE.md) | [CHANGELOG](CHANGELOG.md) | [ROADMAP](ROADMAP.md) | [CITATION](CITATION.cff)
+[SECURITY](SECURITY.md) | [SUPPORT](SUPPORT.md) | [GOVERNANCE](GOVERNANCE.md) |
+[CHANGELOG](CHANGELOG.md) | [ROADMAP](ROADMAP.md) | [CITATION](CITATION.cff)

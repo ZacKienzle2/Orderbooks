@@ -18,7 +18,5 @@
     "vivaxy.vscode-conventional-commits",
     "tekumara.typos-vscode"
   ],
-  "unwantedRecommendations": [
-    "ms-vscode.cpptools"
-  ]
+  "unwantedRecommendations": ["ms-vscode.cpptools"]
 }

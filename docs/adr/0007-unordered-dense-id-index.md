@@ -8,11 +8,10 @@ deciders: ["Zac Kienzle"]
 
 ## Context and Problem Statement
 
-Cancel and modify paths take an `order_id_t` and must return the
-corresponding `order*` in single-digit nanoseconds. The hash map must
-not allocate per insertion in the steady state, must not have huge
-rehash spikes during bursts, and must be cache-friendly under
-collision.
+Cancel and modify paths take an `order_id_t` and must return the corresponding
+`order*` in single-digit nanoseconds. The hash map must not allocate per
+insertion in the steady state, must not have huge rehash spikes during bursts,
+and must be cache-friendly under collision.
 
 ## Decision Drivers
 
@@ -32,24 +31,24 @@ collision.
 
 ## Decision Outcome
 
-Chosen option: **`ankerl::unordered_dense::segmented_map<order_id_t,
-order*>`**, with `wyhash` for `order_id_t`. Segmented variant chosen
-specifically to avoid the giant single allocation on rehash spikes
-that the flat variant exhibits under bursts.
+Chosen option: **`ankerl::unordered_dense::segmented_map<order_id_t, order*>`**,
+with `wyhash` for `order_id_t`. Segmented variant chosen specifically to avoid
+the giant single allocation on rehash spikes that the flat variant exhibits
+under bursts.
 
 ### Consequences
 
-- Positive: Lookup is one or two cache-line probes typical, well under
-  10 ns warm.
-- Positive: Segmented backing avoids giant single allocations on
-  rehash; bursts do not cause latency cliffs.
+- Positive: Lookup is one or two cache-line probes typical, well under 10 ns
+  warm.
+- Positive: Segmented backing avoids giant single allocations on rehash; bursts
+  do not cause latency cliffs.
 - Positive: Header-only; no extra link-time dep.
 - Positive: vcpkg ships it; pinning is trivial.
-- Negative: Hand-tuned hash maps could shave a few cycles further but
-  give up reviewer familiarity.
-- Risk: Future requirement for snapshot serialisation may need a
-  custom backing; the `id_index` class wraps the map so the impl can
-  swap without touching call sites.
+- Negative: Hand-tuned hash maps could shave a few cycles further but give up
+  reviewer familiarity.
+- Risk: Future requirement for snapshot serialisation may need a custom backing;
+  the `id_index` class wraps the map so the impl can swap without touching call
+  sites.
 
 ## Pros and Cons of the Options
 
@@ -88,5 +87,5 @@ that the flat variant exhibits under bursts.
 
 - ankerl::unordered_dense: <https://github.com/martinus/unordered_dense>
 - wyhash: <https://github.com/wangyi-fudan/wyhash>
-- Related: [ADR-0006](0006-slab-arena-intrusive-fifo.md) (the `order*`
-  values returned by this map live in the slab arena).
+- Related: [ADR-0006](0006-slab-arena-intrusive-fifo.md) (the `order*` values
+  returned by this map live in the slab arena).
