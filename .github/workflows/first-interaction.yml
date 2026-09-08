@@ -16,9 +16,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group:
-    first-interaction-${{ github.event.pull_request.number ||
-    github.event.issue.number }}
+  group: first-interaction-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
@@ -37,8 +35,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           issue-message: >
-            First issue. Acknowledgement within 7 days. Confirm reproduction
-            steps, expected vs actual, environment. See SUPPORT.md.
+            First issue. Acknowledgement within 7 days. Confirm reproduction steps, expected vs actual, environment. See
+            SUPPORT.md.
           pr-message: >
-            First PR. Confirm Conventional Commits, rebased on main, CI green.
-            See CONTRIBUTING.md.
+            First PR. Confirm Conventional Commits, rebased on main, CI green. See CONTRIBUTING.md.

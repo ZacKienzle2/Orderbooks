@@ -1,0 +1,13 @@
+# prettier reads indent and print width from .editorconfig, and this file
+# holds only what .editorconfig cannot say. proseWrap reflows Markdown at the
+# print width, which the hook used to pass as a flag. The YAML override sets a
+# print width where .editorconfig deliberately sets none: a pinned action
+# reference runs past any limit a linter would read there, but prettier still
+# needs a width, and at 120 a clang option line stays on one line, since a
+# flow mapping prettier wraps is laid out in a way yamllint's indentation rule
+# rejects.
+proseWrap: always
+overrides:
+  - files: ["*.yml", "*.yaml", ".clang-*", "*.cff"]
+    options:
+      printWidth: 120
