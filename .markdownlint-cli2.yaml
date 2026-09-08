@@ -1,0 +1,18 @@
+# markdownlint-cli2 finds this file by name, so the hook needs no --config, and
+# it reads the generated ignore file rather than repeating what that lists.
+gitignore: true
+
+config:
+  default: true
+
+  MD013: false
+  MD033: false
+  MD041: false
+  MD036: false
+
+  MD024:
+    siblings_only: true
+
+  # A generated CHANGELOG.md carries the blank lines its template writes, so the
+  # rule against consecutive ones would fail on every regeneration.
+  MD012: false
