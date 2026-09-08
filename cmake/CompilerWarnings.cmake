@@ -26,11 +26,10 @@ set(_lob_warnings_gnu
     -Wzero-as-null-pointer-constant
     -Wno-unknown-pragmas)
 
-set(_lob_warnings_gcc -Wduplicated-cond -Wduplicated-branches -Wlogical-op
-                      -Wuseless-cast -Wsuggest-override)
+set(_lob_warnings_gcc -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast -Wsuggest-override)
 
-set(_lob_warnings_clang -Wshadow-all -Wextra-semi -Wnewline-eof -Wdocumentation
-                        -Wno-c++98-compat -Wno-c++98-compat-pedantic)
+set(_lob_warnings_clang -Wshadow-all -Wextra-semi -Wnewline-eof -Wdocumentation -Wno-c++98-compat
+                        -Wno-c++98-compat-pedantic)
 
 set(_lob_warnings_msvc
     /W4
@@ -58,14 +57,12 @@ set(_lob_warnings_msvc
 option(LOB_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options(lob_warnings INTERFACE ${_lob_warnings_gnu}
-                                                ${_lob_warnings_gcc})
+  target_compile_options(lob_warnings INTERFACE ${_lob_warnings_gnu} ${_lob_warnings_gcc})
   if(LOB_WARNINGS_AS_ERRORS)
     target_compile_options(lob_warnings INTERFACE -Werror)
   endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  target_compile_options(lob_warnings INTERFACE ${_lob_warnings_gnu}
-                                                ${_lob_warnings_clang})
+  target_compile_options(lob_warnings INTERFACE ${_lob_warnings_gnu} ${_lob_warnings_clang})
   if(LOB_WARNINGS_AS_ERRORS)
     target_compile_options(lob_warnings INTERFACE -Werror)
   endif()

@@ -7,8 +7,7 @@ if(NOT LOB_GIT_SHA)
   set(LOB_GIT_SHA "unknown")
 endif()
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in"
-               "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp" @ONLY)
 
 add_library(lob_core STATIC "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp")
 add_library(lob::core ALIAS lob_core)
@@ -40,12 +39,10 @@ target_sources(
          "${CMAKE_SOURCE_DIR}/include/lob/publisher_sink.hpp"
          "${CMAKE_SOURCE_DIR}/include/lob/affinity.hpp")
 
-target_include_directories(
-  lob_core PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-                  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_include_directories(lob_core PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+                                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_link_libraries(
   lob_core
   PUBLIC Boost::headers
-  PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening
-          fmt::fmt)
+  PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening fmt::fmt)
