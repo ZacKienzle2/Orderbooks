@@ -6,7 +6,10 @@ rules:
     level: warning
   document-start: disable
   truthy:
-    allowed-values: ["true", "false", "on", "off"]
+    # The rule's own option. Yes and No are the spelling clang-format's
+    # documentation uses for its booleans, so .clang-format is linted like
+    # every other YAML file rather than listed as an exception.
+    allowed-values: ["true", "false", "on", "off", "Yes", "No"]
     check-keys: false
   comments:
     min-spaces-from-content: 1
@@ -17,7 +20,5 @@ rules:
 
 # The generated ignore file already lists the caches and build directories, and
 # yamllint reads it directly rather than keeping a second copy. The key is
-# mutually exclusive with `ignore`, so the list is gone. .yamlignore exists only
-# where a tracked file is YAML by shape and not this project's to format, which
-# is clang's configuration. Where there is no such file, copier writes none.
-ignore-from-file: [.gitignore, .yamlignore]
+# mutually exclusive with `ignore`, so the list is gone.
+ignore-from-file: [.gitignore]
