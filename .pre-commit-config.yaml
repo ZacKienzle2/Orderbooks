@@ -21,7 +21,7 @@ fail_fast: false
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=1024"]
@@ -55,18 +55,18 @@ repos:
         args: ["--autofix", "--no-sort-keys", "--indent=2"]
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: ["--strict", "--config-file=.yamllint.yaml"]
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.13.0
+    rev: v0.23.2
     hooks:
       - id: markdownlint-cli2
 
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.4.0
+    rev: v4.4.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
@@ -171,7 +171,7 @@ repos:
   # do before linting. --no-global reads the repository's configuration
   # alone, so the hook reports the same thing here as on a runner.
   - repo: https://github.com/errata-ai/vale
-    rev: v3.9.6
+    rev: v3.20.0
     hooks:
       - id: vale
         alias: vale-sync
