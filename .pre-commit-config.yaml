@@ -182,3 +182,15 @@ repos:
       - id: vale
         args: [--no-global, --minAlertLevel=error, --output=line]
         types_or: [markdown]
+      # The commit message, at the stage git hands it over. .vale.ini reads
+      # the message file as Markdown and names one published rule for it,
+      # CommitAttribution from ai-tells-commits, which knows the co-author
+      # trailers and generated-with lines a tool appends. Claude Code turns
+      # those off through its attribution settings; this catches a machine
+      # where that setting is missing, with upstream's vocabulary rather than
+      # a pattern typed here.
+      - id: vale
+        alias: vale-commit-message
+        name: vale on the commit message
+        args: [--no-global, --minAlertLevel=error, --output=line]
+        stages: [commit-msg]
