@@ -8,9 +8,9 @@ deciders: ["Zac Kienzle"]
 
 ## Context and Problem Statement
 
-A modify that changes price forfeits time priority, so the engine implemented
-it as a cancel of the old order followed by a resubmit at the new price. That
-is correct but does redundant work when the order survives the move. The cancel
+A modify that changes price forfeits time priority, so the engine implemented it
+as a cancel of the old order followed by a resubmit at the new price. That is
+correct but does redundant work when the order survives the move. The cancel
 erases the id from the open-addressed index with a backward-shift loop and frees
 the arena slot; the resubmit allocates a fresh slot and inserts the id again.
 The order ends up with the same id and the same fields, so the slot churn and
@@ -64,8 +64,8 @@ median of three runs, measured the in-place path against the baseline.
 
 - Core cycles fell from about 1.81 billion to about 0.67 billion, a 2.7x
   reduction.
-- Retired instructions fell from 2.67 billion to 1.23 billion, a 2.2x
-  reduction, the backward-shift erase and probe insert being the bulk of it.
+- Retired instructions fell from 2.67 billion to 1.23 billion, a 2.2x reduction,
+  the backward-shift erase and probe insert being the bulk of it.
 - L1 data-cache load misses fell about 12 percent, and instructions per cycle
   rose from 1.47 to 1.84.
 
@@ -92,8 +92,8 @@ median of three runs, measured the in-place path against the baseline.
 ### Keep cancel-and-resubmit
 
 - Pro: one code path.
-- Con: pays two hash operations and an allocate-free pair the move does not need,
-  on the costliest engine operation.
+- Con: pays two hash operations and an allocate-free pair the move does not
+  need, on the costliest engine operation.
 
 ### Free-list cache
 

@@ -104,6 +104,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: >-
-          gh release create "$GITHUB_REF_NAME" sbom.spdx.json sbom.cdx.json
-          CHANGELOG.md --title "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
-          --prerelease="$PRERELEASE"
+          gh release create "$GITHUB_REF_NAME" sbom.spdx.json sbom.cdx.json CHANGELOG.md --title "$GITHUB_REF_NAME"
+          --notes-file RELEASE_NOTES.md --prerelease="$PRERELEASE"

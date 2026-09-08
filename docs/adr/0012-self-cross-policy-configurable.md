@@ -8,32 +8,29 @@ deciders: ["Zac Kienzle"]
 
 ## Context and Problem Statement
 
-A "self-cross" occurs when an incoming aggressor would match against a
-resting order from the same account. Different venues handle this
-differently; the engine must support multiple policies without
-hardcoding one.
+A "self-cross" occurs when an incoming aggressor would match against a resting
+order from the same account. Different venues handle this differently; the
+engine must support multiple policies without hardcoding one.
 
 ## Decision Drivers
 
 - Policy varies by venue and by client requirement.
-- Policy must apply on every match cycle, including modifies that
-  cross.
+- Policy must apply on every match cycle, including modifies that cross.
 - Policy choice must be cheap at construction and free at run time.
 - Default must be safe (no accidental self-execution).
 
 ## Considered Options
 
 - Construction-time enum + branch in the matching kernel.
-- Construction-time policy class via CRTP; specialise the kernel per
-  policy.
+- Construction-time policy class via CRTP; specialise the kernel per policy.
 - Runtime policy function pointer.
 - Single hardcoded policy.
 
 ## Decision Outcome
 
-Chosen option: **Construction-time enum** read into the engine. The
-matching kernel branches on the enum once per match cycle, not per
-fill. Default = `cancel_newest`.
+Chosen option: **Construction-time enum** read into the engine. The matching
+kernel branches on the enum once per match cycle, not per fill. Default =
+`cancel_newest`.
 
 ```cpp
 enum class self_cross_policy : std::uint8_t {
@@ -45,15 +42,13 @@ enum class self_cross_policy : std::uint8_t {
 
 ### Consequences
 
-- Positive: Single source of policy; reviewers see the enum in
-  `engine_config`.
-- Positive: Branch is highly predictable (one outcome per engine
-  instance).
+- Positive: Single source of policy; reviewers see the enum in `engine_config`.
+- Positive: Branch is highly predictable (one outcome per engine instance).
 - Positive: Switching policy is a config change, not a code change.
-- Negative: A per-instance branch in the cross loop. Measured impact
-  on bench is below noise; if it ever matters we promote to CRTP.
-- Risk: Future per-order policy overrides would require either a per-
-  order tag or a different abstraction. Not in scope.
+- Negative: A per-instance branch in the cross loop. Measured impact on bench is
+  below noise; if it ever matters we promote to CRTP.
+- Risk: Future per-order policy overrides would require either a per- order tag
+  or a different abstraction. Not in scope.
 
 ## Pros and Cons of the Options
 
@@ -66,8 +61,8 @@ enum class self_cross_policy : std::uint8_t {
 ### CRTP / template specialisation
 
 - Pro: Zero branch; compiler dead-codes the unused paths.
-- Con: Three engine instantiations instead of one (binary bloat,
-  longer compile).
+- Con: Three engine instantiations instead of one (binary bloat, longer
+  compile).
 - Con: Switching policy at deploy time requires a different binary.
 
 ### Runtime function pointer
@@ -83,9 +78,8 @@ enum class self_cross_policy : std::uint8_t {
 
 ## More Information
 
-- Related: [ADR-0011](0011-tif-coverage-gtc-ioc-fok.md)
-  (interaction with TIF semantics).
-- Related: [ADR-0013](0013-account-aware-self-cross.md)
-  (account-id schema and per-policy dispatch mechanics).
-- Reference: ISO 10383 venue MIC lists for which venues enforce which
-  policy.
+- Related: [ADR-0011](0011-tif-coverage-gtc-ioc-fok.md) (interaction with TIF
+  semantics).
+- Related: [ADR-0013](0013-account-aware-self-cross.md) (account-id schema and
+  per-policy dispatch mechanics).
+- Reference: ISO 10383 venue MIC lists for which venues enforce which policy.

@@ -139,8 +139,7 @@ jobs:
       - name: Configure compile_commands.json
         env:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run:
-          cmake --preset linux-clang-rel -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="iwyu"
+        run: cmake --preset linux-clang-rel -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="iwyu"
 
       - name: Build to surface IWYU advice
         run: cmake --build --preset linux-clang-rel --parallel

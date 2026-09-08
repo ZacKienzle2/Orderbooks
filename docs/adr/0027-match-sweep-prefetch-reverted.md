@@ -8,10 +8,10 @@ deciders: ["Zac Kienzle"]
 
 ## Context and Problem Statement
 
-ADR-0025 added a software prefetch of the successor order to the match sweep,
-on the premise that walking a price level's intrusive FIFO stalls on a cold
-cache miss per fill that a prefetch issued one fill ahead would hide. It also
-hoisted the self-cross test out of the inner loop. The change shipped without a
+ADR-0025 added a software prefetch of the successor order to the match sweep, on
+the premise that walking a price level's intrusive FIFO stalls on a cold cache
+miss per fill that a prefetch issued one fill ahead would hide. It also hoisted
+the self-cross test out of the inner loop. The change shipped without a
 before-and-after measurement, justified by mechanism alone.
 
 A benchmark now exists for exactly this path, so the premise is testable. The
@@ -34,18 +34,18 @@ question is whether the prefetch earns its place.
 ## Decision Outcome
 
 Chosen option: **revert the engine change and keep the benchmark**, because an
-A/B measurement shows the prefetch costs the common case and buys nothing on
-the case it targets.
+A/B measurement shows the prefetch costs the common case and buys nothing on the
+case it targets.
 
 Two inputs were measured, each as the median of fifteen repetitions, building
-the prefetch engine and the pre-change engine from the same benchmark source
-so only the header differs.
+the prefetch engine and the pre-change engine from the same benchmark source so
+only the header differs.
 
 - Contiguous deep sweep (`bench_match_deep_sweep`, a freshly built single-level
-  FIFO whose arena slots are near-contiguous). Baseline 1833 ns, prefetch
-  1900 ns, a 3 to 11 percent regression across runs. The slots are already
-  streamed by the hardware prefetcher, so the software prefetch is pure
-  overhead, an extra successor lookup and a redundant hint per fill.
+  FIFO whose arena slots are near-contiguous). Baseline 1833 ns, prefetch 1900
+  ns, a 3 to 11 percent regression across runs. The slots are already streamed
+  by the hardware prefetcher, so the software prefetch is pure overhead, an
+  extra successor lookup and a redundant hint per fill.
 - Scattered sweep (a target level interleaved with a random count of filler
   orders at other levels, so the FIFO walks the arena at irregular strides at
   roughly 73 cycles per fill). Baseline near 39000 cycles, prefetch near 38200,
@@ -55,9 +55,9 @@ so only the header differs.
   would hide.
 
 The self-cross hoist measured as noise against the baseline, so it is reverted
-with the prefetch to restore the proven-fastest loop rather than carry a
-neutral change. The benchmark stays, because it is what made the regression
-visible and it guards the path going forward.
+with the prefetch to restore the proven-fastest loop rather than carry a neutral
+change. The benchmark stays, because it is what made the regression visible and
+it guards the path going forward.
 
 ### Consequences
 

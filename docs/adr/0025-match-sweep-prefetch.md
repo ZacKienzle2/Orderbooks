@@ -13,16 +13,15 @@ deciders: ["Zac Kienzle"]
 
 ## Context and Problem Statement
 
-When an aggressor crosses the opposite best, the engine walks that price
-level's intrusive FIFO from the front, consuming maker orders until the
-aggressor is filled or the price stops crossing. Each step reads the front
-order, emits its fill, and on a full fill unlinks it and advances to the
-successor. Reading the successor follows an intrusive list pointer into an
-arena slot that the hardware prefetcher cannot predict, because freelist reuse
-scrambles the address order of orders relative to their FIFO order. On a deep
-single-level sweep every fill therefore risks a cold cache miss on the next
-order's 64-byte line, and the miss latency serialises against the fill work
-rather than overlapping it.
+When an aggressor crosses the opposite best, the engine walks that price level's
+intrusive FIFO from the front, consuming maker orders until the aggressor is
+filled or the price stops crossing. Each step reads the front order, emits its
+fill, and on a full fill unlinks it and advances to the successor. Reading the
+successor follows an intrusive list pointer into an arena slot that the hardware
+prefetcher cannot predict, because freelist reuse scrambles the address order of
+orders relative to their FIFO order. On a deep single-level sweep every fill
+therefore risks a cold cache miss on the next order's 64-byte line, and the miss
+latency serialises against the fill work rather than overlapping it.
 
 A second, smaller cost sits in the same loop. The self-cross guard tests the
 aggressor's account against each maker's account. The aggressor's account is
@@ -32,8 +31,8 @@ aggressor's account field on every fill.
 
 ## Decision Drivers
 
-- The match sweep is the hottest path under crossing flow and the one that
-  walks unpredictable pointers, so it is where a memory stall hurts most.
+- The match sweep is the hottest path under crossing flow and the one that walks
+  unpredictable pointers, so it is where a memory stall hurts most.
 - Any change must be behaviour-preserving. Matching stays strict price-time
   priority with identical fills, so the optimisation is a pure timing hint plus
   a hoist of a value the loop already computes.
@@ -64,8 +63,8 @@ order's already-resident line, so reading it adds no miss. The hint uses
 write-intent locality because the upcoming pop rewrites the successor's
 intrusive previous-link, so the line is wanted in Modified state and the
 read-for-ownership upgrade is skipped, the same reasoning the on_cancel path
-documents. The self-cross test becomes a single boolean computed once before
-the outer loop, so the sweep no longer reloads the aggressor account per fill.
+documents. The self-cross test becomes a single boolean computed once before the
+outer loop, so the sweep no longer reloads the aggressor account per fill.
 
 ### Consequences
 
@@ -91,8 +90,8 @@ the outer loop, so the sweep no longer reloads the aggressor account per fill.
 ### Reorder the pool to match FIFO order
 
 - Pro: would let the hardware prefetcher stream the sweep with no software hint.
-- Con: defeats freelist reuse and its locality on the allocate and cancel
-  paths, trading a sweep win for a regression everywhere else.
+- Con: defeats freelist reuse and its locality on the allocate and cancel paths,
+  trading a sweep win for a regression everywhere else.
 
 ### Plain pointer walk
 
@@ -104,7 +103,7 @@ the outer loop, so the sweep no longer reloads the aggressor account per fill.
 
 - Implementation: `include/lob/engine.hpp`, `match_against_opposite_`.
 - Benchmark: `bench/bench_engine.cpp`, `bench_match_deep_sweep` rests a tall
-  single-price FIFO and times an aggressor that consumes the whole stack, so
-  the measured work is dominated by the sweep's pointer-chasing.
+  single-price FIFO and times an aggressor that consumes the whole stack, so the
+  measured work is dominated by the sweep's pointer-chasing.
 - Related: ADR-0006 (slab arena and intrusive FIFO) for the layout the sweep
   walks, and the on_cancel and on_modify prefetch hints in the same header.

@@ -32,19 +32,16 @@ jobs:
           days-before-pr-close: 14
           stale-issue-label: "stale"
           stale-pr-label: "stale"
-          exempt-issue-labels:
-            "pinned,security,help wanted,good first issue,blocked"
+          exempt-issue-labels: "pinned,security,help wanted,good first issue,blocked"
           exempt-pr-labels: "pinned,security,blocked,work-in-progress"
           exempt-all-milestones: true
           exempt-draft-pr: true
           stale-issue-message: >
-            Marked stale due to inactivity. Closing in 14 days unless updated.
-            Comment to keep open.
+            Marked stale due to inactivity. Closing in 14 days unless updated. Comment to keep open.
           close-issue-message: >
             Closed due to inactivity. Reopen if still relevant.
           stale-pr-message: >
-            Marked stale due to inactivity. Closing in 14 days unless updated.
-            Push or comment to keep open.
+            Marked stale due to inactivity. Closing in 14 days unless updated. Push or comment to keep open.
           close-pr-message: >
             Closed due to inactivity. Reopen when ready.
           operations-per-run: 200
