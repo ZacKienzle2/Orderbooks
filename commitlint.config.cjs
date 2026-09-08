@@ -1,44 +1,29 @@
 /**
  * Conventional Commits 1.0.0 enforcement.
  *
- * Mirrors the Conventional Commits spec referenced in project conventions:
- * type and scope lowercase, imperative description, body wrapped at ~72,
- * blank line between header and body, ASCII only (no emoji or smart quotes).
+ * @commitlint/config-conventional already implements the specification, and
+ * its own defaults were read rather than assumed: type-enum carries the same
+ * eleven types, subject-case rejects the same four cases, and type-case,
+ * subject-full-stop and header-max-length are identical to what this file used
+ * to restate. Every one of those overrides was a hand-maintained copy that
+ * would drift the moment upstream changed, so they are gone.
+ *
+ * What is left is the two places this project genuinely differs. The package
+ * sets the leading-blank rules to warning; a message that runs the subject
+ * into the body is malformed rather than untidy, so both are errors here.
  */
 module.exports = {
   extends: ["@commitlint/config-conventional"],
   // Skip machine-generated dependency-bump commits. Dependabot keeps a
   // conventional subject but appends release notes whose lines exceed the body
-  // length limit, which would otherwise block every automated update.
+  // length limit, which would otherwise block every automated update. The
+  // predicate matches only the deps scope with a bump or update verb, so an
+  // ordinary commit is still linted, and the flag covers the capitalised
+  // subject Dependabot writes for a grouped update.
   ignores: [
     (message) => /^(build|ci|chore)\(deps(-dev)?\): (bump|update) /i.test(message),
   ],
   rules: {
-    "type-enum": [
-      2,
-      "always",
-      [
-        "feat",
-        "fix",
-        "perf",
-        "refactor",
-        "docs",
-        "test",
-        "build",
-        "ci",
-        "chore",
-        "style",
-        "revert",
-      ],
-    ],
-    "type-case": [2, "always", "lower-case"],
-    "subject-case": [
-      2,
-      "never",
-      ["sentence-case", "start-case", "pascal-case", "upper-case"],
-    ],
-    "subject-full-stop": [2, "never", "."],
-    "header-max-length": [2, "always", 100],
     "body-leading-blank": [2, "always"],
     "footer-leading-blank": [2, "always"],
   },
