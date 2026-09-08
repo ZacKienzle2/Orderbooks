@@ -142,6 +142,13 @@ repos:
     hooks:
       - id: markdownlint-cli2
 
+  # shfmt reads .editorconfig for its indent and style when given no flags,
+  # so the shell scripts follow the same file every other language does.
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
+    hooks:
+      - id: shfmt
+
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1-1
     hooks:

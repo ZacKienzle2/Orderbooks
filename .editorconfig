@@ -7,7 +7,6 @@ indent_style = space
 indent_size = 4
 insert_final_newline = true
 trim_trailing_whitespace = true
-max_line_length = 120
 
 [*.md]
 # CommonMark sets list-continuation indentation, so the width inherited
@@ -15,19 +14,25 @@ max_line_length = 120
 # inherited pair.
 indent_size = unset
 trim_trailing_whitespace = false
-max_line_length = off
 
 [*.{yml,yaml,json,toml}]
-# A pinned action is a forty-character digest plus the tag it stands for, and
-# the reference carrying it does not fit a line limit meant for prose or code.
-# "unset" is the specification's own way to undo an inherited pair.
-max_line_length = unset
 indent_size = 2
+
+# max_line_length is set only where a formatter reads it. prettier takes its
+# print width from here for these languages; ruff, clang-format and
+# cmake-format carry their own widths; and a linter reading a width under [*]
+# reported generated .gitignore headers, data files and a Doxyfile that no
+# formatter will ever wrap.
+[*.{js,cjs,mjs,ts,tsx,jsx,css,scss,html}]
+max_line_length = 120
 
 [Makefile]
 indent_style = tab
 
 [*.{js,cjs,mjs,ts,tsx,jsx}]
+indent_size = 2
+
+[*.{css,scss,html}]
 indent_size = 2
 
 # clang-format owns the layout of these and aligns continuation lines to the
