@@ -1,5 +1,10 @@
 {
   "format": {
     "line_width": 120
+  },
+  "lint": {
+    "local_var_pattern": "_?[A-Za-z][A-Za-z0-9_]+",
+    "argument_var_pattern": "_?[a-z][a-z0-9_]+",
+    "internal_var_pattern": "_?[A-Za-z][A-Za-z0-9_]+"
   }
 }

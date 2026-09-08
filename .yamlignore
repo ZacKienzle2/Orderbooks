@@ -1,6 +1,0 @@
-# clang keeps its own configuration in these. They are YAML by shape and
-# clang's convention by content: .clang-tidy writes CheckOptions as inline maps
-# with spaces inside the braces, and .clang-format uses Yes and No where
-# yamllint wants true and false.
-.clang-tidy
-.clang-format

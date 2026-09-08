@@ -1,7 +1,12 @@
 name: Auto-assign
 
 on:
-  pull_request_target:
+  # pull_request rather than pull_request_target. zizmor's remediation is to
+  # replace the latter "unless you absolutely need repository write
+  # permissions", which a pull request from a fork would; release-drafter's own
+  # example uses pull_request and reserves the other for forks, and labeler
+  # says the same. No repository here takes pull requests from forks.
+  pull_request:
     types: [opened, ready_for_review]
 
 permissions:
@@ -20,7 +25,7 @@ jobs:
     if: github.event.pull_request.draft == false
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
         with:
           egress-policy: audit
 
