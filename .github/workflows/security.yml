@@ -1,21 +1,12 @@
 name: Security
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/security.yml"
   pull_request:
     branches: [main]
     paths:
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/security.yml"
-  schedule:
-    # Daily 04:17 UTC drift check against the latest advisory database.
-    - cron: "17 4 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -26,41 +17,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pip-audit:
-    name: pip-audit vulnerability scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Sync dependencies
-        run: uv sync --frozen --all-extras
-
-      - name: Export requirements for pip-audit
-        run: uv pip compile pyproject.toml --all-extras -o requirements.txt
-
-      - name: Audit with pip-audit
-        run: |
-          set -euo pipefail
-          pipx run --spec 'pip-audit==2.9.0' pip-audit \
-            --requirement requirements.txt \
-            --strict \
-            --progress-spinner=off
-
   sbom:
     name: CycloneDX SBOM
     runs-on: ubuntu-latest

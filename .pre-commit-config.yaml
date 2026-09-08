@@ -136,3 +136,16 @@ repos:
         language: system
         files: '^\.github/workflows/.*\.ya?ml$'
         types: [yaml]
+
+  # Prose. The official hook is language: golang, so pre-commit builds vale
+  # itself: the binary is present on a CI runner as well as here, and the
+  # environment is cached after the first build. A repo: local hook using the
+  # installed binary would pass locally and fail in CI, where no vale exists.
+  # vale reads the global configuration in the OS config directory, so the
+  # rules stay the published packages there rather than a copy per repository.
+  - repo: https://github.com/errata-ai/vale
+    rev: v3.9.6
+    hooks:
+      - id: vale
+        args: [--minAlertLevel=error, --output=line]
+        types_or: [markdown, plain-text, tex]

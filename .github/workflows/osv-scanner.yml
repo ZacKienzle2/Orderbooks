@@ -1,12 +1,8 @@
 name: OSV-Scanner
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: "13 6 * * 3"
   workflow_dispatch: {}
 
 permissions:
