@@ -24,3 +24,11 @@ ignore: |
   .pytest_cache/
   .ruff_cache/
   __pycache__/
+  # clang's own configuration files happen to be YAML, and their formatting is
+  # clang's convention rather than this project's: .clang-tidy writes
+  # CheckOptions as inline maps with spaces inside the braces, and
+  # .clang-format uses Yes and No where yamllint wants true and false. The
+  # workflow's yamllint never saw either, because it selects by file name and
+  # neither is a .yml; the hook selects by content and does.
+  .clang-tidy
+  .clang-format

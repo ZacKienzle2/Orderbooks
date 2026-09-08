@@ -11,6 +11,8 @@ fpe = "fpe"    # floating-point exception
 nd = "nd"      # boost::intrusive::auto_unlink + others
 sps = "sps"    # samples-per-second
 crate = "crate"
+# clang-analyzer-optin.* is a check family name, not a misspelt "option".
+optin = "optin"
 ba = "ba"            # best ask cursor (matching engine and reference)
 bb = "bb"            # best bid cursor (matching engine and reference)
 po = "po"            # post-only TIF abbreviation

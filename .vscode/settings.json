@@ -4,7 +4,10 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "files.trimFinalNewlines": true,
-  "editor.rulers": [72, 100],
+  "editor.rulers": [
+    72,
+    100
+  ],
   "editor.tabSize": 4,
   "editor.insertSpaces": true,
   "editor.formatOnSave": true,
@@ -24,7 +27,9 @@
     "--compile-commands-dir=build/macos-clang-dev",
     "--query-driver=/usr/bin/clang++,/opt/homebrew/bin/clang++,/usr/local/bin/clang++"
   ],
-  "clangd.fallbackFlags": ["-std=c++20"],
+  "clangd.fallbackFlags": [
+    "-std=c++20"
+  ],
   "cmake.configureOnOpen": false,
   "cmake.useCMakePresets": "always",
   "[cpp]": {
@@ -42,11 +47,15 @@
   "[python]": {
     "editor.tabSize": 4,
     "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.codeActionsOnSave": { "source.organizeImports": "explicit" }
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
   },
   "[markdown]": {
     "editor.wordWrap": "off",
-    "editor.rulers": [120],
+    "editor.rulers": [
+      120
+    ],
     "editor.tabSize": 2,
     "editor.formatOnSave": false
   },
@@ -55,10 +64,18 @@
     "editor.insertSpaces": true,
     "editor.autoIndent": "advanced"
   },
-  "[json]":  { "editor.tabSize": 2 },
-  "[jsonc]": { "editor.tabSize": 2 },
-  "[toml]":  { "editor.tabSize": 2 },
-  "markdownlint.config": { "extends": "./.markdownlint.yaml" },
+  "[json]": {
+    "editor.tabSize": 2
+  },
+  "[jsonc]": {
+    "editor.tabSize": 2
+  },
+  "[toml]": {
+    "editor.tabSize": 2
+  },
+  "markdownlint.config": {
+    "extends": "./.markdownlint.yaml"
+  },
   "yaml.schemas": {
     "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml",
     "https://json.schemastore.org/dependabot-2.0.json": ".github/dependabot.yml",
