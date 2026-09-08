@@ -84,7 +84,7 @@ any slot content, so it remains valid before the freelist exists.
   first-time-init branch is `[[unlikely]]` and resolves to a no-op
   after the first call.
 - Positive: external API is byte-identical; no caller changes.
-- Negative: the very first `allocate()` pays the cost of the full
+- Negative: the first `allocate()` pays the cost of the full
   freelist build (linear in `Capacity`). For typical engines that
   is one-time and amortises to zero immediately.
 - Negative: a process that constructs an arena and never allocates

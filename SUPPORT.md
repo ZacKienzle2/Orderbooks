@@ -4,7 +4,7 @@
 
 ### Questions and discussions
 
-"How do I...?", design discussions, feature ideation: [GitHub Discussions](https://github.com/ZacKienzle2/Orderbooks/discussions).
+"How do I…?", design discussions, feature ideation: [GitHub Discussions](https://github.com/ZacKienzle2/Orderbooks/discussions).
 
 ### Bug reports
 
