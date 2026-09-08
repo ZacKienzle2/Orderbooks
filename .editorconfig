@@ -18,6 +18,10 @@ trim_trailing_whitespace = false
 max_line_length = off
 
 [*.{yml,yaml,json,toml}]
+# A pinned action is a forty-character digest plus the tag it stands for, and
+# the reference carrying it does not fit a line limit meant for prose or code.
+# "unset" is the specification's own way to undo an inherited pair.
+max_line_length = unset
 indent_size = 2
 
 [Makefile]

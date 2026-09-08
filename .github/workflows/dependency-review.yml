@@ -16,8 +16,10 @@ jobs:
   dependency-review:
     name: Review dependencies
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The action reads the dependency graph, which a private
+    # repository exposes only with Advanced Security.
     if: github.event.repository.private == false
+    timeout-minutes: 10
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
