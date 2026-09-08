@@ -138,13 +138,18 @@ repos:
         language: python
         additional_dependencies: ["cmakelang==0.6.13"]
         files: '(CMakeLists\.txt|\.cmake)$'
-        args: ["--in-place", "--line-width=120"]
+        args: ["--in-place"]
 
-      # Settings arrive as flags rather than through a .cmake-format.yaml:
-      # cmakelang last released in 2021 and its config loader raises on the
-      # Python pre-commit picks here, while the flags work.
+      # The width is in .cmake-format.json, which both tools read for every
+      # file, and not in args: cmakelang 0.6.13 applies a --line-width flag to
+      # the first file of an invocation alone and formats the rest at its
+      # default of 80. pre-commit batches files, so the hook's verdict on a
+      # file depended on which files it was batched with, and the same tree
+      # failed the commit hook at one width and the runner at the other,
+      # measured with one file, two files, and two files in reverse order.
+      # cmakelang's YAML and Python config loaders raise on the Python
+      # pre-commit picks here; the JSON loader does not.
       #
-      # The width matches .editorconfig, where 80 is the tool's own default.
       # The patterns accept the leading underscore that marks a local in CMake
       # and the upper case of CMake's documented variables, so
       # CMAKE_REQUIRED_FLAGS is no longer reported as a badly named local.
@@ -155,7 +160,6 @@ repos:
         additional_dependencies: ["cmakelang==0.6.13"]
         files: '(CMakeLists\.txt|\.cmake)$'
         args:
-          - "--line-width=120"
           - "--local-var-pattern=_?[A-Za-z][A-Za-z0-9_]+"
           - "--argument-var-pattern=_?[a-z][a-z0-9_]+"
           - "--internal-var-pattern=_?[A-Za-z][A-Za-z0-9_]+"
