@@ -1,7 +1,19 @@
+# Derived from the workflow GitHub publishes at
+# actions/starter-workflows/code-scanning/scorecard.yml, with two deliberate
+# departures from it. Every action is pinned to a digest rather than a tag,
+# which is what Scorecard's own Pinned-Dependencies check asks for and what
+# Dependabot then moves. And the weekly cron is gone: a scan on every push to
+# the default branch and on every pull request already covers what changes,
+# and a schedule spends minutes on a tree nobody touched.
+#
+# `gh api repos/actions/starter-workflows/contents/code-scanning/scorecard.yml`
+# prints the current upstream to compare against.
 name: OpenSSF Scorecard
 
 on:
   branch_protection_rule: {}
+  schedule:
+    - cron: "17 4 * * 1"
   push:
     branches: [main]
   workflow_dispatch: {}
@@ -31,7 +43,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -43,13 +55,13 @@ jobs:
           publish_results: true
 
       - name: Upload artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: SARIF file
           path: results.sarif
           retention-days: 5
 
       - name: Upload to code-scanning
-        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v3
         with:
           sarif_file: results.sarif

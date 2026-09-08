@@ -64,7 +64,6 @@ repos:
     rev: v0.13.0
     hooks:
       - id: markdownlint-cli2
-        args: ["--config", ".markdownlint.yaml"]
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.4.0

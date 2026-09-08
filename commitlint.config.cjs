@@ -20,9 +20,7 @@ module.exports = {
   // predicate matches only the deps scope with a bump or update verb, so an
   // ordinary commit is still linted, and the flag covers the capitalised
   // subject Dependabot writes for a grouped update.
-  ignores: [
-    (message) => /^(build|ci|chore)\(deps(-dev)?\): (bump|update) /i.test(message),
-  ],
+  ignores: [(message) => /^(build|ci|chore)\(deps(-dev)?\): (bump|update) /i.test(message)],
   rules: {
     "body-leading-blank": [2, "always"],
     "footer-leading-blank": [2, "always"],
