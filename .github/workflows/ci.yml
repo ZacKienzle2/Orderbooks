@@ -100,12 +100,11 @@ jobs:
       - link-check
     if: always()
     steps:
-      - name: Verify all checks passed
-        run: |
-          set -euo pipefail
-          results='${{ toJSON(needs) }}'
-          echo "${results}"
-          if echo "${results}" | grep -E '"result":\s*"(failure|cancelled)"' > /dev/null; then
-            echo "::error::One or more upstream jobs failed or were cancelled."
-            exit 1
-          fi
+      # re-actors/alls-green is the published form of the gate this step used
+      # to hand-roll: it reads the needs context and fails on any failed or
+      # cancelled job. The job keeps its name, so what branch protection
+      # requires is unchanged.
+      - name: Decide whether the needed jobs succeeded
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
