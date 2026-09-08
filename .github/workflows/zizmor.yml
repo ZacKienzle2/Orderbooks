@@ -36,39 +36,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # The action collects every workflow and composite action from the
+      # repository root by default, so nothing here names a path. It installs
+      # zizmor itself and uploads its own SARIF, which replaces a pinned
+      # version written into a run block and the upload step after it.
       - name: Run zizmor
-        env:
-          ZIZMOR_VERSION: "1.5.2"
-        run: |
-          set -euo pipefail
-          targets=(.github/workflows)
-          if [ -d .github/actions ]; then targets+=(.github/actions); fi
-          # zizmor exits 14 when findings are present and 0 when clean; we
-          # want SARIF emitted either way and the workflow to fail only on
-          # genuine errors. Save status, treat 14 as "had findings, ok".
-          set +e
-          pipx run --spec "zizmor==${ZIZMOR_VERSION}" zizmor \
-            --format sarif \
-            --config .zizmor.yml \
-            "${targets[@]}" \
-            > zizmor.sarif
-          status=$?
-          set -e
-          if [ "${status}" -ne 0 ] && [ "${status}" -ne 14 ]; then
-            echo "::error::zizmor exited ${status}"
-            exit "${status}"
-          fi
-          if [ ! -s zizmor.sarif ]; then
-            echo '{"version":"2.1.0","runs":[]}' > zizmor.sarif
-          fi
-
-      - name: Upload SARIF
-        # Code scanning takes SARIF from public repositories only.
-        # The scan itself runs either way, and fails on its own findings.
-        if: >-
-          always() && hashFiles('zizmor.sarif') != ''
-          && github.event.repository.private == false
-        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3
         with:
-          sarif_file: zizmor.sarif
-          category: zizmor
+          advanced-security: ${{ github.event.repository.private == false }}
