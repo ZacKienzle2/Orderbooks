@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
         with:
           egress-policy: audit
 
@@ -53,7 +53,7 @@ jobs:
           fi
 
       - name: Generate release notes via git-cliff
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@3d96a18cc4ec17e9dc69ddcc424ccafaf1f78ce2 # v4.9.0
         with:
           config: cliff.toml
           args: --verbose --latest --strip header
@@ -61,7 +61,7 @@ jobs:
           OUTPUT: RELEASE_NOTES.md
 
       - name: Regenerate full CHANGELOG.md at tag
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@3d96a18cc4ec17e9dc69ddcc424ccafaf1f78ce2 # v4.9.0
         with:
           config: cliff.toml
           args: --verbose --tag ${{ github.ref_name }}
@@ -69,7 +69,7 @@ jobs:
           OUTPUT: CHANGELOG.md
 
       - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           path: .
           format: spdx-json
@@ -79,7 +79,7 @@ jobs:
           upload-release-assets: false
 
       - name: Generate SBOM (CycloneDX)
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           path: .
           format: cyclonedx-json
@@ -89,23 +89,21 @@ jobs:
           upload-release-assets: false
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4
         with:
           subject-path: |
             sbom.spdx.json
             sbom.cdx.json
 
+      # The runner's own gh creates the release, which is zizmor's
+      # superfluous-actions remediation for softprops/action-gh-release. The
+      # inputs map one to one; prerelease comes from the version step through
+      # the environment rather than a template expansion in the command.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          body_path: RELEASE_NOTES.md
-          prerelease: ${{ steps.version.outputs.prerelease }}
-          draft: false
-          generate_release_notes: false
-          fail_on_unmatched_files: false
-          files: |
-            sbom.spdx.json
-            sbom.cdx.json
-            CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" sbom.spdx.json sbom.cdx.json
+          CHANGELOG.md --title "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+          --prerelease="$PRERELEASE"
