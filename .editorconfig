@@ -30,8 +30,16 @@ indent_style = tab
 [*.{js,cjs,mjs,ts,tsx,jsx}]
 indent_size = 2
 
+# clang-format owns the layout of these and aligns continuation lines to the
+# construct rather than to a multiple of the indent, and cmake-format does the
+# same for CMake. editorconfig-checker reads indent_size as a rule, so the
+# formatter's own output failed it on 29 lines of one tree. "unset" leaves
+# the width to the formatter and keeps the rest of the section.
 [*.{c,cc,cpp,cxx,h,hh,hpp,hxx,cu,cuh}]
-indent_size = 4
+indent_size = unset
+
+[{CMakeLists.txt,*.cmake}]
+indent_size = unset
 
 [*.py]
 indent_size = 4
