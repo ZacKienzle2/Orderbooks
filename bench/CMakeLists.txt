@@ -10,6 +10,5 @@ add_executable(
   bench_latency_histogram.cpp
   bench_engine_latency.cpp)
 find_package(Threads REQUIRED)
-target_link_libraries(
-  lob_bench PRIVATE lob::core lob::compiler_flags lob::warnings
-                    benchmark::benchmark_main Threads::Threads)
+target_link_libraries(lob_bench PRIVATE lob::core lob::compiler_flags lob::warnings benchmark::benchmark_main
+                                        Threads::Threads)
