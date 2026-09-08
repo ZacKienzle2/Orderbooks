@@ -1,6 +1,6 @@
 # Roadmap
 
-This document tracks high-level direction. For granular work see the [issue tracker](https://github.com/ZacKienzle2/Orderbooks/issues) and [project boards](https://github.com/ZacKienzle2/Orderbooks/projects).
+This document tracks high-level direction. For granular work see the [issue tracker](https://github.com/ZacKienzle2/Orderbooks/issues) and [project boards](https://github.com/users/ZacKienzle2/projects).
 
 Architectural decisions referenced below live in [`docs/adr/`](docs/adr/README.md). The roadmap is intentionally aspirational. Items are not commitments. Priorities shift as the project learns from users and contributors.
 
