@@ -73,7 +73,7 @@ jobs:
     steps:
       - name: Harden runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
         with:
           egress-policy: audit
 
@@ -83,7 +83,7 @@ jobs:
           persist-credentials: false
 
       - name: Export GitHub Actions cache vars
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -118,7 +118,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
         with:
           egress-policy: audit
 
@@ -139,7 +139,8 @@ jobs:
       - name: Configure compile_commands.json
         env:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run: cmake --preset linux-clang-rel -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="iwyu"
+        run:
+          cmake --preset linux-clang-rel -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="iwyu"
 
       - name: Build to surface IWYU advice
         run: cmake --build --preset linux-clang-rel --parallel
@@ -152,7 +153,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
         with:
           egress-policy: audit
 
@@ -161,9 +162,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-
-      - name: Install clang-tidy
-        run: sudo apt-get update && sudo apt-get install -y clang-tidy-18
 
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
@@ -180,42 +178,27 @@ jobs:
         # Disable scanning so the exported compile commands carry no modmap.
         run: cmake --preset linux-clang-rel -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
 
+      # cpp-linter runs clang-tidy over the files the pull request changed, with
+      # the compilation database this job configured and the checks and header
+      # filter .clang-tidy names. It replaces a shell block that computed the
+      # changed files with git and carried the header filter a second time,
+      # the apt install of a clang the action brings itself, and the separate
+      # clang-format job, since style: file checks formatting as well.
       - name: Run clang-tidy on changed files
-        run: |
-          set -euo pipefail
-          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
-          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "${base}"...HEAD -- '*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hxx' '*.h')
-          if [ "${#changed[@]}" -eq 0 ]; then
-            echo "No C++ files changed."
-            exit 0
-          fi
-          clang-tidy-18 -p build/linux-clang-rel --header-filter='(include|src)/lob/.*' "${changed[@]}"
-
-  format-check:
-    name: clang-format check
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2
+        id: linter
+        uses: cpp-linter/cpp-linter-action@cab1143a2c149bc41e85b070a9de81716974c18f # v2.21.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          egress-policy: audit
+          version: 18
+          database: build/linux-clang-rel
+          tidy-checks: ""
+          style: file
+          files-changed-only: true
+          step-summary: true
+          thread-comments: false
 
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format-18
-
-      - name: Verify formatting
-        run: |
-          set -euo pipefail
-          files=$(git ls-files '*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hxx' '*.h' '*.cu' '*.cuh' || true)
-          if [ -z "${files}" ]; then
-            echo "No C++ files."
-            exit 0
-          fi
-          # shellcheck disable=SC2086
-          clang-format-18 --dry-run --Werror --style=file ${files}
+      # The action's documented way to make its findings fail the job.
+      - name: Fail on findings
+        if: steps.linter.outputs.checks-failed > 0
+        run: exit 1
