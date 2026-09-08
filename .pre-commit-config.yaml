@@ -139,13 +139,20 @@ repos:
 
   # Prose. The official hook is language: golang, so pre-commit builds vale
   # itself: the binary is present on a CI runner as well as here, and the
-  # environment is cached after the first build. A repo: local hook using the
-  # installed binary would pass locally and fail in CI, where no vale exists.
-  # vale reads the global configuration in the OS config directory, so the
-  # rules stay the published packages there rather than a copy per repository.
+  # environment is cached after the first build. The hook entry is the bare
+  # vale command, so it does not install what .vale.ini names; the first
+  # entry runs `vale sync` for that, which the packages documentation says to
+  # do before linting. --no-global reads the repository's configuration
+  # alone, so the hook reports the same thing here as on a runner.
   - repo: https://github.com/errata-ai/vale
     rev: v3.9.6
     hooks:
       - id: vale
-        args: [--minAlertLevel=error, --output=line]
-        types_or: [markdown, plain-text, tex]
+        alias: vale-sync
+        name: vale sync
+        args: [sync]
+        pass_filenames: false
+        files: ^\.vale\.ini$
+      - id: vale
+        args: [--no-global, --minAlertLevel=error, --output=line]
+        types_or: [markdown]
