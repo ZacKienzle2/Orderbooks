@@ -20,6 +20,8 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: pre-commit
     directory: /
@@ -33,3 +35,5 @@ updates:
       prefix: "ci"
       include: scope
     labels: ["dependencies", "pre-commit"]
+    cooldown:
+      default-days: 7
