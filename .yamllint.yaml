@@ -14,8 +14,21 @@ rules:
   comments:
     min-spaces-from-content: 1
   comments-indentation: disable
+  # prettier formats every YAML file here and this lints what prettier writes,
+  # so these three rules take prettier's documented style: a space inside a
+  # flow mapping's braces (bracketSpacing, default true), none inside a flow
+  # sequence's brackets, none in an empty pair, and an indent that follows
+  # .editorconfig for the file, which is what "consistent" accepts.
+  braces:
+    min-spaces-inside: 1
+    max-spaces-inside: 1
+    min-spaces-inside-empty: 0
+    max-spaces-inside-empty: 0
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
   indentation:
-    spaces: 2
+    spaces: consistent
     indent-sequences: consistent
 
 # The generated ignore file already lists the caches and build directories, and
