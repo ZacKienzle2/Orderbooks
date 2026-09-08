@@ -51,7 +51,7 @@ so only the header differs.
   roughly 73 cycles per fill). Baseline near 39000 cycles, prefetch near 38200,
   inside run-to-run noise. One fill of lookahead, about 73 cycles, cannot cover
   a last-level miss of a few hundred cycles, and a linked list cannot be
-  prefetched several nodes ahead without chasing the very pointers the prefetch
+  prefetched several nodes ahead without chasing the same pointers the prefetch
   would hide.
 
 The self-cross hoist measured as noise against the baseline, so it is reverted
