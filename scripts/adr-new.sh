@@ -5,8 +5,8 @@
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 \"Short title in imperative form\""
-  exit 2
+    echo "Usage: $0 \"Short title in imperative form\""
+    exit 2
 fi
 
 repo_root="$(git rev-parse --show-toplevel)"
@@ -14,37 +14,37 @@ adr_dir="${repo_root}/docs/adr"
 template="${adr_dir}/template.md"
 
 if [ ! -d "${adr_dir}" ]; then
-  echo "ADR directory missing: ${adr_dir}"
-  exit 1
+    echo "ADR directory missing: ${adr_dir}"
+    exit 1
 fi
 
 if [ ! -f "${template}" ]; then
-  echo "Template missing: ${template}"
-  exit 1
+    echo "Template missing: ${template}"
+    exit 1
 fi
 
 title="$1"
 
 # Derive slug: lowercase, replace non-alphanumeric runs with single hyphen,
 # trim leading and trailing hyphens.
-slug="$(printf '%s' "${title}" \
-  | tr '[:upper:]' '[:lower:]' \
-  | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+slug="$(printf '%s' "${title}" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
 
 if [ -z "${slug}" ]; then
-  echo "Could not derive slug from title."
-  exit 1
+    echo "Could not derive slug from title."
+    exit 1
 fi
 
 # Highest existing 4-digit ADR number; new = highest + 1.
 last_num="0000"
 shopt -s nullglob
 for f in "${adr_dir}"/[0-9][0-9][0-9][0-9]-*.md; do
-  base="$(basename "$f")"
-  candidate="${base:0:4}"
-  if [ "$((10#${candidate}))" -gt "$((10#${last_num}))" ]; then
-    last_num="${candidate}"
-  fi
+    base="$(basename "$f")"
+    candidate="${base:0:4}"
+    if [ "$((10#${candidate}))" -gt "$((10#${last_num}))" ]; then
+        last_num="${candidate}"
+    fi
 done
 shopt -u nullglob
 
@@ -52,17 +52,17 @@ new_num=$(printf '%04d' $((10#${last_num} + 1)))
 new_file="${adr_dir}/${new_num}-${slug}.md"
 
 if [ -e "${new_file}" ]; then
-  echo "File already exists: ${new_file}"
-  exit 1
+    echo "File already exists: ${new_file}"
+    exit 1
 fi
 
 today="$(date -u +%Y-%m-%d)"
 
 sed \
-  -e "s/^status:.*/status: \"Proposed\"/" \
-  -e "s/^date:.*/date: \"${today}\"/" \
-  -e "s/^# NNNN\. Title in imperative form$/# ${new_num}. ${title}/" \
-  "${template}" > "${new_file}"
+    -e "s/^status:.*/status: \"Proposed\"/" \
+    -e "s/^date:.*/date: \"${today}\"/" \
+    -e "s/^# NNNN\. Title in imperative form$/# ${new_num}. ${title}/" \
+    "${template}" >"${new_file}"
 
 echo "Created ${new_file}"
 echo "Remember to add it to the index in docs/adr/README.md."
