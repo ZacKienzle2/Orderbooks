@@ -53,7 +53,6 @@ repos:
     hooks:
       - id: prettier
         types_or: [yaml, markdown, html, css, scss, javascript, json]
-        args: [--prose-wrap=always]
 
   # Capitalisation of the names of the tools themselves, which no linter has an
   # opinion about and everyone gets wrong.
