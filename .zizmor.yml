@@ -1,4 +1,0 @@
-rules:
-  template-injection:
-    ignore:
-      - release.yml:50:11
