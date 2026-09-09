@@ -1,10 +1,18 @@
 ---
-status: "Accepted"
+status: "Superseded"
 date: "2026-06-20"
 deciders: ["Zac Kienzle"]
 ---
 
 # 0026. Absolute latency-ceiling gate in CI
+
+> Superseded on 2026-09-09. The gate was a script of this repository's own, and
+> the repository carries no hand-written tooling: what a packaged tool does not
+> provide is not done by hand. No published tool asserts an absolute threshold
+> over Google Benchmark output, so the ceiling is retired.
+> github-action-benchmark records every run and shows each against the previous
+> one on `main` in the job summary; a relative gate needs a pinned host and is
+> not run on shared runners. The record below is kept as written.
 
 ## Context and Problem Statement
 

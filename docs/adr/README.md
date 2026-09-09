@@ -72,7 +72,7 @@ update the index below. The template is the scaffold.
 | [0023](0023-hugepage-backed-arena.md)                      | Accepted               | Huge-page-backed slab arena                                     |
 | [0024](0024-hdr-latency-histogram.md)                      | Accepted               | From-scratch HDR histogram for latency measurement              |
 | [0025](0025-match-sweep-prefetch.md)                       | Superseded by ADR-0027 | Software prefetch and invariant hoist in the match sweep        |
-| [0026](0026-absolute-latency-ceiling-gate.md)              | Accepted               | Absolute latency-ceiling gate in CI                             |
+| [0026](0026-absolute-latency-ceiling-gate.md)              | Superseded             | Absolute latency-ceiling gate in CI                             |
 | [0027](0027-match-sweep-prefetch-reverted.md)              | Accepted               | Match-sweep prefetch measured and reverted                      |
 | [0028](0028-in-place-modify-relink.md)                     | Accepted               | In-place relink for a resting price-move modify                 |
 | [0029](0029-guard-top-recompute.md)                        | Accepted               | Guard the top-of-book recompute behind a price test             |
