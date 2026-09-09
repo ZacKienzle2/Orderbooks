@@ -204,12 +204,15 @@ repos:
   - repo: https://github.com/errata-ai/vale
     rev: v3.20.0
     hooks:
+      # vale's own pre-commit recipe: sync runs whenever the hooks run, so the
+      # styles .vale.ini names are present on a runner that checks only the
+      # files a pull request changed and in a fresh clone, neither of which
+      # a sync keyed on .vale.ini changing ever reached.
       - id: vale
         alias: vale-sync
         name: vale sync
         args: [sync]
         pass_filenames: false
-        files: ^\.vale\.ini$
       - id: vale
         args: [--no-global, --minAlertLevel=error, --output=line]
         types_or: [markdown]
