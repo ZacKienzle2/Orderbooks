@@ -37,8 +37,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           yaml-file: .github/labels.yml
-          skip-delete: false
+          # labels.yml lists what the template's tooling names; GitHub's own
+          # defaults and the labels the size and stale actions create stay.
+          skip-delete: true
           dry-run: ${{ github.event_name != 'push' && github.event_name != 'workflow_dispatch' }}
-          exclude: |
-            help*
-            *issue
