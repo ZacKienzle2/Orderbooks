@@ -11,7 +11,7 @@
 using lob::spsc_ring;
 
 TEST_CASE("spsc_ring default state is empty, not full", "[spsc]") {
-    spsc_ring<std::uint64_t, 8> const ring;
+    spsc_ring<std::uint64_t, 8> ring;
     REQUIRE(ring.empty());
     REQUIRE_FALSE(ring.full());
     REQUIRE(ring.size() == 0);

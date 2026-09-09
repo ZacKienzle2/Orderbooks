@@ -10,7 +10,7 @@
 #include <catch2/generators/catch_generators_all.hpp>
 
 TEST_CASE("id_index empty state", "[id_index]") {
-    lob::id_index const idx;
+    lob::id_index idx;
     REQUIRE(idx.empty());
     REQUIRE(idx.size() == 0);
     REQUIRE(idx.lookup(42) == nullptr);
@@ -26,7 +26,7 @@ TEST_CASE("id_index insert / lookup / erase round-trip", "[id_index]") {
         idx.insert(o.id, &o);
     REQUIRE(idx.size() == orders.size());
 
-    REQUIRE(idx.lookup(100) == orders.data());
+    REQUIRE(idx.lookup(100) == &orders[0]);
     REQUIRE(idx.lookup(103) == &orders[3]);
     REQUIRE(idx.lookup(999) == nullptr);
 
