@@ -36,8 +36,12 @@ runs:
           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
           core.exportVariable('VCPKG_BINARY_SOURCES', 'clear;x-gha,readwrite');
 
+    # Under the runner's temporary directory for the same reason as vcpkg
+    # below; the action's default puts the binary in the workspace.
     - name: Install Ninja
       uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
+      with:
+        destination: ${{ runner.temp }}/ninja-build
 
     # Manifest mode installs the dependencies at configure time through the
     # toolchain file, so the action itself does not. vcpkg is checked out
