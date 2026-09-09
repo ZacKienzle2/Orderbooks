@@ -70,8 +70,9 @@ designed for sub-microsecond order processing on Linux x86_64.
   timing loops.
 - `just perfstat` runs `perf stat` over the benchmark for IPC, branch-miss and
   L1-miss telemetry under a fixed-seed workload.
-- CI bench job gates throughput regressions against the previous run on `main`
-  through github-action-benchmark.
+- CI bench job records every run through github-action-benchmark and shows the
+  comparison with the previous run on `main`; the latency ceiling, in reference
+  cycles, is the gate.
 
 ## Build
 
