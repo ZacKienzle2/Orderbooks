@@ -1,6 +1,18 @@
 name: Bench
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "include/**"
+      - "src/**"
+      - "bench/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+      - ".github/workflows/bench.yml"
   pull_request:
     branches: [main]
     paths:
@@ -86,33 +98,28 @@ jobs:
           LATENCY_P999_CEILING: "8000"
         run: python3 scripts/check_latency_ceiling.py artifacts/bench.json
 
-      - name: Compare against baseline
-        if: hashFiles('bench/baseline.json') != ''
-        env:
-          BENCH_REGRESSION_THRESHOLD: "0.15"
-        run: |
-          set -euo pipefail
-          # google/benchmark ships compare.py in its source tree. Pull it
-          # at the same commit vcpkg resolves so the script and the binary
-          # agree on the JSON schema.
-          GBENCH_SHA="$(jq -r '.installed[] |
-              select(.package_name=="benchmark") | .version' \
-              vcpkg_installed/vcpkg/info/*.json 2>/dev/null \
-              | head -n1 || echo main)"
-          base="https://raw.githubusercontent.com/google/benchmark"
-          curl -fsSL "${base}/${GBENCH_SHA}/tools/compare.py" -o compare.py
-          python3 -m pip install --user scipy
-          python3 compare.py --dump_json artifacts/bench-compare.json \
-            benchmarks bench/baseline.json artifacts/bench.json \
-            | tee artifacts/bench-compare.txt
-          python3 scripts/check_bench_regression.py artifacts/bench-compare.json
-
-      - name: Upload comparison artefact
-        if: hashFiles('bench/baseline.json') != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+      # benchmark-action/github-action-benchmark reads Google Benchmark's own
+      # JSON, keeps the history in a file actions/cache carries between runs,
+      # and fails the job when a benchmark slows past the threshold against
+      # the previous run, so neither a committed baseline nor a comparison
+      # script is needed. The cache key ends in the run id and restores by
+      # prefix, which is how actions/cache documents a cache that moves.
+      - name: Restore the benchmark history
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v4
         with:
-          name: bench-compare
-          path: |
-            artifacts/bench-compare.txt
-            artifacts/bench-compare.json
-          retention-days: 30
+          path: ./cache
+          key: benchmark-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: benchmark-${{ runner.os }}-
+
+      - name: Gate on regression against the previous run
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
+        with:
+          name: lob_bench
+          tool: googlecpp
+          output-file-path: artifacts/bench.json
+          external-data-json-path: ./cache/benchmark-data.json
+          alert-threshold: "115%"
+          fail-on-alert: true
+          # A run on main writes the history; a pull request is compared
+          # against it without moving it.
+          save-data-file: ${{ github.event_name != 'pull_request' }}

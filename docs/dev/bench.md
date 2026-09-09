@@ -56,17 +56,13 @@ file, absent benchmark, or absent counter.
 
 ## Regression gate
 
-CI runs `google/benchmark`'s `compare.py` against `bench/baseline.json`.
-
-Refresh the baseline on a quiet, pinned host:
-
-```bash
-cp artifacts/bench.json bench/baseline.json
-git checkout -b perf/refresh-baseline
-git add bench/baseline.json
-git commit -m "perf(bench): refresh baseline" \
-           -m "Captured on $(uname -srvmo) with $(clang++ --version | head -n1)."
-```
+CI runs
+[github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark)
+over the run's `artifacts/bench.json`. The action reads Google Benchmark's own
+JSON, keeps the history in a file that `actions/cache` carries between runs, and
+fails the job when a benchmark's time exceeds 115 percent of the previous run on
+`main`. A run on `main` writes the history; a pull request is compared against
+it without moving it. There is no baseline file to refresh.
 
 ## Production-quality runs
 
