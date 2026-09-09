@@ -83,25 +83,25 @@ TEST_CASE("id_index differential against std::unordered_map on random workloads"
     for (std::size_t step = 0; step < draws; ++step) {
         const auto id = id_dist(rng);
         switch (op_dist(rng)) {
-        case 0: {
-            idx.insert(id, &pool[id]);
-            oracle[id] = &pool[id];
-            break;
-        }
-        case 1: {
-            idx.erase(id);
-            oracle.erase(id);
-            break;
-        }
-        case 2: {
-            const auto* got = idx.lookup(id);
-            const auto it = oracle.find(id);
-            const auto* expected = (it == oracle.end()) ? nullptr : it->second;
-            REQUIRE(got == expected);
-            break;
-        }
-        default:
-            break;
+            case 0: {
+                idx.insert(id, &pool[id]);
+                oracle[id] = &pool[id];
+                break;
+            }
+            case 1: {
+                idx.erase(id);
+                oracle.erase(id);
+                break;
+            }
+            case 2: {
+                const auto* got = idx.lookup(id);
+                const auto it = oracle.find(id);
+                const auto* expected = (it == oracle.end()) ? nullptr : it->second;
+                REQUIRE(got == expected);
+                break;
+            }
+            default:
+                break;
         }
         REQUIRE(idx.size() == oracle.size());
     }

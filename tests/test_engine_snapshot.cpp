@@ -39,9 +39,7 @@ void seed(eng_t& eng, std::uint64_t key) {
     std::uniform_int_distribution<int> side_dist{0, 1};
     std::uniform_int_distribution<int> acct_dist{1, 3};
     for (lob::order_id_t id = 1; id <= 60; ++id) {
-        eng.on_submit(sub_with_account(id,
-                                       px(rng),
-                                       qty(rng),
+        eng.on_submit(sub_with_account(id, px(rng), qty(rng),
                                        (side_dist(rng) == 0) ? lob::side::bid : lob::side::ask,
                                        static_cast<lob::account_id_t>(acct_dist(rng))));
     }
@@ -102,14 +100,10 @@ TEST_CASE("engine snapshot continues to produce identical events after warm star
     std::uniform_int_distribution<lob::qty_t> qty{1, 30};
     std::uniform_int_distribution<int> side_dist{0, 1};
     for (lob::order_id_t id = 1'000; id < 1'050; ++id) {
-        auto m_a = sub_with_account(id,
-                                    px(rng_a),
-                                    qty(rng_a),
+        auto m_a = sub_with_account(id, px(rng_a), qty(rng_a),
                                     (side_dist(rng_a) == 0) ? lob::side::bid : lob::side::ask,
                                     /*acct=*/1);
-        auto m_b = sub_with_account(id,
-                                    px(rng_b),
-                                    qty(rng_b),
+        auto m_b = sub_with_account(id, px(rng_b), qty(rng_b),
                                     (side_dist(rng_b) == 0) ? lob::side::bid : lob::side::ask,
                                     /*acct=*/1);
         REQUIRE(m_a.px == m_b.px);
@@ -153,7 +147,7 @@ namespace {
 // when the cumulative write exceeds the configured budget; the engine
 // state remains valid through and after the throw.
 class fixed_capacity_sink {
-  public:
+   public:
     explicit fixed_capacity_sink(std::size_t cap) : cap_(cap) {}
 
     void write(std::span<const std::byte> bytes) {
@@ -164,7 +158,7 @@ class fixed_capacity_sink {
 
     [[nodiscard]] std::size_t used() const noexcept { return used_; }
 
-  private:
+   private:
     std::size_t cap_;
     std::size_t used_{0};
 };

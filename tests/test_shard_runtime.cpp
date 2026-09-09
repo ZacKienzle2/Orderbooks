@@ -97,21 +97,24 @@ TEST_CASE("shard_runtime reproduces synchronous router book state", "[runtime]")
             const auto id = next_id++;
             const auto side = is_bid(rng) ? lob::side::bid : lob::side::ask;
             const auto m = sub(id, px(rng), qty(rng), side);
-            while (!rt.try_submit(sym, m)) {}
+            while (!rt.try_submit(sym, m)) {
+            }
             ref.on_submit(sym, m);
             live.push_back({sym, id});
         } else if (roll < 8) {
             std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
             const auto e = live[pick(rng)];
             const lob::modify_msg m{.id = e.id, .new_px = px(rng), .new_qty = qty(rng)};
-            while (!rt.try_modify(e.sym, m)) {}
+            while (!rt.try_modify(e.sym, m)) {
+            }
             ref.on_modify(e.sym, m);
         } else {
             std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
             const auto idx = pick(rng);
             const auto e = live[idx];
             const lob::cancel_msg m{.id = e.id};
-            while (!rt.try_cancel(e.sym, m)) {}
+            while (!rt.try_cancel(e.sym, m)) {
+            }
             ref.on_cancel(e.sym, m);
             live[idx] = live.back();
             live.pop_back();
@@ -142,8 +145,10 @@ TEST_CASE("shard_runtime matches a crossing pair and drains to empty", "[runtime
     rt.start();
 
     constexpr lob::symbol_id_t sym = 123;
-    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {}
-    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {}
+    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {
+    }
+    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {
+    }
     rt.drain();
 
     REQUIRE(pub.fills.load() == 1);
@@ -176,8 +181,10 @@ TEST_CASE("shard_runtime survives repeated start and stop cycles", "[runtime]") 
     lob::order_id_t id = 1;
     for (int cycle = 0; cycle < 3; ++cycle) {
         rt.start();
-        while (!rt.try_submit(sym, sub(id, 40, 2, lob::side::bid))) {}
-        while (!rt.try_cancel(sym, lob::cancel_msg{.id = id})) {}
+        while (!rt.try_submit(sym, sub(id, 40, 2, lob::side::bid))) {
+        }
+        while (!rt.try_cancel(sym, lob::cancel_msg{.id = id})) {
+        }
         ++id;
         rt.drain();
         rt.stop();

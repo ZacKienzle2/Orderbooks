@@ -38,7 +38,7 @@ namespace lob {
 // default exceptions() mask (goodbit); a stream configured to throw on
 // badbit/failbit would call std::terminate from inside publish().
 class json_recorder {
-  public:
+   public:
     explicit json_recorder(std::ostream& out) noexcept : out_(out) {
         // publish() is declared noexcept to satisfy the publisher concept,
         // but out_.write can throw if the stream has any exception bits
@@ -139,7 +139,7 @@ class json_recorder {
         out_.write(buf.data(), p - buf.data());
     }
 
-  private:
+   private:
     static char* append_(char* p, std::string_view s) noexcept {
         std::memcpy(p, s.data(), s.size());
         return p + s.size();

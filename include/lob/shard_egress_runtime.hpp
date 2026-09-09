@@ -51,7 +51,7 @@ class shard_egress_runtime {
     static_assert(std::has_single_bit(NumShards),
                   "shard_egress_runtime: NumShards must be a power of two");
 
-  public:
+   public:
     using publisher_type = ring_publisher<EgressCapacity>;
     using engine_type = engine<publisher_type, Ticks, MaxOrders>;
     using ingress_ring = spsc_ring<command, IngressCapacity>;
@@ -167,7 +167,7 @@ class shard_egress_runtime {
 
     [[nodiscard]] static constexpr std::size_t egress_capacity() noexcept { return EgressCapacity; }
 
-  private:
+   private:
     [[nodiscard]] bool enqueue_(symbol_id_t sym, const command& c) noexcept {
         const auto idx = shard_index(sym, NumShards);
         if (!ingress_[idx].try_push(c)) {

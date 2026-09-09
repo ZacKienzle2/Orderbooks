@@ -151,8 +151,8 @@ int main(int argc, char** argv) {
     const auto rt_ptr = std::make_unique<runtime_t>(lob::engine_config{}, rt_cfg);
     runtime_t& rt = *rt_ptr;
     latency_sink sink{send_tsc, hist};
-    lob::egress_merger<runtime_t, latency_sink> merger{
-        rt, sink, lob::merger_config{.pin_thread = false}};
+    lob::egress_merger<runtime_t, latency_sink> merger{rt, sink,
+                                                       lob::merger_config{.pin_thread = false}};
 
     rt.start();
     merger.start();
@@ -166,8 +166,10 @@ int main(int argc, char** argv) {
     const auto wall0 = std::chrono::steady_clock::now();
     for (std::uint64_t i = 0; i < pairs; ++i) {
         const lob::symbol_id_t sym = i % num_symbols;
-        while (!rt.try_submit(sym, ask(next++))) {}
-        while (!rt.try_submit(sym, bid(next++))) {}
+        while (!rt.try_submit(sym, ask(next++))) {
+        }
+        while (!rt.try_submit(sym, bid(next++))) {
+        }
         submitted += 2;
     }
     rt.drain();
@@ -182,10 +184,12 @@ int main(int argc, char** argv) {
     for (std::uint64_t i = 0; i < lat_pairs; ++i) {
         const lob::symbol_id_t sym = i % num_symbols;
         const std::uint64_t prev = sink.samples.load(std::memory_order_acquire);
-        while (!rt.try_submit(sym, ask(next++))) {}
+        while (!rt.try_submit(sym, ask(next++))) {
+        }
         const lob::order_id_t bid_id = next++;
         send_tsc[bid_id & slot_mask].store(now_tsc(), std::memory_order_relaxed);
-        while (!rt.try_submit(sym, bid(bid_id))) {}
+        while (!rt.try_submit(sym, bid(bid_id))) {
+        }
         while (sink.samples.load(std::memory_order_acquire) == prev) {
             cpu_relax();
         }
@@ -196,8 +200,7 @@ int main(int argc, char** argv) {
     rt.stop();
 
     std::printf("throughput: orders=%llu  wall=%.3fs  %.2f Morders/s\n",
-                static_cast<unsigned long long>(submitted),
-                secs,
+                static_cast<unsigned long long>(submitted), secs,
                 static_cast<double>(submitted) / secs / 1e6);
     std::printf("latency: unloaded round-trip samples=%llu  events=%llu\n",
                 static_cast<unsigned long long>(sink.samples.load(std::memory_order_relaxed)),
@@ -208,9 +211,10 @@ int main(int argc, char** argv) {
                 static_cast<unsigned long long>(hist.value_at_percentile(99.9)),
                 static_cast<unsigned long long>(hist.max()));
     if (hist.overflow_count() > 0) {
-        std::printf("latency WARNING: %llu samples exceeded the histogram range; "
-                    "max and upper percentiles understate the true tail\n",
-                    static_cast<unsigned long long>(hist.overflow_count()));
+        std::printf(
+            "latency WARNING: %llu samples exceeded the histogram range; "
+            "max and upper percentiles understate the true tail\n",
+            static_cast<unsigned long long>(hist.overflow_count()));
     }
     return 0;
 }

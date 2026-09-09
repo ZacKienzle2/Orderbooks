@@ -26,7 +26,7 @@ namespace lob {
 // monitor thread can read it without racing the producer's relaxed bump.
 template <std::size_t Capacity>
 class ring_publisher {
-  public:
+   public:
     using ring_type = spsc_ring<event, Capacity>;
 
     ring_publisher() noexcept = default;
@@ -53,7 +53,7 @@ class ring_publisher {
         return dropped_.load(std::memory_order_relaxed);
     }
 
-  private:
+   private:
     void push_(const event& e) noexcept {
         if (!egress_->try_push(e)) [[unlikely]] {
             dropped_.fetch_add(1, std::memory_order_relaxed);

@@ -262,12 +262,10 @@ int run_client(std::uint16_t port, std::uint64_t orders) {
     const double secs = std::chrono::duration<double>(wall1 - wall0).count();
     const bool correct = fills == pairs;
     std::printf("correctness: %llu of %llu crossing bids filled [%s]\n",
-                static_cast<unsigned long long>(fills),
-                static_cast<unsigned long long>(pairs),
+                static_cast<unsigned long long>(fills), static_cast<unsigned long long>(pairs),
                 correct ? "OK" : "MISMATCH");
     std::printf("wire throughput: orders=%llu  wall=%.3fs  %.3f Morders/s (closed loop)\n",
-                static_cast<unsigned long long>(submitted),
-                secs,
+                static_cast<unsigned long long>(submitted), secs,
                 static_cast<double>(submitted) / secs / 1e6);
     // The round trip is dominated by the host network stack and scheduling. On a
     // virtualised host it is hundreds of microseconds; on bare metal with
@@ -278,9 +276,10 @@ int run_client(std::uint16_t port, std::uint64_t orders) {
                 static_cast<unsigned long long>(hist.value_at_percentile(99.0)),
                 static_cast<unsigned long long>(hist.max()));
     if (hist.overflow_count() > 0) {
-        std::printf("latency WARNING: %llu samples exceeded the histogram range; "
-                    "max and upper percentiles understate the true tail\n",
-                    static_cast<unsigned long long>(hist.overflow_count()));
+        std::printf(
+            "latency WARNING: %llu samples exceeded the histogram range; "
+            "max and upper percentiles understate the true tail\n",
+            static_cast<unsigned long long>(hist.overflow_count()));
     }
     return correct ? 0 : 1;
 }
@@ -358,15 +357,12 @@ int run_pipeline_client(std::uint16_t port, std::uint64_t orders, std::size_t wi
     const double secs = std::chrono::duration<double>(wall1 - wall0).count();
     const bool correct = fills == pairs;
     std::printf("correctness: %llu of %llu crossing bids filled [%s]\n",
-                static_cast<unsigned long long>(fills),
-                static_cast<unsigned long long>(pairs),
+                static_cast<unsigned long long>(fills), static_cast<unsigned long long>(pairs),
                 correct ? "OK" : "MISMATCH");
     std::printf(
         "wire throughput: orders=%llu  wall=%.3fs  %.3f Morders/s (pipelined, window=%zu)\n",
-        static_cast<unsigned long long>(submitted),
-        secs,
-        static_cast<double>(submitted) / secs / 1e6,
-        win);
+        static_cast<unsigned long long>(submitted), secs,
+        static_cast<double>(submitted) / secs / 1e6, win);
     return correct ? 0 : 1;
 }
 
@@ -399,10 +395,11 @@ args parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     const args a = parse_args(argc, argv);
     if (a.help) {
-        std::printf("usage: lob_gateway [--orders N] [--listen PORT] [--pipeline W]\n"
-                    "  --orders N    orders for the self-test (default 50000)\n"
-                    "  --listen PORT serve connections on PORT instead of self-testing\n"
-                    "  --pipeline W  self-test with a pipelined client, window W pairs\n");
+        std::printf(
+            "usage: lob_gateway [--orders N] [--listen PORT] [--pipeline W]\n"
+            "  --orders N    orders for the self-test (default 50000)\n"
+            "  --listen PORT serve connections on PORT instead of self-testing\n"
+            "  --pipeline W  self-test with a pipelined client, window W pairs\n");
         return 0;
     }
 

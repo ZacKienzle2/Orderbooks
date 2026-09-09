@@ -100,13 +100,13 @@ template <std::size_t Ticks>
     if (!valid_order_id(wo.id))
         return false;
     switch (wo.op) {
-    case 0:
-        return wo.px < Ticks && wo.qty > 0 && wo.qty <= max_qty &&
-               wo.tif <= static_cast<std::uint8_t>(lob::tif::fok);
-    case 1:
-        return true;  // cancel consumes only the id
-    default:
-        return wo.new_px < Ticks && wo.qty > 0 && wo.qty <= max_qty;
+        case 0:
+            return wo.px < Ticks && wo.qty > 0 && wo.qty <= max_qty &&
+                   wo.tif <= static_cast<std::uint8_t>(lob::tif::fok);
+        case 1:
+            return true;  // cancel consumes only the id
+        default:
+            return wo.new_px < Ticks && wo.qty > 0 && wo.qty <= max_qty;
     }
 }
 
@@ -125,32 +125,32 @@ void apply_order(lob::engine<accum_pub, Ticks, MaxOrders>& eng,
     }
     std::uint32_t status = 0;
     switch (wo.op) {
-    case 0:
-        eng.on_submit(lob::submit_msg{.id = wo.id,
-                                      .px = wo.px,
-                                      .qty = wo.qty,
-                                      .s = wo.side == 0 ? lob::side::bid : lob::side::ask,
-                                      .t = static_cast<lob::tif>(wo.tif),
-                                      ._pad = 0,
-                                      .account_id = 0});
-        if (pub.filled > 0) {
-            status = ack_filled;
-        } else if (wo.tif != 0) {
-            // An IOC or FOK that executed nothing rests nothing; acking it
-            // "accepted" would read as a resting order that does not exist.
-            status = ack_killed;
-        } else {
-            status = ack_accepted;
-        }
-        break;
-    case 1:
-        eng.on_cancel(lob::cancel_msg{.id = wo.id});
-        status = ack_processed;
-        break;
-    default:
-        eng.on_modify(lob::modify_msg{.id = wo.id, .new_px = wo.new_px, .new_qty = wo.qty});
-        status = ack_processed;
-        break;
+        case 0:
+            eng.on_submit(lob::submit_msg{.id = wo.id,
+                                          .px = wo.px,
+                                          .qty = wo.qty,
+                                          .s = wo.side == 0 ? lob::side::bid : lob::side::ask,
+                                          .t = static_cast<lob::tif>(wo.tif),
+                                          ._pad = 0,
+                                          .account_id = 0});
+            if (pub.filled > 0) {
+                status = ack_filled;
+            } else if (wo.tif != 0) {
+                // An IOC or FOK that executed nothing rests nothing; acking it
+                // "accepted" would read as a resting order that does not exist.
+                status = ack_killed;
+            } else {
+                status = ack_accepted;
+            }
+            break;
+        case 1:
+            eng.on_cancel(lob::cancel_msg{.id = wo.id});
+            status = ack_processed;
+            break;
+        default:
+            eng.on_modify(lob::modify_msg{.id = wo.id, .new_px = wo.new_px, .new_qty = wo.qty});
+            status = ack_processed;
+            break;
     }
     // The engine publishes a reject_msg when a residual cannot rest (arena
     // exhausted). Without folding it into the ack the client would read

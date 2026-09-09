@@ -2,7 +2,7 @@
 #define LOB_SPIN_HPP
 
 #if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
-    #include <intrin.h>
+#include <intrin.h>
 #endif
 
 namespace lob {
@@ -23,11 +23,11 @@ namespace lob {
 // back to a kernel yield, never as a substitute for one on an unbounded wait.
 inline void cpu_relax() noexcept {
 #if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
-    #if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
     _mm_pause();
-    #else
+#else
     __builtin_ia32_pause();
-    #endif
+#endif
 #elif defined(__aarch64__) || defined(__arm__)
     __asm__ __volatile__("yield" ::: "memory");
 #else

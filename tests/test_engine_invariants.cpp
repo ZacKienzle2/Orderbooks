@@ -164,9 +164,9 @@ TEST_CASE("engine publishes a reject when the arena is exhausted", "[engine][inv
 // self-crossing FOK can actually consume, rather than any single instance.
 TEST_CASE("engine FOK executes all-or-nothing under every self-cross policy",
           "[engine][invariant][fok]") {
-    const auto policy = GENERATE(lob::self_cross_policy::cancel_newest,
-                                 lob::self_cross_policy::cancel_oldest,
-                                 lob::self_cross_policy::decrement_trade);
+    const auto policy =
+        GENERATE(lob::self_cross_policy::cancel_newest, lob::self_cross_policy::cancel_oldest,
+                 lob::self_cross_policy::decrement_trade);
     const auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
     std::mt19937_64 rng{seed};
 
