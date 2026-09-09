@@ -55,7 +55,7 @@ class engine {
     static_assert(noexcept(std::declval<P&>().publish(std::declval<const reject_msg&>())),
                   "publisher::publish(reject_msg) must be noexcept");
 
-  public:
+   public:
     engine(P& pub, engine_config cfg) noexcept : pub_(pub), cfg_(cfg) {
         state_.seq = cfg_.seq_base;
     }
@@ -291,7 +291,7 @@ class engine {
 
     [[nodiscard]] seq_t last_seq() const noexcept { return state_.seq; }
 
-  private:
+   private:
     template <side Side>
     void handle_submit_(const submit_msg& m) noexcept {
         constexpr auto Opp = (Side == side::bid) ? side::ask : side::bid;
@@ -311,16 +311,16 @@ class engine {
             return;
 
         switch (m.t) {
-        case tif::ioc:
-        case tif::fok:
-            // IOC always drops the residual. FOK never reaches here with
-            // residual > 0 unless we crossed multiple levels and lost
-            // qty to rounding (impossible with integer qty); drop too.
-            return;
-        case tif::gtc:
-        default:
-            rest_<Side>(m, remaining);
-            return;
+            case tif::ioc:
+            case tif::fok:
+                // IOC always drops the residual. FOK never reaches here with
+                // residual > 0 unless we crossed multiple levels and lost
+                // qty to rounding (impossible with integer qty); drop too.
+                return;
+            case tif::gtc:
+            default:
+                rest_<Side>(m, remaining);
+                return;
         }
     }
 
@@ -391,46 +391,49 @@ class engine {
     // aggressor itself must abort (cancel_newest); returns false when the
     // outer match loop should re-evaluate the level (cancel_oldest after
     // removing the maker; decrement_trade after netting both sides).
-    bool handle_self_cross_(
-        const submit_msg& m, order& maker, level& lvl, tick_t best_px, qty_t& remaining) noexcept {
+    bool handle_self_cross_(const submit_msg& m,
+                            order& maker,
+                            level& lvl,
+                            tick_t best_px,
+                            qty_t& remaining) noexcept {
         switch (cfg_.self_cross) {
-        case self_cross_policy::cancel_newest:
-            remaining = 0;
-            return true;
-        case self_cross_policy::cancel_oldest: {
-            auto* victim = &maker;
-            const auto victim_id = victim->id;
-            lvl.aggregate -= maker.remaining;
-            lvl.fifo.pop_front();
-            book_.index().erase(victim_id);
-            book_.arena().deallocate(victim);
-            state_.top_dirty = true;
-            return false;
-        }
-        case self_cross_policy::decrement_trade: {
-            const auto trade_qty = std::min(remaining, maker.remaining);
-            ++state_.seq;
-            pub_.publish(self_trade_msg{
-                .aggressor = m.id,
-                .resting = maker.id,
-                .account = m.account_id,
-                .px = best_px,
-                .qty = trade_qty,
-                .seq = state_.seq,
-            });
-            maker.remaining -= trade_qty;
-            lvl.aggregate -= trade_qty;
-            remaining -= trade_qty;
-            state_.top_dirty = true;
-            if (maker.remaining == 0) {
+            case self_cross_policy::cancel_newest:
+                remaining = 0;
+                return true;
+            case self_cross_policy::cancel_oldest: {
                 auto* victim = &maker;
                 const auto victim_id = victim->id;
+                lvl.aggregate -= maker.remaining;
                 lvl.fifo.pop_front();
                 book_.index().erase(victim_id);
                 book_.arena().deallocate(victim);
+                state_.top_dirty = true;
+                return false;
             }
-            return false;
-        }
+            case self_cross_policy::decrement_trade: {
+                const auto trade_qty = std::min(remaining, maker.remaining);
+                ++state_.seq;
+                pub_.publish(self_trade_msg{
+                    .aggressor = m.id,
+                    .resting = maker.id,
+                    .account = m.account_id,
+                    .px = best_px,
+                    .qty = trade_qty,
+                    .seq = state_.seq,
+                });
+                maker.remaining -= trade_qty;
+                lvl.aggregate -= trade_qty;
+                remaining -= trade_qty;
+                state_.top_dirty = true;
+                if (maker.remaining == 0) {
+                    auto* victim = &maker;
+                    const auto victim_id = victim->id;
+                    lvl.fifo.pop_front();
+                    book_.index().erase(victim_id);
+                    book_.arena().deallocate(victim);
+                }
+                return false;
+            }
         }
         return false;
     }
@@ -465,8 +468,9 @@ class engine {
     }
 
     template <side Opp>
-    [[nodiscard]] bool
-    can_fully_fill_(tick_t aggressor_px, qty_t want, account_id_t acct) const noexcept {
+    [[nodiscard]] bool can_fully_fill_(tick_t aggressor_px,
+                                       qty_t want,
+                                       account_id_t acct) const noexcept {
         // Walk opposite-side levels from best toward aggressor_px, summing
         // the quantity the match loop could consume. For bid aggressor we
         // walk ask levels from lowest toward aggressor_px (inclusive). For

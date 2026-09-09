@@ -26,7 +26,8 @@ set(_lob_warnings_gnu
     -Wzero-as-null-pointer-constant
     -Wno-unknown-pragmas)
 
-set(_lob_warnings_gcc -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast -Wsuggest-override)
+set(_lob_warnings_gcc -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast
+                      -Wsuggest-override)
 
 set(_lob_warnings_clang -Wshadow-all -Wextra-semi -Wnewline-eof -Wdocumentation -Wno-c++98-compat
                         -Wno-c++98-compat-pedantic)

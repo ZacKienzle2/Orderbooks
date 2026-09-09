@@ -27,8 +27,10 @@ struct fixture {
     }
 };
 
-[[nodiscard]] lob_gateway::wire_order
-submit(std::uint64_t id, std::uint32_t px, std::uint64_t qty, std::uint8_t tif = 0) {
+[[nodiscard]] lob_gateway::wire_order submit(std::uint64_t id,
+                                             std::uint32_t px,
+                                             std::uint64_t qty,
+                                             std::uint8_t tif = 0) {
     return lob_gateway::wire_order{
         .id = id, .qty = qty, .px = px, .new_px = 0, .op = 0, .side = 0, .tif = tif, .pad = 0};
 }
@@ -39,9 +41,9 @@ TEST_CASE("gateway rejects a submit with px at or beyond the tick ladder", "[gat
     fixture f;
     const auto seq_before = f.eng->last_seq();
 
-    for (const std::uint32_t px : {static_cast<std::uint32_t>(ticks),
-                                   static_cast<std::uint32_t>(ticks + 1),
-                                   std::uint32_t{0xffffffff}}) {
+    for (const std::uint32_t px :
+         {static_cast<std::uint32_t>(ticks), static_cast<std::uint32_t>(ticks + 1),
+          std::uint32_t{0xffffffff}}) {
         const auto ack = f.apply(submit(1, px, 5));
         CHECK(ack.id == 1);
         CHECK(ack.status == lob_gateway::ack_rejected);

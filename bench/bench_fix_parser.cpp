@@ -35,20 +35,22 @@ std::string make_fix(std::string_view body) {
     return m;
 }
 
-const std::string g_new_order_single = make_fix("35=D\x01"
-                                                "11=1001\x01"
-                                                "55=AAPL\x01"
-                                                "54=1\x01"
-                                                "38=50\x01"
-                                                "40=2\x01"
-                                                "44=8192\x01"
-                                                "59=1\x01");
+const std::string g_new_order_single = make_fix(
+    "35=D\x01"
+    "11=1001\x01"
+    "55=AAPL\x01"
+    "54=1\x01"
+    "38=50\x01"
+    "40=2\x01"
+    "44=8192\x01"
+    "59=1\x01");
 
-const std::string g_cancel = make_fix("35=F\x01"
-                                      "11=1002\x01"
-                                      "41=1001\x01"
-                                      "55=AAPL\x01"
-                                      "54=1\x01");
+const std::string g_cancel = make_fix(
+    "35=F\x01"
+    "11=1002\x01"
+    "41=1001\x01"
+    "55=AAPL\x01"
+    "54=1\x01");
 
 std::span<const std::byte> bytes_of(const std::string& s) noexcept {
     return {reinterpret_cast<const std::byte*>(s.data()), s.size()};

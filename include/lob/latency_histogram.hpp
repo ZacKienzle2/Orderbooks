@@ -27,7 +27,7 @@ namespace lob {
 // counters once. The histogram is single-threaded; give each measured thread
 // its own and merge offline if needed.
 class latency_histogram {
-  public:
+   public:
     // highest_trackable_value caps the recordable range; larger samples are
     // clamped to it. significant_figures (1 to 5) sets the relative precision,
     // so 3 keeps every reported value within 0.1 percent of the true value.
@@ -126,7 +126,7 @@ class latency_histogram {
         return max_;
     }
 
-  private:
+   private:
     static std::uint64_t pow10_(unsigned n) noexcept {
         std::uint64_t r = 1;
         for (unsigned i = 0; i < n; ++i) {

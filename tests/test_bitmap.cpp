@@ -133,19 +133,19 @@ TEST_CASE("hier_bitmap differential against std::set on random workloads", "[bit
     for (std::size_t step = 0; step < draws; ++step) {
         const auto bit = bit_dist(rng);
         switch (op_dist(rng)) {
-        case 0:
-            bm.set(bit);
-            oracle.insert(bit);
-            break;
-        case 1:
-            bm.clear(bit);
-            oracle.erase(bit);
-            break;
-        case 2:
-            REQUIRE(bm.test(bit) == (oracle.count(bit) > 0));
-            break;
-        default:
-            break;
+            case 0:
+                bm.set(bit);
+                oracle.insert(bit);
+                break;
+            case 1:
+                bm.clear(bit);
+                oracle.erase(bit);
+                break;
+            case 2:
+                REQUIRE(bm.test(bit) == (oracle.count(bit) > 0));
+                break;
+            default:
+                break;
         }
         REQUIRE(bm.empty() == oracle.empty());
         if (!oracle.empty()) {
@@ -204,12 +204,7 @@ TEST_CASE("hier_bitmap next / prev walk monotonically across a four-tier configu
 
     // Set bits across L0 word boundaries and tier transitions.
     const std::array<std::size_t, 6> bits{
-        0,
-        63,
-        64,
-        4096,
-        262'143,
-        cap - 1,
+        0, 63, 64, 4096, 262'143, cap - 1,
     };
     for (auto b : bits)
         bm.set(b);

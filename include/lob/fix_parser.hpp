@@ -255,68 +255,68 @@ template <typename T>
             return r;
         }
         switch (bf.tag) {
-        case 1:  // Account
-            if (!to_uint(bf.value, account)) {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            break;
-        case 11:  // ClOrdID
-            // Ids live in [1, 2^64 - 2]. Zero is modify_msg's keep-the-id
-            // sentinel and 2^64 - 1 is the id_index empty-slot sentinel;
-            // either would alias or corrupt index state downstream.
-            if (!to_uint(bf.value, clordid) || clordid == 0 || clordid == ~order_id_t{0}) {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            has_clordid = true;
-            break;
-        case 41:  // OrigClOrdID
-            if (!to_uint(bf.value, orig_id) || orig_id == 0 || orig_id == ~order_id_t{0}) {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            has_orig = true;
-            break;
-        case 38:  // OrderQty
-            if (!to_uint(bf.value, qty)) {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            has_qty = true;
-            break;
-        case 44:  // Price (in ticks)
-            if (!to_uint(bf.value, px)) {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            has_px = true;
-            break;
-        case 54:  // Side (1=Buy, 2=Sell)
-            if (bf.value == "1")
-                sd = side::bid;
-            else if (bf.value == "2")
-                sd = side::ask;
-            else {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            has_side = true;
-            break;
-        case 59:  // TimeInForce (0=Day, 1=GTC, 3=IOC, 4=FOK)
-            if (bf.value == "0" || bf.value == "1")
-                tf = tif::gtc;
-            else if (bf.value == "3")
-                tf = tif::ioc;
-            else if (bf.value == "4")
-                tf = tif::fok;
-            else {
-                r.err = error::bad_field_value;
-                return r;
-            }
-            break;
-        default:
-            break;  // Symbol(55), TransactTime(60), OrdType(40), ... not needed here.
+            case 1:  // Account
+                if (!to_uint(bf.value, account)) {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                break;
+            case 11:  // ClOrdID
+                // Ids live in [1, 2^64 - 2]. Zero is modify_msg's keep-the-id
+                // sentinel and 2^64 - 1 is the id_index empty-slot sentinel;
+                // either would alias or corrupt index state downstream.
+                if (!to_uint(bf.value, clordid) || clordid == 0 || clordid == ~order_id_t{0}) {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                has_clordid = true;
+                break;
+            case 41:  // OrigClOrdID
+                if (!to_uint(bf.value, orig_id) || orig_id == 0 || orig_id == ~order_id_t{0}) {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                has_orig = true;
+                break;
+            case 38:  // OrderQty
+                if (!to_uint(bf.value, qty)) {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                has_qty = true;
+                break;
+            case 44:  // Price (in ticks)
+                if (!to_uint(bf.value, px)) {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                has_px = true;
+                break;
+            case 54:  // Side (1=Buy, 2=Sell)
+                if (bf.value == "1")
+                    sd = side::bid;
+                else if (bf.value == "2")
+                    sd = side::ask;
+                else {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                has_side = true;
+                break;
+            case 59:  // TimeInForce (0=Day, 1=GTC, 3=IOC, 4=FOK)
+                if (bf.value == "0" || bf.value == "1")
+                    tf = tif::gtc;
+                else if (bf.value == "3")
+                    tf = tif::ioc;
+                else if (bf.value == "4")
+                    tf = tif::fok;
+                else {
+                    r.err = error::bad_field_value;
+                    return r;
+                }
+                break;
+            default:
+                break;  // Symbol(55), TransactTime(60), OrdType(40), ... not needed here.
         }
     }
 

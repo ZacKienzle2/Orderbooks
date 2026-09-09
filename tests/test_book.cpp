@@ -11,8 +11,11 @@ namespace {
 using bid_side = lob::book_side<256, lob::side::bid>;
 using ask_side = lob::book_side<256, lob::side::ask>;
 
-void prime(
-    lob::order& o, lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s) noexcept {
+void prime(lob::order& o,
+           lob::order_id_t id,
+           lob::tick_t px,
+           lob::qty_t qty,
+           lob::side s) noexcept {
     o.id = id;
     o.px = px;
     o.remaining = qty;

@@ -95,9 +95,9 @@ void audit(const eng_t& eng) {
 }  // namespace
 
 TEST_CASE("engine holds its invariants under a randomized torture stream", "[engine][stress]") {
-    const auto policy = GENERATE(lob::self_cross_policy::cancel_newest,
-                                 lob::self_cross_policy::cancel_oldest,
-                                 lob::self_cross_policy::decrement_trade);
+    const auto policy =
+        GENERATE(lob::self_cross_policy::cancel_newest, lob::self_cross_policy::cancel_oldest,
+                 lob::self_cross_policy::decrement_trade);
     const bool throttle = GENERATE(true, false);
 
     constexpr std::uint64_t ops = 120'000;
@@ -124,14 +124,14 @@ TEST_CASE("engine holds its invariants under a randomized torture stream", "[eng
             } else if (tp >= 7) {
                 t = lob::tif::ioc;
             }
-            const lob::submit_msg m{.id = next++,
-                                    .px = static_cast<lob::tick_t>(1 + splitmix(rng) % (ticks - 2)),
-                                    .qty = 1 + splitmix(rng) % 100,
-                                    .s = (pick & 1U) != 0 ? lob::side::bid : lob::side::ask,
-                                    .t = t,
-                                    ._pad = 0,
-                                    .account_id =
-                                        static_cast<lob::account_id_t>(splitmix(rng) % 6)};
+            const lob::submit_msg m{
+                .id = next++,
+                .px = static_cast<lob::tick_t>(1 + splitmix(rng) % (ticks - 2)),
+                .qty = 1 + splitmix(rng) % 100,
+                .s = (pick & 1U) != 0 ? lob::side::bid : lob::side::ask,
+                .t = t,
+                ._pad = 0,
+                .account_id = static_cast<lob::account_id_t>(splitmix(rng) % 6)};
             eng.on_submit(m);
             if (m.t == lob::tif::gtc) {
                 live.push_back(m.id);

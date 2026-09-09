@@ -23,26 +23,26 @@ namespace lob {
 // already forwards events in a single, totally ordered sequence.
 template <publisher P>
 class publisher_sink {
-  public:
+   public:
     explicit publisher_sink(P& pub) noexcept : pub_(&pub) {}
 
     void on_event(const event& e, std::uint64_t /*merge_seq*/) noexcept {
         switch (e.k) {
-        case event::kind::fill:
-            pub_->publish(e.body.fill);
-            break;
-        case event::kind::top:
-            pub_->publish(e.body.top);
-            break;
-        case event::kind::trade:
-            pub_->publish(e.body.trade);
-            break;
-        case event::kind::self_trade:
-            pub_->publish(e.body.self_trade);
-            break;
-        case event::kind::reject:
-            pub_->publish(e.body.reject);
-            break;
+            case event::kind::fill:
+                pub_->publish(e.body.fill);
+                break;
+            case event::kind::top:
+                pub_->publish(e.body.top);
+                break;
+            case event::kind::trade:
+                pub_->publish(e.body.trade);
+                break;
+            case event::kind::self_trade:
+                pub_->publish(e.body.self_trade);
+                break;
+            case event::kind::reject:
+                pub_->publish(e.body.reject);
+                break;
         }
     }
 
@@ -50,7 +50,7 @@ class publisher_sink {
 
     [[nodiscard]] const P& publisher() const noexcept { return *pub_; }
 
-  private:
+   private:
     P* pub_;
 };
 

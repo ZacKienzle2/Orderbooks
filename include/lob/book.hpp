@@ -31,7 +31,7 @@ namespace lob {
 // upstream).
 template <std::size_t Ticks, side Side>
 class book_side {
-  public:
+   public:
     book_side() : levels_(std::make_unique<std::array<level, Ticks>>()) {}
 
     book_side(book_side&&) noexcept = default;
@@ -117,7 +117,7 @@ class book_side {
 
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Ticks; }
 
-  private:
+   private:
     // Recompute the cached best from the bitmap. Runs only when the top level
     // drains (remove / notify_level_emptied), so its descent is amortised
     // across the O(1) best() reads it enables everywhere else.
@@ -140,7 +140,7 @@ class book_side {
 // the engine mutates; it is single-symbol by design.
 template <std::size_t Ticks, std::size_t MaxOrders>
 class book {
-  public:
+   public:
     book() : idx_(MaxOrders) {}
 
     book(book&&) = default;
@@ -163,7 +163,7 @@ class book {
 
     [[nodiscard]] const id_index& index() const noexcept { return idx_; }
 
-  private:
+   private:
     // Align each side to a 64-byte boundary so the hot fields (the
     // unique_ptr to the level array and the bitmap's top-tier word)
     // of bids_ and asks_ never share a cache line. Without this, a

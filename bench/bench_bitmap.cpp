@@ -11,8 +11,9 @@ namespace {
 
 constexpr std::size_t default_capacity = 1U << 20;
 
-std::vector<std::size_t>
-sample_bits(std::size_t n, std::size_t cap, std::uint64_t seed = 0xC0FFEE) {
+std::vector<std::size_t> sample_bits(std::size_t n,
+                                     std::size_t cap,
+                                     std::uint64_t seed = 0xC0FFEE) {
     std::mt19937_64 rng{seed};
     std::uniform_int_distribution<std::size_t> dist{0, cap - 1};
     std::vector<std::size_t> out;

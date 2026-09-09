@@ -42,7 +42,7 @@ class hier_bitmap {
     static constexpr std::size_t L2_alloc = (L2_W > 0) ? L2_W : 1;
     static constexpr std::size_t L3_alloc = (L3_W > 0) ? L3_W : 1;
 
-  public:
+   public:
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Ticks; }
 
     constexpr void set(std::size_t bit) noexcept {
@@ -168,8 +168,8 @@ class hier_bitmap {
     // the bitmap is. The previous implementation linear-scanned L0 in the
     // worst case; this version drops the engine's FOK precheck from
     // O(L0_W) to O(1) for sparsely populated books.
-    [[nodiscard]] constexpr std::optional<std::size_t>
-    next_set_at_or_after(std::size_t start) const noexcept {
+    [[nodiscard]] constexpr std::optional<std::size_t> next_set_at_or_after(
+        std::size_t start) const noexcept {
         if (start >= Ticks)
             return std::nullopt;
 
@@ -229,8 +229,8 @@ class hier_bitmap {
     }
 
     // Highest set bit at position <= start. Mirror of next_set_at_or_after.
-    [[nodiscard]] constexpr std::optional<std::size_t>
-    prev_set_at_or_before(std::size_t start) const noexcept {
+    [[nodiscard]] constexpr std::optional<std::size_t> prev_set_at_or_before(
+        std::size_t start) const noexcept {
         if (Ticks == 0 || empty())
             return std::nullopt;
         if (start >= Ticks)
@@ -297,7 +297,7 @@ class hier_bitmap {
         return std::nullopt;
     }
 
-  private:
+   private:
     [[nodiscard]] static constexpr std::uint64_t mask(std::size_t bit) noexcept {
         return std::uint64_t{1} << (bit % W);
     }

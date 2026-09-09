@@ -13,8 +13,11 @@ namespace {
 using pub_t = lob::test::recording_publisher;
 using test_eng_t = lob::engine<pub_t, 256, 64>;
 
-lob::submit_msg
-sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::side s, lob::tif t = lob::tif::gtc) {
+lob::submit_msg sub(lob::order_id_t id,
+                    lob::tick_t px,
+                    lob::qty_t qty,
+                    lob::side s,
+                    lob::tif t = lob::tif::gtc) {
     return {.id = id, .px = px, .qty = qty, .s = s, .t = t};
 }
 

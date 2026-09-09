@@ -6,10 +6,10 @@
 #include <new>
 
 #if defined(__linux__) || defined(__APPLE__)
-    #include <sys/mman.h>
+#include <sys/mman.h>
 #endif
 #if defined(__APPLE__)
-    #include <mach/vm_statistics.h>
+#include <mach/vm_statistics.h>
 #endif
 
 namespace lob {
@@ -36,7 +36,7 @@ namespace lob {
 // the slab arena keep its lazy, consumer-thread freelist build (ADR-0016)
 // while gaining huge-page backing.
 class hugepage_region {
-  public:
+   public:
     enum class backing : std::uint8_t { none, huge, mapped, heap };
 
     static constexpr std::size_t huge_page_bytes = static_cast<std::size_t>(2) << 20;
@@ -86,7 +86,7 @@ class hugepage_region {
 
     [[nodiscard]] bool huge() const noexcept { return backing_ == backing::huge; }
 
-  private:
+   private:
     static std::size_t round_up_(std::size_t n, std::size_t multiple) noexcept {
         return ((n + multiple - 1) / multiple) * multiple;
     }
@@ -96,18 +96,14 @@ class hugepage_region {
         alignment_ = alignment;
 
 #if defined(__linux__) && defined(MAP_HUGETLB)
-    #if defined(MAP_HUGE_2MB)
+#if defined(MAP_HUGE_2MB)
         constexpr int huge_2mb = MAP_HUGE_2MB;
-    #else
+#else
         constexpr int huge_2mb = 21 << 26;  // 2 MiB selector in the MAP_HUGE bitfield
-    #endif
+#endif
         const std::size_t rounded = round_up_(bytes, huge_page_bytes);
-        void* huge = ::mmap(nullptr,
-                            rounded,
-                            PROT_READ | PROT_WRITE,
-                            MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_2mb,
-                            -1,
-                            0);
+        void* huge = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE,
+                            MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_2mb, -1, 0);
         if (huge != MAP_FAILED) {
             ptr_ = huge;
             mapped_bytes_ = rounded;
@@ -117,9 +113,9 @@ class hugepage_region {
         void* plain =
             ::mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (plain != MAP_FAILED) {
-    #if defined(MADV_HUGEPAGE)
+#if defined(MADV_HUGEPAGE)
             ::madvise(plain, bytes, MADV_HUGEPAGE);
-    #endif
+#endif
             ptr_ = plain;
             mapped_bytes_ = bytes;
             backing_ = backing::mapped;
@@ -127,12 +123,8 @@ class hugepage_region {
         }
 #elif defined(__APPLE__)
         const std::size_t rounded = round_up_(bytes, huge_page_bytes);
-        void* super = ::mmap(nullptr,
-                             rounded,
-                             PROT_READ | PROT_WRITE,
-                             MAP_PRIVATE | MAP_ANON,
-                             VM_FLAGS_SUPERPAGE_SIZE_2MB,
-                             0);
+        void* super = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON,
+                             VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
         if (super != MAP_FAILED) {
             ptr_ = super;
             mapped_bytes_ = rounded;

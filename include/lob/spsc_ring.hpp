@@ -32,7 +32,7 @@ class spsc_ring {
 
     static constexpr std::uint64_t mask = Capacity - 1;
 
-  public:
+   public:
     spsc_ring() noexcept = default;
     ~spsc_ring() = default;
     spsc_ring(const spsc_ring&) = delete;
@@ -115,7 +115,7 @@ class spsc_ring {
 
     [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Capacity; }
 
-  private:
+   private:
     // Layout: head_ + tail_cache_ share the producer's cache line so the
     // cache check is a same-line read; tail_ + head_cache_ share the
     // consumer's cache line. Lines are 64-byte aligned to prevent false

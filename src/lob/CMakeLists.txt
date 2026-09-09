@@ -7,7 +7,8 @@ if(NOT LOB_GIT_SHA)
   set(LOB_GIT_SHA "unknown")
 endif()
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in"
+               "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp" @ONLY)
 
 add_library(lob_core STATIC "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp")
 add_library(lob::core ALIAS lob_core)

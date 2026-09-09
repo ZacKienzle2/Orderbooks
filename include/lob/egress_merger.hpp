@@ -74,7 +74,7 @@ struct merger_config {
 // before its thread exits so no already-published event is left behind.
 template <multi_egress_source Source, merge_sink Sink>
 class egress_merger {
-  public:
+   public:
     egress_merger(Source& src, Sink& sink, merger_config cfg = {})
         : src_(&src), sink_(&sink), cfg_(cfg) {
         // A zero batch claims nothing and the merger would spin forever
@@ -114,7 +114,7 @@ class egress_merger {
         return merged_.load(std::memory_order_relaxed);
     }
 
-  private:
+   private:
     void run_() noexcept {
         if (cfg_.pin_thread) {
             (void)pin_this_thread_to_core(cfg_.core);
@@ -130,7 +130,8 @@ class egress_merger {
             if (stop_.load(std::memory_order_acquire)) {
                 // Producers quiesced before stop, so the acquire makes every
                 // published event visible; drain each ring to empty and exit.
-                while (drain_round_()) {}
+                while (drain_round_()) {
+                }
                 return;
             }
             if (idle < cfg_.spin_budget) {
