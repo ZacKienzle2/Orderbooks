@@ -1,6 +1,6 @@
 # Written by copier. Do not edit by hand: `copier update` rewrites it, and a
 # hand-edited answer is the drift this template exists to remove.
-_commit: 2c82d47
+_commit: b500ca0
 _src_path: https://github.com/ZacKienzle2/repo-template.git
 github_repository: ZacKienzle2/Orderbooks
 has_cpp: true

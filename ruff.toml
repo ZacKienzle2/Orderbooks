@@ -4,3 +4,4 @@
 # ignores stay in pyproject.toml and the width comes from the template.
 extend = "pyproject.toml"
 line-length = 100
+target-version = "py312"

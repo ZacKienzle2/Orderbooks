@@ -69,10 +69,9 @@ packages = ["scripts/orderbooks_viz"]
 [tool.hatch.build.targets.sdist]
 include = ["scripts/orderbooks_viz", "README.md", "LICENSE"]
 
-# The width is in ruff.toml, which the template renders and which extends this
-# section; ruff skips what .gitignore names on its own.
+# The width and target version are in ruff.toml, which the template renders
+# and which extends this section; ruff skips what .gitignore names on its own.
 [tool.ruff]
-target-version = "py312"
 extend-exclude = ["data"]
 
 [tool.ruff.lint]

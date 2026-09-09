@@ -33,8 +33,9 @@ discussions, pull requests, or any other public channel.**
 
 Private channels:
 
-1. **GitHub Private Vulnerability Reporting** (preferred): repository Security
-   tab, "Report a vulnerability".
+1. **GitHub Private Vulnerability Reporting** (preferred):
+   [report a vulnerability](https://github.com/ZacKienzle2/Orderbooks/security/advisories/new),
+   which is the repository's Security tab.
 2. **Email**: maintainer's published security contact. Encrypt sensitive details
    with the key referenced in
    [Encrypted Communication](#encrypted-communication).

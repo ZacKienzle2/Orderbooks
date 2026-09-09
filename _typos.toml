@@ -23,19 +23,19 @@ extend-ignore-identifiers-re = [
 
 [default.extend-words]
 # Words that are real in this project even though typos flags them.
-fo = "fo"      # boost::intrusive abbreviations
-fpe = "fpe"    # floating-point exception
-nd = "nd"      # boost::intrusive::auto_unlink + others
-sps = "sps"    # samples-per-second
+fo = "fo"       # boost::intrusive abbreviations
+fpe = "fpe"     # floating-point exception
+nd = "nd"       # boost::intrusive::auto_unlink + others
+sps = "sps"     # samples-per-second
 crate = "crate"
 # clang-analyzer-optin.* is a check family name, not a misspelt "option".
 optin = "optin"
-ba = "ba"            # best ask cursor (matching engine and reference)
-bb = "bb"            # best bid cursor (matching engine and reference)
-po = "po"            # post-only TIF abbreviation
-te = "te"            # taker-execute marker
-hte = "hte"          # halt-to-end marker
-countr = "countr"    # std::countr_zero / countr_one (C++20 bit ops)
-countl = "countl"    # std::countl_zero / countl_one (C++20 bit ops)
-popc = "popc"        # std::popcount abbreviation
-browseable = "browseable"  # GitHub doc spelling in SUPPORT.md
+ba = "ba"                 # best ask cursor (matching engine and reference)
+bb = "bb"                 # best bid cursor (matching engine and reference)
+po = "po"                 # post-only TIF abbreviation
+te = "te"                 # taker-execute marker
+hte = "hte"               # halt-to-end marker
+countr = "countr"         # std::countr_zero / countr_one (C++20 bit ops)
+countl = "countl"         # std::countl_zero / countl_one (C++20 bit ops)
+popc = "popc"             # std::popcount abbreviation
+browseable = "browseable" # GitHub doc spelling in SUPPORT.md
