@@ -131,10 +131,16 @@ repos:
       - id: check-dependabot
       - id: check-github-workflows
 
+  # Medium and above fail a commit. The one low finding zizmor raises on these
+  # repositories is self-repository, which asks for GitHub's `$/` form of a
+  # same-repository action; actionlint 1.7.12 rejects that form and its two
+  # open issues for it (rhysd/actionlint#711, #732) have no maintainer reply,
+  # so `./` stays until actionlint accepts `$/` and this threshold goes.
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: v1.30.0
     hooks:
       - id: zizmor
+        args: ["--min-severity=medium"]
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
