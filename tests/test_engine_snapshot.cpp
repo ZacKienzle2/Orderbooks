@@ -196,7 +196,7 @@ TEST_CASE("engine restore rejects a truncated snapshot", "[engine][snapshot]") {
     bytes.resize(buf.size() / 2);
     {
         buf.rewind();
-        std::span<std::byte> const first_half{bytes.data(), bytes.size()};
+        std::span<std::byte> first_half{bytes.data(), bytes.size()};
         REQUIRE(buf.read(first_half));
     }
     lob::vector_snapshot_buffer truncated;
