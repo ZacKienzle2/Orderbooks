@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "27 3 * * 1"
   workflow_dispatch: {}
 
 permissions:
@@ -14,32 +16,22 @@ permissions:
   packages: read
 
 concurrency:
-  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ matrix.os }}
-    # Code scanning analysis needs Advanced Security on a private
-    # repository, so the job itself is public-only.
+    runs-on: ubuntu-latest
     if: github.event.repository.private == false
     timeout-minutes: 360
-
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: actions
-            build-mode: none
-            os: ubuntu-latest
-          - language: c-cpp
-            build-mode: manual
-            os: ubuntu-latest
-          - language: python
-            build-mode: none
-            os: ubuntu-latest
-
+        language:
+          - actions
+          - c-cpp
+          - python
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -47,38 +39,16 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-
-      - name: Install Ninja
-        if: matrix.language == 'c-cpp'
-        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
-
-      - name: Install vcpkg
-        if: matrix.language == 'c-cpp'
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          build-mode: none
           queries: security-extended,security-and-quality
-
-      - name: Autobuild
-        if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
-
-      - name: Manual build (C / C++)
-        if: matrix.language == 'c-cpp'
-        env:
-          CC: clang
-          CXX: clang++
-        run: |
-          set -euo pipefail
-          cmake --preset linux-clang-rel
-          cmake --build --preset linux-clang-rel --parallel
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5

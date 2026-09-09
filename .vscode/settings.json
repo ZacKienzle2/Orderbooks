@@ -1,93 +1,62 @@
 {
-  "files.eol": "\n",
-  "files.encoding": "utf8",
-  "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true,
-  "files.trimFinalNewlines": true,
-  "editor.rulers": [72, 100],
-  "editor.tabSize": 4,
-  "editor.insertSpaces": true,
-  "editor.formatOnSave": true,
-  "git.enableSmartCommit": false,
-  "git.confirmSync": true,
-  "git.alwaysSignOff": true,
-  "git.useEditorAsCommitInput": true,
-  "git.inputValidationLength": 72,
-  "git.inputValidationSubjectLength": 72,
-  "clangd.arguments": [
-    "--background-index",
-    "--clang-tidy",
-    "--header-insertion=iwyu",
-    "--completion-style=detailed",
-    "--all-scopes-completion",
-    "--pch-storage=memory",
-    "--compile-commands-dir=build/macos-clang-dev",
-    "--query-driver=/usr/bin/clang++,/opt/homebrew/bin/clang++,/usr/local/bin/clang++"
-  ],
-  "clangd.fallbackFlags": ["-std=c++20"],
-  "cmake.configureOnOpen": false,
-  "cmake.useCMakePresets": "always",
-  "[cpp]": {
-    "editor.tabSize": 4,
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
-  },
   "[c]": {
-    "editor.tabSize": 4,
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.tabSize": 4
   },
   "[cmake]": {
-    "editor.tabSize": 2,
-    "editor.defaultFormatter": "cheshirekow.cmake-format"
+    "editor.defaultFormatter": "cheshirekow.cmake-format",
+    "editor.tabSize": 2
   },
-  "[python]": {
-    "editor.tabSize": 4,
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    }
-  },
-  "[markdown]": {
-    "editor.wordWrap": "off",
-    "editor.rulers": [120],
-    "editor.tabSize": 2,
-    "editor.formatOnSave": false
-  },
-  "[yaml]": {
-    "editor.tabSize": 2,
-    "editor.insertSpaces": true,
-    "editor.autoIndent": "advanced"
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.tabSize": 4
   },
   "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.tabSize": 2
   },
   "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.tabSize": 2
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.rulers": [80],
+    "editor.tabSize": 2,
+    "editor.wordWrap": "off"
+  },
+  "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
   },
   "[toml]": {
     "editor.tabSize": 2
   },
-  "markdownlint.config": {
-    "extends": "./.markdownlint.yaml"
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
   },
+  "cmake.configureOnOpen": false,
+  "cmake.useCMakePresets": "always",
+  "editor.formatOnSave": true,
+  "editor.insertSpaces": true,
+  "editor.rulers": [72, 100, 120],
+  "editor.tabSize": 4,
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "git.confirmSync": true,
+  "git.enableSmartCommit": false,
+  "git.inputValidationLength": 72,
+  "git.inputValidationSubjectLength": 72,
+  "git.useEditorAsCommitInput": true,
   "yaml.schemas": {
-    "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml",
     "https://json.schemastore.org/dependabot-2.0.json": ".github/dependabot.yml",
     "https://json.schemastore.org/github-issue-forms.json": ".github/ISSUE_TEMPLATE/*.yml",
-    "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json": "vcpkg.json",
-    "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg-configuration.schema.json": "vcpkg-configuration.json"
-  },
-  "search.exclude": {
-    "build/**": true,
-    "build-*/**": true,
-    "vcpkg_installed/**": true,
-    ".venv/**": true,
-    "uv.lock": true,
-    "**/*.lock": true
-  },
-  "files.watcherExclude": {
-    "**/build/**": true,
-    "**/build-*/**": true,
-    "**/vcpkg_installed/**": true,
-    "**/.venv/**": true
+    "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml"
   }
 }
