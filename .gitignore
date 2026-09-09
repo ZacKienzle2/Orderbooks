@@ -1,6 +1,6 @@
 # Assembled by copier from github/gitignore; the source files are in the
-# template repository, not here. A path of this repository's own goes after
-# this block.
+# template repository, not here. A path of this repository's own is the
+# gitignore_own answer in .copier-answers.yml, rendered at the end.
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -312,9 +312,7 @@ CMakeUserPresets.json
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #cmake-build-*
 
-# Orderbooks' own, anchored to the root so they name build trees outside
-# CMake's defaults, perf and llvm profile output, and the bench and test
-# artefacts the harness writes, and nothing deeper.
+# This repository's own, the gitignore_own answer in .copier-answers.yml.
 /out/
 /install/
 /cmake-build-*/
