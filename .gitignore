@@ -312,13 +312,14 @@ CMakeUserPresets.json
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #cmake-build-*
 
-# Orderbooks' own: build trees outside CMake's defaults, perf and llvm profile
-# output, and the bench and test artefacts the harness writes.
-out/
-install/
-cmake-build-*/
-artifacts/
-coverage/
+# Orderbooks' own, anchored to the root so they name build trees outside
+# CMake's defaults, perf and llvm profile output, and the bench and test
+# artefacts the harness writes, and nothing deeper.
+/out/
+/install/
+/cmake-build-*/
+/artifacts/
+/coverage/
 perf.data
 perf.data.old
 *.profraw

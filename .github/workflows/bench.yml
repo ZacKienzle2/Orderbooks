@@ -34,9 +34,6 @@ concurrency:
   group: bench-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-
 jobs:
   microbench:
     name: Google Benchmark microbench
@@ -53,21 +50,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
-
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-
-      - name: Configure release
-        env:
-          CC: clang
-          CXX: clang++
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run: cmake --preset linux-clang-rel
-
-      - name: Build bench
-        run: cmake --build --preset linux-clang-rel --target lob_bench --parallel
+      - name: Build the benchmark
+        uses: ./.github/actions/cmake-preset
+        with:
+          preset: linux-clang-rel
+          target: lob_bench
 
       - name: Run bench
         run: |
