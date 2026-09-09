@@ -35,25 +35,6 @@ just perfstat
 Output: `artifacts/perf/perf.txt`, written by `perf stat -o`. Events:
 `cycles, instructions, branches, branch-misses, L1-dcache-load(-misses), LLC-load(-misses), dTLB-load-misses, iTLB-load-misses`.
 
-## Latency ceiling gate
-
-CI also runs an absolute, baseline-free gate over the latency benchmark.
-`scripts/check_latency_ceiling.py` reads the run's own `artifacts/bench.json`,
-takes the median aggregate of `bench_submit_latency`, and fails the build when a
-percentile exceeds its ceiling. Unlike the relative gate it needs no baseline,
-so it stays active from the first run and catches a gross algorithmic regression
-(an O(1) path turned linear) that a drifting baseline would absorb.
-
-Ceilings are reference cycles, set in `bench.yml` and overridable per run.
-
-```bash
-LATENCY_P50_CEILING=600 LATENCY_P999_CEILING=8000 \
-  python3 scripts/check_latency_ceiling.py artifacts/bench.json
-```
-
-Exit codes are the contract. 0 within ceiling, 1 on a breach, 2 on a missing
-file, absent benchmark, or absent counter.
-
 ## Regression tracking
 
 CI runs
@@ -63,10 +44,9 @@ JSON, keeps the history in a file that `actions/cache` carries between runs, and
 writes the comparison with the previous run on `main` to the job summary. It
 does not fail the job: consecutive runs land on different shared runners, and
 the first comparison showed ratios of 1.2 to 2.9 on unchanged code, which is the
-hardware rather than the engine. The gate is the latency ceiling above, in
-reference cycles, which does not move with the host. A run on `main` writes the
-history; a pull request is compared against it without moving it. There is no
-baseline file to refresh.
+hardware rather than the engine; a relative gate needs a pinned host. A run on
+`main` writes the history; a pull request is compared against it without moving
+it. There is no baseline file to refresh.
 
 ## Production-quality runs
 
