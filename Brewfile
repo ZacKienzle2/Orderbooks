@@ -7,6 +7,8 @@ brew "cmake"
 brew "ninja"
 brew "llvm"
 brew "ccache"
+# The cppcheck hook is at the manual stage and runs the binary from PATH.
+brew "cppcheck"
 brew "uv"
 brew "pre-commit"
 brew "just"
