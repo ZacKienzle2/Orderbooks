@@ -30,11 +30,14 @@ body = """
 {% endfor %}\n
 """
 footer = """
-[Unreleased]: https://github.com/ZacKienzle2/Orderbooks/compare/{% if releases | length > 0 %}{{ releases[0].version }}...HEAD{% else %}HEAD{% endif %}
 {% for release in releases -%}
-  {% if release.previous.version -%}
-    [{{ release.version | trim_start_matches(pat="v") }}]: \
-      https://github.com/ZacKienzle2/Orderbooks/compare/{{ release.previous.version }}...{{ release.version }}
+  {% if release.version -%}
+    {% if release.previous.version -%}
+      [{{ release.version | trim_start_matches(pat="v") }}]: \
+        https://github.com/ZacKienzle2/Orderbooks/compare/{{ release.previous.version }}...{{ release.version }}
+    {% endif -%}
+  {% elif release.previous.version -%}
+    [Unreleased]: https://github.com/ZacKienzle2/Orderbooks/compare/{{ release.previous.version }}...HEAD
   {% endif -%}
 {% endfor %}
 """

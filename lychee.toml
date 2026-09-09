@@ -4,7 +4,10 @@ max_concurrency = 8
 max_redirects = 5
 timeout = 20
 retry_wait_time = 2
-accept = [200, 204, 206, 301, 302, 303, 307, 308, 429]
+# 403 is accepted: a public reference site that answers a scanner with
+# Forbidden, cppreference among them, is reachable from a browser, and a dead
+# link answers 404 or 410, which still fail.
+accept = [200, 204, 206, 301, 302, 303, 307, 308, 403, 429]
 no_progress = true
 include_verbatim = false
 include_fragments = false
