@@ -54,15 +54,19 @@ LATENCY_P50_CEILING=600 LATENCY_P999_CEILING=8000 \
 Exit codes are the contract. 0 within ceiling, 1 on a breach, 2 on a missing
 file, absent benchmark, or absent counter.
 
-## Regression gate
+## Regression tracking
 
 CI runs
 [github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark)
 over the run's `artifacts/bench.json`. The action reads Google Benchmark's own
 JSON, keeps the history in a file that `actions/cache` carries between runs, and
-fails the job when a benchmark's time exceeds 115 percent of the previous run on
-`main`. A run on `main` writes the history; a pull request is compared against
-it without moving it. There is no baseline file to refresh.
+writes the comparison with the previous run on `main` to the job summary. It
+does not fail the job: consecutive runs land on different shared runners, and
+the first comparison showed ratios of 1.2 to 2.9 on unchanged code, which is the
+hardware rather than the engine. The gate is the latency ceiling above, in
+reference cycles, which does not move with the host. A run on `main` writes the
+history; a pull request is compared against it without moving it. There is no
+baseline file to refresh.
 
 ## Production-quality runs
 

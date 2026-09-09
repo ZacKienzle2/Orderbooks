@@ -13,10 +13,11 @@ contributors.
 
 Active polish and observability work.
 
-- Relative regression gate: done through github-action-benchmark, which keeps
-  the history of `main` in a cached file and fails a run that slows past 115
-  percent of the previous one, beside the absolute latency-ceiling gate
-  (ADR-0026).
+- Relative regression tracking: github-action-benchmark keeps the history of
+  `main` in a cached file and shows each run against the previous one. It does
+  not gate: shared runners differ by 1.2 to 2.9 times on unchanged code. A
+  relative gate needs a pinned host; the absolute latency-ceiling gate
+  (ADR-0026) is host-independent and stays the gate.
 - A gateway adapter that frames parsed FIX commands into a runtime ingress ring.
 
 ## Recently Landed
