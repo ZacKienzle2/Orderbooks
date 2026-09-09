@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       ops:
-        description: "Native-scale op count; the simulator runs ops/100"
+        description: "Op count per workload under the simulator, which runs about a hundred times slower than native"
         required: false
-        default: "20000000"
+        default: "200000"
       depth:
         description: "Resting depth for the deep workload"
         required: false
@@ -20,6 +20,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
   cachegrind:
@@ -37,22 +40,38 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install valgrind and boost headers
+      # The same configure the build workflow does, so the profiler comes from
+      # the RelWithDebInfo preset rather than a compile of its own.
+      - name: Export GitHub Actions cache vars
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+
+      - name: Install valgrind and just
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends valgrind libboost-dev
+          sudo apt-get install -y --no-install-recommends valgrind just
 
-      - name: Run cachegrind plugin
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: cmake --preset linux-clang-relwithdebinfo
+
+      - name: Run cachegrind over the memory-bound workloads
         env:
           OPS: ${{ inputs.ops }}
           DEPTH: ${{ inputs.depth }}
-          # The runner's clang cannot always find the gcc toolchain's libstdc++
-          # headers; g++ is self-consistent with its own standard library.
-          CXX: g++
-        run: |
-          set -euo pipefail
-          scripts/profile.sh --plugin cachegrind --ops "${OPS}" --depth "${DEPTH}" \
-            | tee cachegrind-report.txt
+        run: just profile-cachegrind-all "$OPS" "$DEPTH" | tee cachegrind-report.txt
 
       - name: Upload report and raw profiles
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
@@ -60,5 +79,5 @@ jobs:
           name: cachegrind-report
           path: |
             cachegrind-report.txt
-            /tmp/cachegrind.out.*
+            artifacts/cachegrind/
           retention-days: 30

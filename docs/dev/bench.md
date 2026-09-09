@@ -29,10 +29,10 @@ divide by the host's nominal frequency for nanoseconds.
 ## perf counters (Linux)
 
 ```bash
-./scripts/perfstat.sh
+just perfstat
 ```
 
-Output: `artifacts/perf/perf-<utc>.txt`. Events:
+Output: `artifacts/perf/perf.txt`, written by `perf stat -o`. Events:
 `cycles, instructions, branches, branch-misses, L1-dcache-load(-misses), LLC-load(-misses), dTLB-load-misses, iTLB-load-misses`.
 
 ## Latency ceiling gate
