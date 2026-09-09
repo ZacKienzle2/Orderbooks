@@ -26,7 +26,7 @@ TEST_CASE("id_index insert / lookup / erase round-trip", "[id_index]") {
         idx.insert(o.id, &o);
     REQUIRE(idx.size() == orders.size());
 
-    REQUIRE(idx.lookup(100) == &orders[0]);
+    REQUIRE(idx.lookup(100) == orders.data());
     REQUIRE(idx.lookup(103) == &orders[3]);
     REQUIRE(idx.lookup(999) == nullptr);
 
