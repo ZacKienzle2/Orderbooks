@@ -1,4 +1,4 @@
-documentation:
+docs:
   - changed-files:
       - any-glob-to-any-file:
           - "**/*.md"
@@ -46,7 +46,7 @@ security:
           - ".github/workflows/codeql*.yml"
           - ".github/workflows/security*.yml"
 
-tests:
+test:
   - changed-files:
       - any-glob-to-any-file:
           - "tests/**"

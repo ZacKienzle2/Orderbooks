@@ -5,65 +5,48 @@ version-resolver:
   major:
     labels:
       - "breaking"
-      - "major"
   minor:
     labels:
-      - "enhancement"
-      - "feature"
-      - "minor"
+      - "feat"
   patch:
     labels:
-      - "bug"
       - "fix"
-      - "patch"
       - "perf"
-      - "performance"
-      - "security"
   default: patch
 
 categories:
   - title: "Breaking Changes"
     labels:
       - "breaking"
-      - "major"
   - title: "New Features"
     labels:
-      - "enhancement"
-      - "feature"
-      - "minor"
+      - "feat"
   - title: "Bug Fixes"
     labels:
-      - "bug"
       - "fix"
-      - "patch"
   - title: "Performance"
     labels:
       - "perf"
-      - "performance"
-  - title: "Security"
-    labels:
-      - "security"
   - title: "Documentation"
     labels:
-      - "documentation"
       - "docs"
   - title: "Maintenance"
     labels:
-      - "chore"
       - "refactor"
+      - "test"
       - "build"
       - "ci"
-      - "test"
+      - "chore"
+      - "style"
+      - "revert"
+  - title: "Dependencies"
+    labels:
       - "dependencies"
 
 change-template: "- $TITLE (#$NUMBER) by @$AUTHOR"
 change-title-escapes: '\<*_&'
 exclude-labels:
   - "skip-changelog"
-  - "duplicate"
-  - "invalid"
-  - "wontfix"
-  - "question"
 
 autolabeler:
   - label: "breaking"
@@ -71,33 +54,39 @@ autolabeler:
       - '/^[a-z]+(\([^)]+\))?!:/'
     body:
       - "/BREAKING[ -]CHANGE:/"
-  - label: "feature"
+  - label: "feat"
     title:
-      - "/^feat(\\([^)]+\\))?:/"
+      - "/^feat(\\([^)]+\\))?!?:/"
   - label: "fix"
     title:
-      - "/^fix(\\([^)]+\\))?:/"
+      - "/^fix(\\([^)]+\\))?!?:/"
   - label: "perf"
     title:
-      - "/^perf(\\([^)]+\\))?:/"
-  - label: "documentation"
+      - "/^perf(\\([^)]+\\))?!?:/"
+  - label: "docs"
     title:
-      - "/^docs(\\([^)]+\\))?:/"
-  - label: "ci"
-    title:
-      - "/^ci(\\([^)]+\\))?:/"
-  - label: "chore"
-    title:
-      - "/^chore(\\([^)]+\\))?:/"
-  - label: "test"
-    title:
-      - "/^test(\\([^)]+\\))?:/"
+      - "/^docs(\\([^)]+\\))?!?:/"
   - label: "refactor"
     title:
-      - "/^refactor(\\([^)]+\\))?:/"
+      - "/^refactor(\\([^)]+\\))?!?:/"
+  - label: "test"
+    title:
+      - "/^test(\\([^)]+\\))?!?:/"
   - label: "build"
     title:
-      - "/^build(\\([^)]+\\))?:/"
+      - "/^build(\\([^)]+\\))?!?:/"
+  - label: "ci"
+    title:
+      - "/^ci(\\([^)]+\\))?!?:/"
+  - label: "chore"
+    title:
+      - "/^chore(\\([^)]+\\))?!?:/"
+  - label: "style"
+    title:
+      - "/^style(\\([^)]+\\))?!?:/"
+  - label: "revert"
+    title:
+      - "/^revert(\\([^)]+\\))?!?:/"
 
 template: |
   ## What's Changed

@@ -1,9 +1,9 @@
 extends: default
 
 rules:
-  line-length:
-    max: 140
-    level: warning
+  # prettier wraps YAML and is what this linter reads; a scalar prettier cannot
+  # break is not an error a second tool should raise.
+  line-length: disable
   document-start: disable
   truthy:
     # The rule's own option. Yes and No are the spelling clang-format's
