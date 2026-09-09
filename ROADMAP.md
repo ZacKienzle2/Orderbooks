@@ -13,11 +13,11 @@ contributors.
 
 Active polish and observability work.
 
-- Relative regression tracking: github-action-benchmark keeps the history of
-  `main` in a cached file and shows each run against the previous one. It does
-  not gate: shared runners differ by 1.2 to 2.9 times on unchanged code. A
-  relative gate needs a pinned host; the absolute latency-ceiling gate
-  (ADR-0026) is host-independent and stays the gate.
+- Regression tracking: github-action-benchmark keeps the history of `main` in a
+  cached file and shows each run against the previous one. It does not gate:
+  shared runners differ by 1.2 to 2.9 times on unchanged code, and a relative
+  gate needs a pinned host. The absolute latency-ceiling gate (ADR-0026) was a
+  script of this repository's own and is retired with the rest of them.
 - A gateway adapter that frames parsed FIX commands into a runtime ingress ring.
 
 ## Recently Landed
@@ -48,8 +48,8 @@ Active polish and observability work.
   for latency measurement and a future regression gate.
 - Absolute latency-ceiling gate (see
   [ADR-0026](docs/adr/0026-absolute-latency-ceiling-gate.md)) over the engine
-  latency benchmark, baseline-free and active on every CI run, failing the build
-  when p50 or p99.9 exceeds a fixed reference-cycle ceiling.
+  latency benchmark, retired on 2026-09-09 with the repository's other scripts;
+  the latency benchmark's history is recorded by github-action-benchmark.
 - End-to-end load harness (see
   [ADR-0030](docs/adr/0030-end-to-end-load-harness.md), `apps/loadgen`) driving
   the assembled multi-shard runtime under synthetic flow, reporting sustained
