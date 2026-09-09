@@ -52,8 +52,15 @@ indent_size = unset
 [{CMakeLists.txt,*.cmake}]
 indent_size = unset
 
+# nbformat writes a notebook at one space, and nbstripout writes it back the
+# same way, so the width is the format's, not an author's.
+[*.ipynb]
+indent_size = unset
+
+# ruff format owns Python layout and leaves a docstring's own alignment as
+# written, which editorconfig-checker would otherwise read as a wrong indent.
 [*.py]
-indent_size = 4
+indent_size = unset
 
 [*.rs]
 indent_size = 4
