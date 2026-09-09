@@ -30,7 +30,9 @@ TEST_CASE("book_side<bid> tracks best as highest price", "[book_side]") {
     REQUIRE(bs.empty());
     REQUIRE(!bs.best().has_value());
 
-    lob::order a{}, b{}, c{};
+    lob::order a{};
+    lob::order b{};
+    lob::order c{};
     prime(a, 1, 100, 10, lob::side::bid);
     prime(b, 2, 120, 20, lob::side::bid);
     prime(c, 3, 110, 30, lob::side::bid);
@@ -58,7 +60,9 @@ TEST_CASE("book_side<bid> tracks best as highest price", "[book_side]") {
 
 TEST_CASE("book_side<ask> tracks best as lowest price", "[book_side]") {
     ask_side bs;
-    lob::order a{}, b{}, c{};
+    lob::order a{};
+    lob::order b{};
+    lob::order c{};
     prime(a, 1, 100, 10, lob::side::ask);
     prime(b, 2, 90, 20, lob::side::ask);
     prime(c, 3, 95, 30, lob::side::ask);
@@ -80,7 +84,9 @@ TEST_CASE("book_side<ask> tracks best as lowest price", "[book_side]") {
 
 TEST_CASE("book_side FIFO at one level preserves time priority", "[book_side]") {
     bid_side bs;
-    lob::order a{}, b{}, c{};
+    lob::order a{};
+    lob::order b{};
+    lob::order c{};
     prime(a, 1, 100, 10, lob::side::bid);
     prime(b, 2, 100, 20, lob::side::bid);
     prime(c, 3, 100, 30, lob::side::bid);

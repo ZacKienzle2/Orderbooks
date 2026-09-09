@@ -30,7 +30,7 @@ lob::submit_msg sub(lob::order_id_t id, lob::tick_t px, lob::qty_t qty, lob::sid
 
 TEST_CASE("shard_router routes a symbol to a deterministic shard", "[shard]") {
     pub_t pub;
-    router_t r{pub, lob::engine_config{}};
+    router_t const r{pub, lob::engine_config{}};
 
     REQUIRE(router_t::shard_count() == shards);
 
@@ -45,7 +45,7 @@ TEST_CASE("shard_router routes a symbol to a deterministic shard", "[shard]") {
 
 TEST_CASE("shard_router distributes a moderate symbol population across shards", "[shard]") {
     pub_t pub;
-    router_t r{pub, lob::engine_config{}};
+    router_t const r{pub, lob::engine_config{}};
 
     std::array<std::size_t, shards> hits{};
     for (lob::symbol_id_t sym = 1; sym <= 4'000; ++sym) {
@@ -64,7 +64,7 @@ TEST_CASE("shard_router isolates state across shards", "[shard]") {
     router_t r{pub, lob::engine_config{}};
 
     // Find two symbols that map to distinct shards.
-    lob::symbol_id_t sym_a = 1;
+    lob::symbol_id_t const sym_a = 1;
     lob::symbol_id_t sym_b = 2;
     while (r.shard_index_for(sym_a) == r.shard_index_for(sym_b)) {
         ++sym_b;
