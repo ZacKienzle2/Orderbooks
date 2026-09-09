@@ -45,7 +45,12 @@ jobs:
       - name: Install clang-tidy
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-tidy-18
 
+      # run-clang-tidy applies the fixes and then exits non-zero for any
+      # diagnostic left, which .clang-tidy's WarningsAsErrors makes every one;
+      # the job continues so the applied fixes reach the pull request, where
+      # its own clang-tidy job reports what remains.
       - name: Apply the fixes clang-tidy carries
+        continue-on-error: true
         run: run-clang-tidy-18 -p build/linux-clang-rel -fix -format -quiet
 
       - name: Open the pull request
