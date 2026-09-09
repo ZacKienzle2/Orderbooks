@@ -1,3 +1,13 @@
+# Managed by copier from ZacKienzle2/repo-template. A repository's own words go
+# under [default.extend-words] after this block.
+
+# A generated CHANGELOG.md carries short commit hashes as link text, and typos
+# reads the letters in one as a word. A type of its own, unchecked, is typos'
+# way to leave a generated file alone.
+[type.changelog]
+extend-glob = ["CHANGELOG.md"]
+check-file = false
+
 [default]
 # Skip short identifiers that look like typos but are domain-relevant.
 extend-ignore-identifiers-re = [
@@ -22,29 +32,3 @@ countr = "countr"    # std::countr_zero / countr_one (C++20 bit ops)
 countl = "countl"    # std::countl_zero / countl_one (C++20 bit ops)
 popc = "popc"        # std::popcount abbreviation
 browseable = "browseable"  # GitHub doc spelling in SUPPORT.md
-
-[files]
-extend-exclude = [
-  ".git/",
-  ".venv/",
-  "node_modules/",
-  "dist/",
-  "build/",
-  "build-*/",
-  "target/",
-  "vcpkg_installed/",
-  "*.svg",
-  "*.lock",
-  "package-lock.json",
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "poetry.lock",
-  "Cargo.lock",
-  "go.sum",
-  "uv.lock",
-  # External fixture data: ITCH samples and replay logs are not source.
-  "data/",
-  "tests/fixtures/",
-  # Generated changelog: git-cliff output embeds commit SHAs that trip the speller.
-  "CHANGELOG.md",
-]
