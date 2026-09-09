@@ -49,14 +49,15 @@ std::span<const std::byte> bytes_of(const std::string& s) noexcept {
 }  // namespace
 
 TEST_CASE("parses a NewOrderSingle into a submit command", "[fix]") {
-    const std::string wire = make_fix("35=D\x01"
-                                      "11=1001\x01"
-                                      "55=AAPL\x01"
-                                      "54=1\x01"
-                                      "38=50\x01"
-                                      "40=2\x01"
-                                      "44=100\x01"
-                                      "59=1\x01");
+    const std::string wire = make_fix(
+        "35=D\x01"
+        "11=1001\x01"
+        "55=AAPL\x01"
+        "54=1\x01"
+        "38=50\x01"
+        "40=2\x01"
+        "44=100\x01"
+        "59=1\x01");
 
     const auto r = lob::fix::parse(bytes_of(wire));
 
@@ -71,11 +72,12 @@ TEST_CASE("parses a NewOrderSingle into a submit command", "[fix]") {
 }
 
 TEST_CASE("parses an OrderCancelRequest into a cancel command", "[fix]") {
-    const std::string wire = make_fix("35=F\x01"
-                                      "11=1002\x01"
-                                      "41=1001\x01"
-                                      "55=AAPL\x01"
-                                      "54=1\x01");
+    const std::string wire = make_fix(
+        "35=F\x01"
+        "11=1002\x01"
+        "41=1001\x01"
+        "55=AAPL\x01"
+        "54=1\x01");
 
     const auto r = lob::fix::parse(bytes_of(wire));
 
@@ -85,14 +87,15 @@ TEST_CASE("parses an OrderCancelRequest into a cancel command", "[fix]") {
 }
 
 TEST_CASE("parses an OrderCancelReplaceRequest into a modify command", "[fix]") {
-    const std::string wire = make_fix("35=G\x01"
-                                      "11=1003\x01"
-                                      "41=1001\x01"
-                                      "55=AAPL\x01"
-                                      "54=1\x01"
-                                      "38=70\x01"
-                                      "40=2\x01"
-                                      "44=99\x01");
+    const std::string wire = make_fix(
+        "35=G\x01"
+        "11=1003\x01"
+        "41=1001\x01"
+        "55=AAPL\x01"
+        "54=1\x01"
+        "38=70\x01"
+        "40=2\x01"
+        "44=99\x01");
 
     const auto r = lob::fix::parse(bytes_of(wire));
 
@@ -106,34 +109,37 @@ TEST_CASE("parses an OrderCancelReplaceRequest into a modify command", "[fix]") 
 
 TEST_CASE("maps FIX side and time-in-force codes", "[fix]") {
     SECTION("sell maps to ask, IOC maps to ioc") {
-        const std::string wire = make_fix("35=D\x01"
-                                          "11=7\x01"
-                                          "54=2\x01"
-                                          "38=5\x01"
-                                          "44=42\x01"
-                                          "59=3\x01");
+        const std::string wire = make_fix(
+            "35=D\x01"
+            "11=7\x01"
+            "54=2\x01"
+            "38=5\x01"
+            "44=42\x01"
+            "59=3\x01");
         const auto r = lob::fix::parse(bytes_of(wire));
         REQUIRE(r.err == lob::fix::error::ok);
         CHECK(r.cmd.body.submit.s == lob::side::ask);
         CHECK(r.cmd.body.submit.t == lob::tif::ioc);
     }
     SECTION("FOK time-in-force") {
-        const std::string wire = make_fix("35=D\x01"
-                                          "11=8\x01"
-                                          "54=1\x01"
-                                          "38=5\x01"
-                                          "44=42\x01"
-                                          "59=4\x01");
+        const std::string wire = make_fix(
+            "35=D\x01"
+            "11=8\x01"
+            "54=1\x01"
+            "38=5\x01"
+            "44=42\x01"
+            "59=4\x01");
         const auto r = lob::fix::parse(bytes_of(wire));
         REQUIRE(r.err == lob::fix::error::ok);
         CHECK(r.cmd.body.submit.t == lob::tif::fok);
     }
     SECTION("absent time-in-force defaults to GTC") {
-        const std::string wire = make_fix("35=D\x01"
-                                          "11=9\x01"
-                                          "54=1\x01"
-                                          "38=5\x01"
-                                          "44=42\x01");
+        const std::string wire = make_fix(
+            "35=D\x01"
+            "11=9\x01"
+            "54=1\x01"
+            "38=5\x01"
+            "44=42\x01");
         const auto r = lob::fix::parse(bytes_of(wire));
         REQUIRE(r.err == lob::fix::error::ok);
         CHECK(r.cmd.body.submit.t == lob::tif::gtc);
@@ -141,23 +147,25 @@ TEST_CASE("maps FIX side and time-in-force codes", "[fix]") {
 }
 
 TEST_CASE("parses the Account tag into account_id", "[fix]") {
-    const std::string wire = make_fix("35=D\x01"
-                                      "1=77\x01"
-                                      "11=5\x01"
-                                      "54=1\x01"
-                                      "38=5\x01"
-                                      "44=42\x01");
+    const std::string wire = make_fix(
+        "35=D\x01"
+        "1=77\x01"
+        "11=5\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
     const auto r = lob::fix::parse(bytes_of(wire));
     REQUIRE(r.err == lob::fix::error::ok);
     CHECK(r.cmd.body.submit.account_id == 77);
 }
 
 TEST_CASE("rejects a corrupted checksum", "[fix]") {
-    std::string wire = make_fix("35=D\x01"
-                                "11=1\x01"
-                                "54=1\x01"
-                                "38=5\x01"
-                                "44=42\x01");
+    std::string wire = make_fix(
+        "35=D\x01"
+        "11=1\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
     // Flip the last checksum digit (the byte before the trailing SOH).
     wire[wire.size() - 2] = wire[wire.size() - 2] == '9' ? '0' : '9';
 
@@ -166,11 +174,12 @@ TEST_CASE("rejects a corrupted checksum", "[fix]") {
 }
 
 TEST_CASE("rejects a wrong begin string", "[fix]") {
-    std::string wire = make_fix("35=D\x01"
-                                "11=1\x01"
-                                "54=1\x01"
-                                "38=5\x01"
-                                "44=42\x01");
+    std::string wire = make_fix(
+        "35=D\x01"
+        "11=1\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
     wire[7] = '2';  // FIX.4.4 -> FIX.4.2
 
     const auto r = lob::fix::parse(bytes_of(wire));
@@ -178,11 +187,12 @@ TEST_CASE("rejects a wrong begin string", "[fix]") {
 }
 
 TEST_CASE("reports incomplete on a truncated buffer", "[fix]") {
-    const std::string wire = make_fix("35=D\x01"
-                                      "11=1\x01"
-                                      "54=1\x01"
-                                      "38=5\x01"
-                                      "44=42\x01");
+    const std::string wire = make_fix(
+        "35=D\x01"
+        "11=1\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
     const auto full = bytes_of(wire);
 
     const auto r = lob::fix::parse(full.first(full.size() - 4));
@@ -192,41 +202,46 @@ TEST_CASE("reports incomplete on a truncated buffer", "[fix]") {
 
 TEST_CASE("reports unsupported message type", "[fix]") {
     // 35=0 is a Heartbeat -- structurally valid, not an order command.
-    const std::string wire = make_fix("35=0\x01"
-                                      "112=TEST\x01");
+    const std::string wire = make_fix(
+        "35=0\x01"
+        "112=TEST\x01");
     const auto r = lob::fix::parse(bytes_of(wire));
     CHECK(r.err == lob::fix::error::unsupported_msg_type);
 }
 
 TEST_CASE("rejects a NewOrderSingle missing a required field", "[fix]") {
     // No OrderQty(38).
-    const std::string wire = make_fix("35=D\x01"
-                                      "11=1\x01"
-                                      "54=1\x01"
-                                      "44=42\x01");
+    const std::string wire = make_fix(
+        "35=D\x01"
+        "11=1\x01"
+        "54=1\x01"
+        "44=42\x01");
     const auto r = lob::fix::parse(bytes_of(wire));
     CHECK(r.err == lob::fix::error::missing_field);
 }
 
 TEST_CASE("rejects a non-numeric quantity", "[fix]") {
-    const std::string wire = make_fix("35=D\x01"
-                                      "11=1\x01"
-                                      "54=1\x01"
-                                      "38=x\x01"
-                                      "44=42\x01");
+    const std::string wire = make_fix(
+        "35=D\x01"
+        "11=1\x01"
+        "54=1\x01"
+        "38=x\x01"
+        "44=42\x01");
     const auto r = lob::fix::parse(bytes_of(wire));
     CHECK(r.err == lob::fix::error::bad_field_value);
 }
 
 TEST_CASE("consumes exactly one message from a concatenated stream", "[fix]") {
-    const std::string first = make_fix("35=D\x01"
-                                       "11=1\x01"
-                                       "54=1\x01"
-                                       "38=5\x01"
-                                       "44=42\x01");
-    const std::string second = make_fix("35=F\x01"
-                                        "11=2\x01"
-                                        "41=1\x01");
+    const std::string first = make_fix(
+        "35=D\x01"
+        "11=1\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
+    const std::string second = make_fix(
+        "35=F\x01"
+        "11=2\x01"
+        "41=1\x01");
     const std::string stream = first + second;
 
     const auto r = lob::fix::parse(bytes_of(stream));
@@ -265,11 +280,12 @@ TEST_CASE("still reports incomplete for an in-range BodyLength short of bytes", 
 TEST_CASE("rejects a CancelReplace without a ClOrdID", "[fix]") {
     // Tag 11 carries the order's next identity; without it a replace would
     // strand every later request that names the order by the new id.
-    const std::string wire = make_fix("35=G\x01"
-                                      "41=1001\x01"
-                                      "54=1\x01"
-                                      "38=70\x01"
-                                      "44=99\x01");
+    const std::string wire = make_fix(
+        "35=G\x01"
+        "41=1001\x01"
+        "54=1\x01"
+        "38=70\x01"
+        "44=99\x01");
     const auto r = lob::fix::parse(bytes_of(wire));
     CHECK(r.err == lob::fix::error::missing_field);
 }
@@ -277,22 +293,25 @@ TEST_CASE("rejects a CancelReplace without a ClOrdID", "[fix]") {
 TEST_CASE("rejects the reserved order id values", "[fix]") {
     // Zero collides with modify_msg's keep-the-id sentinel and 2^64 - 1 with
     // the id_index empty-slot sentinel.
-    const std::string zero_id = make_fix("35=D\x01"
-                                         "11=0\x01"
-                                         "54=1\x01"
-                                         "38=5\x01"
-                                         "44=42\x01");
+    const std::string zero_id = make_fix(
+        "35=D\x01"
+        "11=0\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
     CHECK(lob::fix::parse(bytes_of(zero_id)).err == lob::fix::error::bad_field_value);
 
-    const std::string sentinel_id = make_fix("35=D\x01"
-                                             "11=18446744073709551615\x01"
-                                             "54=1\x01"
-                                             "38=5\x01"
-                                             "44=42\x01");
+    const std::string sentinel_id = make_fix(
+        "35=D\x01"
+        "11=18446744073709551615\x01"
+        "54=1\x01"
+        "38=5\x01"
+        "44=42\x01");
     CHECK(lob::fix::parse(bytes_of(sentinel_id)).err == lob::fix::error::bad_field_value);
 
-    const std::string sentinel_orig = make_fix("35=F\x01"
-                                               "11=2\x01"
-                                               "41=18446744073709551615\x01");
+    const std::string sentinel_orig = make_fix(
+        "35=F\x01"
+        "11=2\x01"
+        "41=18446744073709551615\x01");
     CHECK(lob::fix::parse(bytes_of(sentinel_orig)).err == lob::fix::error::bad_field_value);
 }

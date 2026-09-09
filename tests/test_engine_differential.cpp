@@ -102,24 +102,24 @@ void replay(fast_t& fast, ref_t& ref, gen_state& g, std::uint8_t n_accounts) {
                 k = op_kind::modify;
         }
         switch (k) {
-        case op_kind::submit: {
-            const auto m = gen_submit(g, n_accounts);
-            fast.on_submit(m);
-            ref.on_submit(m);
-            break;
-        }
-        case op_kind::cancel: {
-            const auto m = gen_cancel(g);
-            fast.on_cancel(m);
-            ref.on_cancel(m);
-            break;
-        }
-        case op_kind::modify: {
-            const auto m = gen_modify(g);
-            fast.on_modify(m);
-            ref.on_modify(m);
-            break;
-        }
+            case op_kind::submit: {
+                const auto m = gen_submit(g, n_accounts);
+                fast.on_submit(m);
+                ref.on_submit(m);
+                break;
+            }
+            case op_kind::cancel: {
+                const auto m = gen_cancel(g);
+                fast.on_cancel(m);
+                ref.on_cancel(m);
+                break;
+            }
+            case op_kind::modify: {
+                const auto m = gen_modify(g);
+                fast.on_modify(m);
+                ref.on_modify(m);
+                break;
+            }
         }
     }
 }

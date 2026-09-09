@@ -64,7 +64,8 @@ struct reference_engine {
     std::uint8_t suppress_top_depth{0};
 
     explicit reference_engine(
-        engine_config c, std::size_t max_ord = std::numeric_limits<std::size_t>::max()) noexcept
+        engine_config c,
+        std::size_t max_ord = std::numeric_limits<std::size_t>::max()) noexcept
         : cfg{c}, max_orders{max_ord} {}
 
     [[nodiscard]] std::optional<tick_t> best_bid() const noexcept {
@@ -157,7 +158,7 @@ struct reference_engine {
         publish_top_();
     }
 
-  private:
+   private:
     template <side Side>
     void handle_(const submit_msg& m) noexcept {
         if (m.t == tif::fok && !can_fully_fill_<Side>(m.px, m.qty, m.account_id))
@@ -172,8 +173,9 @@ struct reference_engine {
     }
 
     template <side Side>
-    [[nodiscard]] bool
-    can_fully_fill_(tick_t aggressor_px, qty_t want, account_id_t acct) const noexcept {
+    [[nodiscard]] bool can_fully_fill_(tick_t aggressor_px,
+                                       qty_t want,
+                                       account_id_t acct) const noexcept {
         // Mirrors lob::engine::can_fully_fill_. With no account, or under
         // decrement_trade, every resting unit at a crossing level consumes
         // the aggressor, so plain sums are exact. Under the cancelling
@@ -272,34 +274,34 @@ struct reference_engine {
                               tick_t best_px,
                               qty_t& remaining) noexcept {
         switch (cfg.self_cross) {
-        case self_cross_policy::cancel_newest:
-            remaining = 0;
-            return true;
-        case self_cross_policy::cancel_oldest:
-            idx.erase(maker.id);
-            fifo.pop_front();
-            top_dirty = true;
-            return false;
-        case self_cross_policy::decrement_trade: {
-            const auto trade_qty = std::min(remaining, maker.remaining);
-            ++seq;
-            self_trades.push_back(self_trade_msg{
-                .aggressor = m.id,
-                .resting = maker.id,
-                .account = m.account_id,
-                .px = best_px,
-                .qty = trade_qty,
-                .seq = seq,
-            });
-            maker.remaining -= trade_qty;
-            remaining -= trade_qty;
-            top_dirty = true;
-            if (maker.remaining == 0) {
+            case self_cross_policy::cancel_newest:
+                remaining = 0;
+                return true;
+            case self_cross_policy::cancel_oldest:
                 idx.erase(maker.id);
                 fifo.pop_front();
+                top_dirty = true;
+                return false;
+            case self_cross_policy::decrement_trade: {
+                const auto trade_qty = std::min(remaining, maker.remaining);
+                ++seq;
+                self_trades.push_back(self_trade_msg{
+                    .aggressor = m.id,
+                    .resting = maker.id,
+                    .account = m.account_id,
+                    .px = best_px,
+                    .qty = trade_qty,
+                    .seq = seq,
+                });
+                maker.remaining -= trade_qty;
+                remaining -= trade_qty;
+                top_dirty = true;
+                if (maker.remaining == 0) {
+                    idx.erase(maker.id);
+                    fifo.pop_front();
+                }
+                return false;
             }
-            return false;
-        }
         }
         return false;
     }

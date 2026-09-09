@@ -12,8 +12,9 @@ endif()
 include(CheckCXXCompilerFlag)
 include(CheckLinkerFlag OPTIONAL RESULT_VARIABLE _lob_check_linker_flag_available)
 
-# Probe each candidate flag with -Werror so that compilers which accept the flag with a warning (e.g. Apple Clang on
-# -fcf-protection or -fstack-clash-protection) are correctly detected as "unsupported".
+# Probe each candidate flag with -Werror so that compilers which accept the flag with a warning
+# (e.g. Apple Clang on -fcf-protection or -fstack-clash-protection) are correctly detected as
+# "unsupported".
 function(_lob_probe_compile flag out_var)
   set(_old "${CMAKE_REQUIRED_FLAGS}")
   set(CMAKE_REQUIRED_FLAGS "${flag} -Werror")
@@ -25,11 +26,12 @@ function(_lob_probe_compile flag out_var)
       PARENT_SCOPE)
 endfunction()
 
-set(_lob_hard_candidate_compile -fstack-protector-strong -fstack-clash-protection -fcf-protection=full -fPIE)
+set(_lob_hard_candidate_compile -fstack-protector-strong -fstack-clash-protection
+                                -fcf-protection=full -fPIE)
 set(_lob_hard_candidate_link -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack)
 if(NOT APPLE)
-  # ld64 ignores -pie at link time and emits an "argument unused" warning under -Werror; the resulting binary is already
-  # PIE-by-default on macOS.
+  # ld64 ignores -pie at link time and emits an "argument unused" warning under -Werror; the
+  # resulting binary is already PIE-by-default on macOS.
   list(APPEND _lob_hard_candidate_link -pie)
 endif()
 
@@ -54,5 +56,6 @@ foreach(_flag IN LISTS _lob_hard_candidate_link)
   endif()
 endforeach()
 
-target_compile_options(lob_hardening INTERFACE ${_lob_hard_compile} $<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=3>)
+target_compile_options(lob_hardening INTERFACE ${_lob_hard_compile}
+                                               $<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=3>)
 target_link_options(lob_hardening INTERFACE ${_lob_hard_link})

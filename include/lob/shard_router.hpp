@@ -15,9 +15,9 @@
 #include <memory>
 
 #ifndef NDEBUG
-    #include <atomic>
-    #include <cassert>
-    #include <thread>
+#include <atomic>
+#include <cassert>
+#include <thread>
 #endif
 
 namespace lob {
@@ -46,7 +46,7 @@ class shard_router {
 
     static constexpr std::uint64_t mask = NumShards - 1;
 
-  public:
+   public:
     using engine_type = engine<P, Ticks, MaxOrders>;
 
     // Each shard's engine is seeded with a disjoint seq range via
@@ -94,7 +94,7 @@ class shard_router {
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
 
-  private:
+   private:
     [[nodiscard]] engine_type& shard_for(symbol_id_t sym) noexcept {
         return *engines_[shard_index_for(sym)];
     }

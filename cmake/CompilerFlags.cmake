@@ -7,8 +7,8 @@ add_library(lob::compiler_flags ALIAS lob_compiler_flags)
 
 target_compile_features(lob_compiler_flags INTERFACE cxx_std_20)
 
-# Probe each candidate flag with -Werror so that compilers which accept the flag with a warning (e.g. Apple Clang on
-# -fno-semantic-interposition) are correctly detected as "unsupported".
+# Probe each candidate flag with -Werror so that compilers which accept the flag with a warning
+# (e.g. Apple Clang on -fno-semantic-interposition) are correctly detected as "unsupported".
 function(_lob_probe_flag flag out_var)
   set(_old "${CMAKE_REQUIRED_FLAGS}")
   set(CMAKE_REQUIRED_FLAGS "${flag} -Werror")
@@ -21,16 +21,18 @@ function(_lob_probe_flag flag out_var)
 endfunction()
 
 if(MSVC)
-  target_compile_options(lob_compiler_flags INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor /utf-8)
+  target_compile_options(lob_compiler_flags INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor
+                                                      /utf-8)
 else()
-  target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer -fdiagnostics-color=always
-                                                      -fvisibility=hidden -fvisibility-inlines-hidden)
+  target_compile_options(
+    lob_compiler_flags INTERFACE -fno-omit-frame-pointer -fdiagnostics-color=always
+                                 -fvisibility=hidden -fvisibility-inlines-hidden)
 
   if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # -fno-trapping-math and -ffp-contract=fast both relax floating-point semantics. The engine itself is integer-only
-    # today, but any future FP analytics translation unit linked under these flags will have FMA contraction permitted
-    # and trapping ops removed; rounding may differ from a strict-IEEE build. Re-evaluate before adding any production
-    # FP risk path.
+    # -fno-trapping-math and -ffp-contract=fast both relax floating-point semantics. The engine
+    # itself is integer-only today, but any future FP analytics translation unit linked under these
+    # flags will have FMA contraction permitted and trapping ops removed; rounding may differ from a
+    # strict-IEEE build. Re-evaluate before adding any production FP risk path.
     set(_lob_perf_candidates
         -fno-plt
         -fno-semantic-interposition

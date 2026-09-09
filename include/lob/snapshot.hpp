@@ -86,7 +86,7 @@ concept snapshot_source = requires(R r, std::span<std::byte> bytes) {
 // that need a guaranteed-no-throw sink should call reserve() with the
 // expected payload size before encoding, or wrap a fixed-buffer sink.
 class vector_snapshot_buffer {
-  public:
+   public:
     void write(std::span<const std::byte> bytes) {
         bytes_.insert(bytes_.end(), bytes.begin(), bytes.end());
     }
@@ -112,7 +112,7 @@ class vector_snapshot_buffer {
 
     [[nodiscard]] std::size_t cursor() const noexcept { return cursor_; }
 
-  private:
+   private:
     std::vector<std::byte> bytes_;
     std::size_t cursor_{0};
 };

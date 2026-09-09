@@ -48,7 +48,7 @@ template <publisher P,
           std::size_t NumShards,
           std::size_t RingCapacity>
 class shard_runtime {
-  public:
+   public:
     using router_type = shard_router<P, Ticks, MaxOrders, NumShards>;
     using engine_type = typename router_type::engine_type;
     using ring_type = spsc_ring<command, RingCapacity>;
@@ -145,7 +145,7 @@ class shard_runtime {
 
     [[nodiscard]] static constexpr std::size_t ring_capacity() noexcept { return RingCapacity; }
 
-  private:
+   private:
     [[nodiscard]] bool enqueue_(symbol_id_t sym, const command& c) noexcept {
         const auto idx = router_.shard_index_for(sym);
         if (!ingress_[idx].try_push(c)) {

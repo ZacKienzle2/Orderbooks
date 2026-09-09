@@ -358,10 +358,7 @@ int main(int argc, char** argv) {
     // The engine embeds a multi-megabyte arena, so it lives on the heap.
     const auto eng = std::make_unique<eng_t>(pub, lob::engine_config{});
     const result r = chosen->fn(*eng, a.ops, a.depth, a.seed);
-    std::printf("workload=%-8s ops=%llu depth=%zu  %.1f cyc/op\n",
-                chosen->name,
-                static_cast<unsigned long long>(a.ops),
-                a.depth,
-                r.cyc_per_op);
+    std::printf("workload=%-8s ops=%llu depth=%zu  %.1f cyc/op\n", chosen->name,
+                static_cast<unsigned long long>(a.ops), a.depth, r.cyc_per_op);
     return 0;
 }

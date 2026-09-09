@@ -43,7 +43,7 @@ class slab_arena {
         std::byte bytes[sizeof(T)];
     };  // NOLINT
 
-  public:
+   public:
     // The constructor reserves the slab storage, preferring 2 MiB huge
     // pages so the whole slab needs only a handful of data-TLB entries
     // (see hugepage_region and ADR-0023), but deliberately leaves the
@@ -98,7 +98,7 @@ class slab_arena {
         return s >= base && s < base + Capacity;
     }
 
-  private:
+   private:
     static void store_link_(slot* s, slot* next) noexcept {
         std::memcpy(s->bytes, &next, sizeof(next));
     }

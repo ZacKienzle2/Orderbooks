@@ -60,7 +60,7 @@ class id_index {
         return std::size_t{1} << (64 - std::countl_zero(n - 1));
     }
 
-  public:
+   public:
     id_index() : id_index(default_capacity_) {}
 
     // The constructor sizes the storage but does not first-touch the
@@ -141,7 +141,7 @@ class id_index {
         size_ = 0;
     }
 
-  private:
+   private:
     void init_storage_() noexcept {
         const std::size_t cap = mask_ + 1;
         slots_.assign(cap, slot{empty_key, nullptr});

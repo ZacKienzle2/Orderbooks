@@ -77,8 +77,10 @@ TEST_CASE("egress_merger streams a runtime crossing into the json recorder", "[s
     merger.start();
 
     constexpr lob::symbol_id_t sym = 123;
-    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {}
-    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {}
+    while (!rt.try_submit(sym, sub(1, 100, 10, lob::side::ask))) {
+    }
+    while (!rt.try_submit(sym, sub(2, 100, 4, lob::side::bid))) {
+    }
 
     rt.drain();
     rt.stop();
