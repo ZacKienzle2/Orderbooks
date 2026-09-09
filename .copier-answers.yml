@@ -1,10 +1,21 @@
 # Written by copier. Do not edit by hand: `copier update` rewrites it, and a
 # hand-edited answer is the drift this template exists to remove.
-_commit: b500ca0
+_commit: 674c521
 _src_path: https://github.com/ZacKienzle2/repo-template.git
 github_repository: ZacKienzle2/Orderbooks
+gitignore_own:
+- /out/
+- /install/
+- /cmake-build-*/
+- /artifacts/
+- /coverage/
+- perf.data
+- perf.data.old
+- '*.profraw'
+- '*.profdata'
 has_cpp: true
 has_generated_changelog: true
+has_import_linter: false
 has_latex: false
 has_node: false
 has_notebooks: false
