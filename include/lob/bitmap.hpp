@@ -119,7 +119,7 @@ class hier_bitmap {
     [[nodiscard]] constexpr std::optional<std::size_t> lowest_set() const noexcept {
         if (empty())
             return std::nullopt;
-        std::size_t idx = 0;
+        std::size_t const idx = 0;
         if constexpr (L3_W > 0) {
             idx = static_cast<std::size_t>(std::countr_zero(l3_[0]));
         }
@@ -135,7 +135,7 @@ class hier_bitmap {
     [[nodiscard]] constexpr std::optional<std::size_t> highest_set() const noexcept {
         if (empty())
             return std::nullopt;
-        std::size_t idx = 0;
+        std::size_t const idx = 0;
         if constexpr (L3_W > 0) {
             idx = (W - 1) - static_cast<std::size_t>(std::countl_zero(l3_[0]));
         }
