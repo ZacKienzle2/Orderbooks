@@ -58,3 +58,16 @@ it. There is no baseline file to refresh.
 - Pin: `taskset -c 2 ./lob_bench`.
 
 CI numbers are for regression detection, not absolute claims.
+
+The decision not to gate on a comparison across runs rests on measurement:
+Laaber, Scheuner and Leitner, "Software microbenchmarking in the cloud. How bad
+is it really?" (Empirical Software Engineering 2019,
+doi:10.1007/s10664-019-09681-1) quantify the run-to-run variability of
+microbenchmarks on shared cloud hosts, and the first comparison here showed it.
+A relative gate that does hold on shared hosts is duet benchmarking, in which
+the baseline and the candidate binaries run at the same time on the same host so
+the interference cancels: Bulej, Horký, Tůma, Farquet and Leitner, "Duet
+Benchmarking: Improving Measurement Accuracy in the Cloud" (ICPE 2020,
+doi:10.1145/3358960.3379132). That is the design for a gate if one is wanted:
+build `main`'s benchmark and the pull request's in one job and run them
+interleaved, rather than compare a run with an earlier one.

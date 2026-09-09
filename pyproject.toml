@@ -117,6 +117,9 @@ testpaths = ["tests/harness"]
 pythonpath = ["scripts"]
 addopts = "-ra --strict-markers --strict-config"
 xfail_strict = true
+# The Scientific Python Development Guide's recommendation, which
+# sp-repo-review checks for.
+log_cli_level = "INFO"
 filterwarnings = ["error"]
 
 [tool.coverage.run]
