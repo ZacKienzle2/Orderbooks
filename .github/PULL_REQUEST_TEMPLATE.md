@@ -37,7 +37,7 @@ Closes #
 - [ ] Existing test suite passes locally
 - [ ] Manual verification performed (describe below)
 
-```console
+```text
 # Commands and output
 ```
 
