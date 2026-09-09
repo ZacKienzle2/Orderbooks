@@ -1,6 +1,6 @@
-# git-cliff configuration. Conventional Commits 1.0.0 grouping.
-# CHANGELOG.md is regenerated from this config on every push to main and on
-# every release tag. Do not edit CHANGELOG.md by hand.
+# git-cliff configuration. Conventional Commits 1.0.0 grouping. CHANGELOG.md is
+# regenerated from this configuration by the release workflow on every release
+# tag; do not edit it by hand.
 
 [changelog]
 header = """
@@ -53,26 +53,26 @@ topo_order = false
 sort_commits = "newest"
 
 commit_parsers = [
-  { message = "^feat",     group = "Added" },
-  { message = "^fix",      group = "Fixed" },
-  { message = "^perf",     group = "Performance" },
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Performance" },
   { message = "^refactor", group = "Changed" },
-  { message = "^style",    group = "Changed" },
-  { message = "^docs",     group = "Documentation" },
-  { message = "^test",     group = "Tests" },
-  { message = "^build",    group = "Build" },
-  { message = "^ci",       group = "CI" },
-  { message = "^chore",    group = "Maintenance" },
-  { message = "^revert",   group = "Reverts" },
+  { message = "^style", group = "Changed" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^test", group = "Tests" },
+  { message = "^build", group = "Build" },
+  { message = "^ci", group = "CI" },
+  { message = "^chore", group = "Maintenance" },
+  { message = "^revert", group = "Reverts" },
   { message = "^security", group = "Security" },
-  { body    = ".*[Ss]ecurity",       group = "Security" },
-  { body    = ".*[Bb]reaking.*",     group = "Breaking Changes" },
-  { message = "^.*",       group = "Other" },
+  { body = ".*[Ss]ecurity", group = "Security" },
+  { body = ".*[Bb]reaking.*", group = "Breaking Changes" },
+  { message = "^.*", group = "Other" },
 ]
 
 commit_preprocessors = [
   # Strip Refs / Closes / Fixes footers from the rendered subject; they remain
-  # in the git history but should not clutter the changelog body.
+  # in the git history and would clutter the changelog body.
   { pattern = "\\s*\\((?:Refs|Closes|Fixes) #\\d+\\)$", replace = "" },
 ]
 

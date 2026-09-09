@@ -18,7 +18,7 @@ Before filing:
    [existing issues](https://github.com/ZacKienzle2/Orderbooks/issues?q=is%3Aissue)
    for duplicates.
 2. Reproduce against latest `main`.
-3. Collect version or commit SHA, OS, compiler version, minimal reproduction.
+3. Collect version or commit SHA, OS, toolchain version, minimal reproduction.
 
 ### Feature requests
 
@@ -47,5 +47,3 @@ reproducibility.
 - [SECURITY](SECURITY.md) - vulnerability disclosure
 - [GOVERNANCE](GOVERNANCE.md) - decision-making model
 - [CHANGELOG](CHANGELOG.md) - release history
-- `docs/design/` - design specifications
-- `docs/dev/` - developer guides (build, bench, signing)

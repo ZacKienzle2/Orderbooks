@@ -62,6 +62,11 @@ indent_size = unset
 [*.py]
 indent_size = unset
 
+# tex-fmt and bibtex-tidy both indent at two spaces by default, so
+# editorconfig-checker is told the width they write.
+[*.{tex,sty,cls,bib}]
+indent_size = 2
+
 [*.rs]
 indent_size = 4
 

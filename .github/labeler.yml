@@ -22,12 +22,22 @@ github-config:
 dependencies:
   - changed-files:
       - any-glob-to-any-file:
-          - "vcpkg.json"
-          - "vcpkg-configuration.json"
-          - "**/pyproject.toml"
-          - "**/uv.lock"
+          - "**/package.json"
+          - "**/package-lock.json"
+          - "**/yarn.lock"
+          - "**/pnpm-lock.yaml"
           - "**/requirements*.txt"
+          - "**/pyproject.toml"
+          - "**/poetry.lock"
+          - "**/uv.lock"
           - "**/Pipfile*"
+          - "**/Cargo.toml"
+          - "**/Cargo.lock"
+          - "**/go.mod"
+          - "**/go.sum"
+          - "**/Gemfile*"
+          - "**/composer.json"
+          - "**/composer.lock"
 
 security:
   - changed-files:
@@ -35,50 +45,39 @@ security:
           - "SECURITY.md"
           - ".github/workflows/codeql*.yml"
           - ".github/workflows/security*.yml"
-          - ".github/workflows/trivy*.yml"
-          - ".github/workflows/osv*.yml"
-          - ".github/workflows/scorecard*.yml"
-          - ".github/workflows/zizmor*.yml"
 
 tests:
   - changed-files:
       - any-glob-to-any-file:
           - "tests/**"
-          - "**/*_test.cpp"
-          - "**/test_*.cpp"
-          - "**/test_*.py"
-
-bench:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "bench/**"
+          - "test/**"
+          - "**/*_test.*"
+          - "**/*.test.*"
+          - "**/test_*.*"
+          - "**/spec/**"
 
 build:
   - changed-files:
       - any-glob-to-any-file:
+          - "Makefile"
           - "CMakeLists.txt"
           - "**/CMakeLists.txt"
-          - "CMakePresets.json"
-          - "cmake/**"
-          - "vcpkg.json"
-          - "vcpkg-configuration.json"
+          - "**/Dockerfile*"
+          - "**/docker-compose*.yml"
+          - ".dockerignore"
 
 cpp:
   - changed-files:
       - any-glob-to-any-file:
-          - "include/**"
-          - "src/**"
-          - "**/*.cpp"
-          - "**/*.hpp"
-          - "**/*.h"
-          - "**/*.cc"
-          - "**/*.cxx"
-          - "**/*.hxx"
+          - "**/*.{c,cc,cpp,cxx,h,hh,hpp,hxx,cu,cuh}"
+          - "**/CMakeLists.txt"
+          - "**/*.cmake"
+          - "CMakePresets.json"
 
 python:
   - changed-files:
       - any-glob-to-any-file:
-          - "scripts/**/*.py"
-          - "tests/harness/**"
+          - "**/*.py"
+          - "**/*.pyi"
           - "pyproject.toml"
           - ".python-version"

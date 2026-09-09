@@ -52,6 +52,15 @@ jobs:
       - name: Update from the template
         run: uvx copier update --defaults --trust
 
+      # The hooks' formatters settle what a render leaves them, prose wrapped
+      # around this repository's own names or JSON the template serialised,
+      # so the pull request carries formatted files and CI's hooks find
+      # nothing to change. A formatter that changed a file exits non-zero,
+      # which is pre-commit's contract, so the step continues either way.
+      - name: Run the hooks over the update
+        run: uvx pre-commit run --all-files
+        continue-on-error: true
+
       - name: Open the pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
