@@ -13,10 +13,10 @@ contributors.
 
 Active polish and observability work.
 
-- Bench baseline captured on a pinned Linux host and committed as
-  `bench/baseline.json` so the relative regression gate joins the now-live
-  absolute latency-ceiling gate (ADR-0026), adding slow-creep detection on top
-  of gross-jump detection.
+- Relative regression gate: done through github-action-benchmark, which keeps
+  the history of `main` in a cached file and fails a run that slows past 115
+  percent of the previous one, beside the absolute latency-ceiling gate
+  (ADR-0026).
 - A gateway adapter that frames parsed FIX commands into a runtime ingress ring.
 
 ## Recently Landed
