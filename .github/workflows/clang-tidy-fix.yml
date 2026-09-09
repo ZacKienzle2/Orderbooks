@@ -1,0 +1,62 @@
+name: clang-tidy fix
+
+# On demand. run-clang-tidy is LLVM's own driver: it runs clang-tidy over the
+# compilation database of the release preset and applies the fixes the
+# enabled checks carry, then clang-format over what it touched. The result is
+# opened as a pull request through create-pull-request, so the change is
+# reviewed like any other and the findings the checks cannot fix stay visible
+# in that pull request's own clang-tidy job. The build runs first because the
+# compilation database names generated headers.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clang-tidy-fix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fix:
+    name: Apply clang-tidy fixes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build the release preset
+        uses: ./.github/actions/cmake-preset
+        with:
+          preset: linux-clang-rel
+
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-tidy-18
+
+      - name: Apply the fixes clang-tidy carries
+        run: run-clang-tidy-18 -p build/linux-clang-rel -fix -format -quiet
+
+      - name: Open the pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.TEMPLATE_UPDATE_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: fix/clang-tidy
+          delete-branch: true
+          commit-message: "fix(cpp): apply the fixes clang-tidy carries"
+          title: "fix(cpp): apply the fixes clang-tidy carries"
+          body: |
+            `run-clang-tidy -fix -format` over the release preset's compilation
+            database. What the checks report but cannot fix stays visible in
+            this pull request's own clang-tidy job.
