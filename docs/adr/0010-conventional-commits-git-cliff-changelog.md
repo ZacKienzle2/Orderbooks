@@ -95,4 +95,6 @@ every release tag.
 - git-cliff: <https://git-cliff.org>
 - Repo config: [cliff.toml](../../cliff.toml).
 - CI workflow:
-  [.github/workflows/changelog.yml](../../.github/workflows/changelog.yml).
+  [.github/workflows/release.yml](../../.github/workflows/release.yml), which
+  regenerates the changelog at each release tag; the per-push regeneration
+  workflow it names above was retired with the shared template.
