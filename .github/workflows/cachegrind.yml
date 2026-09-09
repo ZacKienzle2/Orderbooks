@@ -21,9 +21,6 @@ on:
 permissions:
   contents: read
 
-env:
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-
 jobs:
   cachegrind:
     name: Cachegrind miss attribution
@@ -41,31 +38,18 @@ jobs:
           persist-credentials: false
 
       # The same configure the build workflow does, so the profiler comes from
-      # the RelWithDebInfo preset rather than a compile of its own.
-      - name: Export GitHub Actions cache vars
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      # the RelWithDebInfo preset rather than a compile of its own; the just
+      # recipe builds the profiler target.
+      - name: Configure the RelWithDebInfo preset
+        uses: ./.github/actions/cmake-preset
         with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
-
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+          preset: linux-clang-relwithdebinfo
+          build: "false"
 
       - name: Install valgrind and just
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends valgrind just
-
-      - name: Configure
-        env:
-          CC: clang
-          CXX: clang++
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run: cmake --preset linux-clang-relwithdebinfo
 
       - name: Run cachegrind over the memory-bound workloads
         env:

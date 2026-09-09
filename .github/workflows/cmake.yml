@@ -16,6 +16,7 @@ on:
       - "vcpkg-configuration.json"
       - ".clang-format"
       - ".clang-tidy"
+      - ".github/actions/cmake-preset/action.yml"
       - ".github/workflows/cmake.yml"
   workflow_dispatch: {}
 
@@ -25,9 +26,6 @@ permissions:
 concurrency:
   group: cmake-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
   build-test:
@@ -82,30 +80,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Export GitHub Actions cache vars
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
-
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-        with:
-          runVcpkgInstall: false
-
-      - name: Configure
-        env:
-          CC: ${{ matrix.cc }}
-          CXX: ${{ matrix.cxx }}
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run: cmake --preset ${{ matrix.preset }}
-
       - name: Build
-        run: cmake --build --preset ${{ matrix.preset }} --parallel
+        uses: ./.github/actions/cmake-preset
+        with:
+          preset: ${{ matrix.preset }}
+          cc: ${{ matrix.cc }}
+          cxx: ${{ matrix.cxx }}
 
       - name: Test
         run: ctest --preset ${{ matrix.preset }} --output-on-failure
@@ -130,19 +110,11 @@ jobs:
       - name: Install iwyu
         run: sudo apt-get update && sudo apt-get install -y iwyu
 
-      - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
-
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-
-      - name: Configure compile_commands.json
-        env:
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        run: cmake --preset linux-clang-rel -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="iwyu"
-
       - name: Build to surface IWYU advice
-        run: cmake --build --preset linux-clang-rel --parallel
+        uses: ./.github/actions/cmake-preset
+        with:
+          preset: linux-clang-rel
+          configure-args: -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=iwyu
 
   clang-tidy:
     name: clang-tidy
@@ -162,20 +134,16 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
-
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
-
-      - name: Configure
-        env:
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
-        # Module scanning emits @<tu>.o.modmap response files into the compile
-        # commands. They are generated during the build, which this job skips,
-        # so clang-tidy cannot open them and reports a clang-diagnostic-error.
-        # Disable scanning so the exported compile commands carry no modmap.
-        run: cmake --preset linux-clang-rel -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+      # Module scanning emits @<tu>.o.modmap response files into the compile
+      # commands. They are generated during the build, which this job skips,
+      # so clang-tidy cannot open them and reports a clang-diagnostic-error.
+      # Disable scanning so the exported compile commands carry no modmap.
+      - name: Configure the compilation database
+        uses: ./.github/actions/cmake-preset
+        with:
+          preset: linux-clang-rel
+          configure-args: -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+          build: "false"
 
       # cpp-linter runs clang-tidy over the files the pull request changed, with
       # the compilation database this job configured and the checks and header
