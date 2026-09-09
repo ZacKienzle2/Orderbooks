@@ -40,11 +40,14 @@ runs:
       uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
 
     # Manifest mode installs the dependencies at configure time through the
-    # toolchain file, so the action itself does not.
+    # toolchain file, so the action itself does not. vcpkg is checked out
+    # under the runner's temporary directory rather than the workspace, so no
+    # workflow that commits from the tree can pick it up as a submodule.
     - name: Install vcpkg
       uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
       with:
         runVcpkgInstall: false
+        vcpkgDirectory: ${{ runner.temp }}/vcpkg
 
     - name: Configure
       shell: bash
