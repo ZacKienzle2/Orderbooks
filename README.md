@@ -68,8 +68,8 @@ designed for sub-microsecond order processing on Linux x86_64.
 - In-process HDR latency histogram (`lob::latency_histogram`) with O(1)
   allocation-free record and exact percentile queries for the engine's own
   timing loops.
-- `scripts/perfstat.sh` wraps `perf stat` for IPC, branch-miss and L1-miss
-  telemetry under a fixed-seed workload.
+- `just perfstat` runs `perf stat` over the benchmark for IPC, branch-miss and
+  L1-miss telemetry under a fixed-seed workload.
 - CI bench job gates throughput regressions against `bench/baseline.json`.
 
 ## Build

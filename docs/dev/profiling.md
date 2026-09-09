@@ -2,8 +2,9 @@
 
 The engine is profiled with synthetic order flow, so the numbers reproduce on
 any host with no market data. Two pieces do the work. `apps/profile`
-(`lob_profile`) generates the flow and drives one engine on one thread.
-`scripts/profile.sh` runs that profiler under analysis plugins.
+(`lob_profile`) generates the flow and drives one engine on one thread. The
+`profile-*` recipes in the `justfile` run that profiler under the analysis
+tools, each recipe one tool's own invocation over a CMake preset.
 
 ## Driver
 
@@ -26,15 +27,19 @@ as cycles per fill).
 ## Plugins
 
 ```bash
-scripts/profile.sh                 # all plugins
-scripts/profile.sh --plugin perf   # one plugin
-scripts/profile.sh --ops 40000000 --depth 80000
+just --list                                  # every recipe with its parameters
+just profile-perf-all                        # perf stat over every workload
+just profile-perf deep 40000000 80000        # one workload, ops, depth
+just profile-sanitize                        # ASAN and UBSAN soak, linux-clang-asan preset
+just profile-record                          # perf record, top source lines
+just profile-cachegrind-all                  # cachegrind over deep, submit, modifyp
 ```
 
-- `perf` runs `perf stat` over each workload and tabulates cycles per op, IPC,
-  branch-miss rate, and L1 miss rate. This is the micro-optimisation signal. A
-  low IPC with a high miss rate points to a memory-bound path; a high branch
-  miss rate to a data-dependent branch worth hoisting or making branchless.
+- `profile-perf` runs `perf stat` over a workload; the profiler prints cycles
+  per op and perf prints IPC, branch-miss rate and L1 miss rate. This is the
+  micro-optimisation signal. A low IPC with a high miss rate points to a
+  memory-bound path; a high branch miss rate to a data-dependent branch worth
+  hoisting or making branchless.
 - `sanitize` runs an ASAN and UBSAN soak over the deep mix. This is the
   implementation-error signal, catching a memory or undefined-behaviour fault
   that an optimisation can introduce.

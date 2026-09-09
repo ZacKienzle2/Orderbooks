@@ -3,8 +3,8 @@
 ## Prerequisites
 
 CMake 3.28+, a C++20 compiler (Clang 17+, GCC 13+, Apple Clang 15+), Ninja,
-vcpkg (with `VCPKG_ROOT` exported), `uv`. macOS contributors get everything
-through `scripts/bootstrap.sh` (Homebrew).
+vcpkg (with `VCPKG_ROOT` exported), `uv`, `just`. The `Brewfile` names them for
+macOS; `brew bundle` installs it.
 
 ## First-time setup
 
@@ -12,20 +12,16 @@ through `scripts/bootstrap.sh` (Homebrew).
 git clone https://github.com/ZacKienzle2/Orderbooks
 cd Orderbooks
 
-./scripts/bootstrap.sh       # brew + uv sync + pre-commit install
+brew bundle                          # the Brewfile: cmake, ninja, llvm, ccache, uv, pre-commit, just
+uv sync --frozen
+pre-commit install --install-hooks   # every formatter and linter, into pre-commit's cache
 
 export VCPKG_ROOT="$HOME/code/vcpkg"
 "$VCPKG_ROOT/bootstrap-vcpkg.sh"
 ```
 
-`bootstrap.sh` installs the system binaries the pre-commit local hooks shell out
-to (`clang-format`, `cmake-format`, `shellcheck`, `typos`, `gitleaks`,
-`actionlint`). Local hooks avoid the SSL/CA pitfalls of pip-installed binary
-wrappers and keep the hook envs lean.
-
-Linux contributors: install equivalents via `apt-get`, `dnf`, or your distro
-package manager, then run `uv sync` and
-`uv run pre-commit install --install-hooks` manually.
+Linux contributors: the same packages from `apt-get` or `dnf`, then the same
+`uv` and `pre-commit` commands.
 
 ## Presets
 
@@ -72,7 +68,10 @@ ctest --preset linux-clang-rel --output-on-failure
 ## Formatting and linting
 
 ```bash
-./scripts/format.sh
-./scripts/lint.sh
-uv run pre-commit run --all-files
+just format            # clang-format and cmake-format, through the hooks
+just lint              # run-clang-tidy over build/<preset>/compile_commands.json
+pre-commit run --all-files
 ```
+
+`just lint` reads `LOB_PRESET` for the preset, `linux-clang-rel` by default, and
+needs that preset configured first.

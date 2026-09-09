@@ -37,17 +37,10 @@ history.
 
 ## Writing a new ADR
 
-Scaffold a numbered, dated, status-stamped ADR with the helper:
-
-```bash
-./scripts/adr-new.sh "Use AVX-512 fast-path on supporting hosts"
-```
-
-This drops a new `NNNN-use-avx-512-fast-path-on-supporting-hosts.md` under
-`docs/adr/` from `template.md`, with `NNNN` set to the next free number.
-
-Editing by hand: copy `template.md` to the next free number, fill in the
-placeholders, link any related ADRs, and update the index below.
+Copy `template.md` to the next free number with a slug of the title, for example
+`docs/adr/0041-use-avx-512-fast-path-on-supporting-hosts.md`, set the status and
+date in its front matter, fill in the placeholders, link any related ADRs, and
+update the index below. The template is the scaffold.
 
 ## Index
 
