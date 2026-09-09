@@ -1,0 +1,65 @@
+name: Build a CMake preset
+description: >-
+  Ninja, vcpkg with the Actions binary cache, then configure and build one CMake preset. The four workflows that build
+  this repository each carried these steps; a composite action is GitHub's form for steps shared between workflows.
+
+inputs:
+  preset:
+    description: The CMake configure and build preset
+    required: true
+  cc:
+    description: C compiler
+    default: clang
+  cxx:
+    description: C++ compiler
+    default: clang++
+  target:
+    description: Build target; empty builds everything
+    default: ""
+  configure-args:
+    description: Extra arguments for cmake --preset
+    default: ""
+  build:
+    description: Whether to build after configuring
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # vcpkg's GitHub Actions binary cache needs the runtime's cache endpoint
+    # and token exported, and the cache source named.
+    - name: Export GitHub Actions cache vars
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+          core.exportVariable('VCPKG_BINARY_SOURCES', 'clear;x-gha,readwrite');
+
+    - name: Install Ninja
+      uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
+
+    # Manifest mode installs the dependencies at configure time through the
+    # toolchain file, so the action itself does not.
+    - name: Install vcpkg
+      uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+      with:
+        runVcpkgInstall: false
+
+    - name: Configure
+      shell: bash
+      env:
+        CC: ${{ inputs.cc }}
+        CXX: ${{ inputs.cxx }}
+        VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        PRESET: ${{ inputs.preset }}
+        CONFIGURE_ARGS: ${{ inputs.configure-args }}
+      run: cmake --preset "$PRESET" $CONFIGURE_ARGS
+
+    - name: Build
+      if: inputs.build == 'true'
+      shell: bash
+      env:
+        PRESET: ${{ inputs.preset }}
+        TARGET: ${{ inputs.target }}
+      run: cmake --build --preset "$PRESET" --parallel ${TARGET:+--target "$TARGET"}
