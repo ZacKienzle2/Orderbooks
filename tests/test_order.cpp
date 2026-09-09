@@ -8,9 +8,7 @@ TEST_CASE("order is exactly one cache line", "[order]") {
 }
 
 TEST_CASE("order FIFO link / unlink", "[order]") {
-    lob::order a{};
-    lob::order b{};
-    lob::order c{};
+    lob::order a{}, b{}, c{};
     a.id = 1;
     b.id = 2;
     c.id = 3;

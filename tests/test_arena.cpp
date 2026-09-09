@@ -24,7 +24,7 @@ static_assert(sizeof(cell) == 64);
 }  // namespace
 
 TEST_CASE("slab_arena starts empty", "[arena]") {
-    lob::slab_arena<cell, 16> const arena;
+    lob::slab_arena<cell, 16> arena;
     REQUIRE(arena.empty());
     REQUIRE(!arena.full());
     REQUIRE(arena.in_use() == 0);
