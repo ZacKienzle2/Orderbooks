@@ -1,22 +1,24 @@
 {
   "recommendations": [
-    "llvm-vs-code-extensions.vscode-clangd",
-    "twxs.cmake",
-    "ms-vscode.cmake-tools",
-    "cheshirekow.cmake-format",
-    "vadimcn.vscode-lldb",
-    "ms-vscode.makefile-tools",
-    "charliermarsh.ruff",
-    "ms-python.python",
-    "davidanson.vscode-markdownlint",
     "editorconfig.editorconfig",
+    "esbenp.prettier-vscode",
+    "davidanson.vscode-markdownlint",
     "redhat.vscode-yaml",
     "tamasfe.even-better-toml",
+    "tekumara.typos-vscode",
+    "chrischinchilla.vale-vscode",
+    "ltex-plus.vscode-ltex-plus",
     "github.vscode-github-actions",
     "github.vscode-pull-request-github",
     "eamodio.gitlens",
     "vivaxy.vscode-conventional-commits",
-    "tekumara.typos-vscode"
+    "ms-python.python",
+    "charliermarsh.ruff",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "ms-vscode.cmake-tools",
+    "twxs.cmake",
+    "cheshirekow.cmake-format",
+    "vadimcn.vscode-lldb"
   ],
   "unwantedRecommendations": ["ms-vscode.cpptools"]
 }

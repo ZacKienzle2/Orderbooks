@@ -21,7 +21,6 @@ code. All contributors must follow the workflow below.
 - [Documentation](#documentation)
 - [Code Review](#code-review)
 - [Release Process](#release-process)
-- [Developer Certificate of Origin](#developer-certificate-of-origin)
 - [License](#license)
 
 ## Code of Conduct
@@ -42,19 +41,20 @@ privately to the maintainers via the channel in [SECURITY.md](SECURITY.md).
 ### Prerequisites
 
 - Git 2.30 or newer
-- A configured signing key for commits (GPG or SSH)
-- Project-specific toolchain (documented in the README once the stack is
-  finalised)
+- [pre-commit](https://pre-commit.com), which installs every formatter and
+  linter the repository uses into its own cache
+- The toolchain the README names
 
 ### Local Setup
 
 ```bash
 git clone https://github.com/ZacKienzle2/Orderbooks
 cd Orderbooks
-git config commit.gpgsign true
+pre-commit install --install-hooks
 ```
 
-Install dependencies. Run the test suite.
+The hooks run on every commit and refuse one that fails a check; they are also
+what CI runs, so a commit that passes locally passes there.
 
 ## How to Contribute
 
@@ -73,7 +73,7 @@ Use the bug report template. Include:
 - Exact reproduction steps.
 - Observed vs expected behaviour.
 - Screenshots, logs, sample inputs where relevant.
-- Environment: OS, runtime version, project version or commit SHA.
+- Environment: OS, toolchain version, project version or commit SHA.
 
 ### Suggesting Enhancements
 
@@ -97,9 +97,8 @@ Issues tagged:
 2. Code changes ship with tests.
 3. API changes ship with documentation.
 4. Test suite passes.
-5. Lints pass.
-6. Commits signed and DCO signed off.
-7. Open PR, fill in the template.
+5. Hooks pass.
+6. Open PR, fill in the template.
 
 ## Development Workflow
 
@@ -107,7 +106,7 @@ Issues tagged:
 2. Create a feature branch with a semantic name.
 3. Implement the change in small, atomic commits.
 4. Rebase against `main` to resolve conflicts.
-5. Open a pull request once CI is green locally.
+5. Open a pull request once the hooks pass locally.
 6. Address review feedback with fixup commits, then squash before merge.
 
 ## Branching Strategy
@@ -127,12 +126,13 @@ Never force-push to `main` or any shared branch.
 
 This project follows
 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
-ASCII only. No emoji, smart quotes, or em dashes.
+The commit-msg hooks refuse a message that does not. ASCII only. No emoji, smart
+quotes, or em dashes.
 
 Format:
 
 ```text
-<type>[(scope)][!]: <description>
+<type>(<scope>)[!]: <description>
 
 [body]
 
@@ -140,7 +140,7 @@ Format:
 ```
 
 Allowed types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
-`chore`, `style`, `revert`.
+`chore`, `style`, `revert`. The scope is mandatory.
 
 Rules:
 
@@ -151,6 +151,7 @@ Rules:
 - One logical change per commit. `fix` only for real defects.
 - Breaking changes: append `!` after the type or include a `BREAKING CHANGE:`
   footer.
+- No tool attribution: no co-author trailer or generated-with line.
 
 Example:
 
@@ -166,7 +167,7 @@ Refs #142
 ## Coding Standards
 
 - Match the style of the surrounding code.
-- Run formatters and linters before committing.
+- The hooks format and lint before every commit; do not hand-format.
 - Self-evident code. Avoid inline comments. Document public APIs with the
   project's chosen docstring style.
 - Production-ready code on the first pass. No commented-out blocks, no debug
@@ -186,19 +187,7 @@ Refs #142
 
 - Update the README and any affected docs in the same commit as the code change.
 - Document public APIs.
-- Document breaking changes in the PR description and via a `BREAKING CHANGE:`
-  footer (or `!` after the type) in the commit message.
-
-### CHANGELOG
-
-`CHANGELOG.md` is generated automatically from Conventional Commit messages by
-[git-cliff](https://git-cliff.org). Never edit it by hand. On every push to
-`main`, the changelog workflow regenerates the file and opens a PR if the
-rendering changed. On release tags (`v*`), the release workflow regenerates the
-changelog at that tag and uses the rendered section as the GitHub release body.
-
-Authoring rule: write commit messages assuming they will surface verbatim in the
-changelog. The subject line is the headline; the body explains the why.
+- Document breaking changes in the pull request description.
 
 ## Code Review
 
@@ -219,29 +208,17 @@ Authors:
 
 ## Release Process
 
-1. Bump the version using SemVer based on the commit history (`feat` -> minor,
-   `fix` -> patch, any `!` or `BREAKING CHANGE:` footer -> major).
+Release notes are drafted by
+[release-drafter](https://github.com/release-drafter/release-drafter) from pull
+request labels as pull requests merge. `CHANGELOG.md` is generated from the
+Conventional Commit history by [git-cliff](https://git-cliff.org/) (configured
+in `cliff.toml`); preview the unreleased entries at any time with
+`git cliff --unreleased`.
+
+1. Bump the version using SemVer based on the commit history.
 2. Tag the release commit with `vMAJOR.MINOR.PATCH`.
-3. Push the tag; the release workflow regenerates `CHANGELOG.md` at the tag via
-   git-cliff, attaches the generated section as the GitHub release body, builds
-   SBOMs, and signs build provenance.
-
-## Developer Certificate of Origin
-
-All commits signed off under [DCO 1.1](https://developercertificate.org/):
-
-```bash
-git commit -s -m "feat(scope): description"
-```
-
-Appends:
-
-```text
-Signed-off-by: Your Name <your.email@example.com>
-```
-
-Per-commit assertion that you wrote the patch or have the right to submit it
-under the project's licence.
+3. Pushing the tag runs the release workflow, which publishes the drafted
+   release with the SBOMs and the regenerated changelog attached.
 
 ## License
 
