@@ -6,7 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("level default state is empty with zero aggregate", "[level]") {
-    lob::level lvl;
+    lob::level const lvl;
     REQUIRE(lvl.empty());
     REQUIRE(lvl.order_count() == 0);
     REQUIRE(lvl.aggregate == 0);

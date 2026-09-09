@@ -13,7 +13,7 @@
 using lob::hier_bitmap;
 
 TEST_CASE("hier_bitmap default-constructs empty", "[bitmap]") {
-    hier_bitmap<128> bm;
+    hier_bitmap<128> const bm;
     REQUIRE(bm.empty());
     REQUIRE(!bm.lowest_set().has_value());
     REQUIRE(!bm.highest_set().has_value());
