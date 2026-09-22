@@ -140,12 +140,13 @@ class book_side {
     std::optional<tick_t> best_{};
 };
 
-// book<Ticks, MaxOrders>
-// ----------------------
+// book<Ticks, MaxOrders, Generations>
+// -----------------------------------
 // Aggregates the bid and ask sides, the slab arena for `order` storage, and
 // the id_index for cancel / modify lookup. The book is the unit of state
-// the engine mutates; it is single-symbol by design.
-template <std::size_t Ticks, std::size_t MaxOrders>
+// the engine mutates; it is single-symbol by design. Generations has the
+// arena keep slot generations, for an engine that issues handles.
+template <std::size_t Ticks, std::size_t MaxOrders, bool Generations = false>
 class book {
    public:
     book() : idx_(MaxOrders) {}
@@ -164,7 +165,11 @@ class book {
 
     [[nodiscard]] const book_side<Ticks, side::ask>& asks() const noexcept { return asks_; }
 
-    [[nodiscard]] slab_arena<order, MaxOrders>& arena() noexcept { return arena_; }
+    using arena_type = slab_arena<order, MaxOrders, Generations>;
+
+    [[nodiscard]] arena_type& arena() noexcept { return arena_; }
+
+    [[nodiscard]] const arena_type& arena() const noexcept { return arena_; }
 
     [[nodiscard]] id_index& index() noexcept { return idx_; }
 
@@ -179,7 +184,7 @@ class book {
     // producer split between the two sides.
     alignas(64) book_side<Ticks, side::bid> bids_;
     alignas(64) book_side<Ticks, side::ask> asks_;
-    alignas(64) slab_arena<order, MaxOrders> arena_;
+    alignas(64) arena_type arena_;
     id_index idx_;
 
     // Regression guard. If a future change strips one of the alignas(64)

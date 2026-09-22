@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <random>
+#include <unordered_map>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -22,6 +23,7 @@ constexpr std::size_t cmd_qty = 4'000;
 
 using pub_t = lob::test::recording_publisher;
 using fast_t = lob::engine<pub_t, ticks, max_ord>;
+using handle_t = lob::engine<pub_t, ticks, max_ord, lob::order_lookup::by_handle>;
 using ref_t = lob::test::reference_engine;
 
 struct gen_state {
@@ -161,7 +163,8 @@ void compare_tops(const std::vector<lob::top_msg>& a, const std::vector<lob::top
     }
 }
 
-void compare_book_state(const fast_t& fast, const ref_t& ref) {
+template <class Engine>
+void compare_book_state(const Engine& fast, const ref_t& ref) {
     REQUIRE(fast.book_view().bids().best() == ref.best_bid());
     REQUIRE(fast.book_view().asks().best() == ref.best_ask());
     for (lob::tick_t px = 0; px < ticks; ++px) {
@@ -333,6 +336,43 @@ TEST_CASE("prefetching batch drain matches reference", "[engine][differential][p
         lob::apply_batch(fast, static_cast<unsigned>(cmds.size()), at, plan);
         for (const auto& c : cmds)
             lob::apply_command(ref, c);
+    }
+
+    compare_fills(pub.fills, ref.fills);
+    compare_trades(pub.trades, ref.trades);
+    compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
+    compare_tops(pub.tops, ref.tops);
+    compare_book_state(fast, ref);
+}
+
+TEST_CASE("handle-driven engine matches reference", "[engine][differential][handle]") {
+    // Every cancel and modify carries the handle its order last returned, and
+    // the engine keeps no index, so the handle is the only way to reach an
+    // order. Orders that fill or cancel leave their handles stale while LIFO
+    // reuse hands their slots to later orders, so the generation and id checks
+    // run throughout.
+    const auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
+    const lob::engine_config cfg{.self_cross = lob::self_cross_policy::cancel_newest};
+
+    pub_t pub;
+    handle_t fast{pub, cfg};
+    ref_t ref{cfg, max_ord};
+
+    gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
+    std::unordered_map<lob::order_id_t, lob::order_handle> handles;
+    for (std::size_t i = 0; i < cmd_qty; ++i) {
+        auto c = gen_command(g, /*n_accounts=*/4);
+        if (c.k == lob::command::kind::cancel)
+            c.body.cancel.handle = handles[c.body.cancel.id];
+        else if (c.k == lob::command::kind::modify)
+            c.body.modify.handle = handles[c.body.modify.id];
+        const auto h = lob::apply_command(fast, c);
+        lob::apply_command(ref, c);
+        if (c.k == lob::command::kind::submit)
+            handles[c.body.submit.id] = h;
+        else if (c.k == lob::command::kind::modify)
+            handles[c.body.modify.new_id != 0 ? c.body.modify.new_id : c.body.modify.id] = h;
     }
 
     compare_fills(pub.fills, ref.fills);

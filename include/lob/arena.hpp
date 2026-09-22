@@ -3,9 +3,11 @@
 
 #include <lob/hugepage.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -22,9 +24,16 @@ namespace lob {
 // caller manages object lifetime (typical use: T is trivially destructible
 // and the caller assigns or placement-news into the slot).
 //
+// With Generations set the arena also keeps a generation per slot, odd while
+// the slot is allocated and even while it is free, bumped on each allocate and
+// deallocate. A caller holding a slot index and a generation can then tell
+// whether the slot still holds that allocation (ADR-0042). The generations
+// live in their own array rather than in the slot, so they outlast each T
+// without touching its storage.
+//
 // Single-threaded by design. Wrap in a synchronisation primitive only if
 // cross-thread access is required (defeats the purpose for hot-path use).
-template <class T, std::size_t Capacity>
+template <class T, std::size_t Capacity, bool Generations = false>
 class slab_arena {
     // T's destructor is invoked explicitly on deallocate. Trivial destructors
     // (the common case) compile to nothing, so the cost is zero for PODs; for
@@ -55,7 +64,10 @@ class slab_arena {
     // this deferral the freelist would be built on the router thread and
     // every subsequent allocate/deallocate on the consumer thread would pay
     // a cross-socket access. See ADR-0016 for the rationale.
-    slab_arena() : storage_(Capacity * sizeof(slot), alignof(slot)) {}
+    slab_arena() : storage_(Capacity * sizeof(slot), alignof(slot)) {
+        if constexpr (Generations)
+            generations_ = std::make_unique_for_overwrite<std::uint32_t[]>(Capacity);
+    }
 
     slab_arena(slab_arena&&) noexcept = default;
     slab_arena& operator=(slab_arena&&) noexcept = default;
@@ -71,6 +83,8 @@ class slab_arena {
         slot* s = free_head_;
         free_head_ = load_link_(s);
         ++in_use_;
+        if constexpr (Generations)
+            ++generations_[static_cast<std::size_t>(s - slots_())];
         return std::launder(reinterpret_cast<T*>(s));
     }
 
@@ -80,8 +94,38 @@ class slab_arena {
         p->~T();
         auto* s = reinterpret_cast<slot*>(p);
         store_link_(s, free_head_);
+        if constexpr (Generations)
+            ++generations_[static_cast<std::size_t>(s - slots_())];
         free_head_ = s;
         --in_use_;
+    }
+
+    // The slot at index i, which may be free, so only its address and its
+    // generation mean anything until the generation shows it allocated.
+    [[nodiscard]] const void* slot_address(std::size_t i) const noexcept { return slots_() + i; }
+
+    // The allocation in slot i. Call only once generation(i) shows it live.
+    [[nodiscard]] T* slot_at(std::size_t i) noexcept {
+        return std::launder(reinterpret_cast<T*>(slots_() + i));
+    }
+
+    [[nodiscard]] std::size_t index_of(const T* p) const noexcept {
+        return static_cast<std::size_t>(reinterpret_cast<const slot*>(p) - slots_());
+    }
+
+    // Slot i's generation, odd while allocated. Zero before the first
+    // allocation, when no slot has been handed out.
+    [[nodiscard]] std::uint32_t generation(std::size_t i) const noexcept
+        requires Generations
+    {
+        return freelist_built_ ? generations_[i] : 0;
+    }
+
+    // Start the cache miss on slot i's generation ahead of a generation(i).
+    void prefetch_generation(std::size_t i) const noexcept
+        requires Generations
+    {
+        __builtin_prefetch(&generations_[i], 0, 3);
     }
 
     [[nodiscard]] std::size_t in_use() const noexcept { return in_use_; }
@@ -133,12 +177,17 @@ class slab_arena {
         for (std::size_t i = 0; i + 1 < Capacity; ++i) {
             store_link_(base + i, base + i + 1);
         }
+        // Zeroed here rather than at construction, so the generations are
+        // first touched on the consuming thread with the slots.
+        if constexpr (Generations)
+            std::fill_n(generations_.get(), Capacity, std::uint32_t{0});
         store_link_(base + (Capacity - 1), nullptr);
         free_head_ = base;
         freelist_built_ = true;
     }
 
     hugepage_region storage_;
+    std::unique_ptr<std::uint32_t[]> generations_;
     slot* free_head_{nullptr};
     std::size_t in_use_{0};
     bool freelist_built_{false};

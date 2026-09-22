@@ -17,7 +17,9 @@
 //   deep      depth-maintaining mix (replace, price-move modify, qty modify) on
 //             a deep two-sided book; the realistic resting-path profile.
 //   stream    the deep mix drained a batch at a time, as the shard worker drains
-//             its ingress ring, prefetching --ahead commands ahead.
+//             its ingress ring, prefetching --ahead commands ahead. --handles
+//             runs it with no id index, every cancel and modify carrying the
+//             handle its order rested with.
 //   submit    resting submits with a paired cancel to bound the book.
 //   cancel    cancels of a pre-built book.
 //   modifyp   non-crossing price-move modifies on a one-sided book.
@@ -41,6 +43,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -61,6 +64,7 @@ constexpr std::size_t ticks = 4096;
 constexpr std::size_t max_orders = std::size_t{1} << 17;
 constexpr lob::tick_t mid = ticks / 2;
 using eng_t = lob::engine<null_pub, ticks, max_orders>;
+using handle_eng_t = lob::engine<null_pub, ticks, max_orders, lob::order_lookup::by_handle>;
 
 using lob::read_tsc;
 
@@ -296,6 +300,7 @@ struct args {
     unsigned ahead2{lob::prefetch_plan{}.order_ahead};
     unsigned batch{64};
     bool rename{false};
+    bool handles{false};
     bool list{false};
 };
 
@@ -307,51 +312,88 @@ struct args {
 // a fresh id, as a FIX cancel-replace assigns the next ClOrdID. Reported per
 // deep-mix op, where a replace is a cancel and a submit, so the figure
 // compares with the deep workload's.
-result run_stream(eng_t& eng, const args& a) {
+//
+// With --handles each cancel and modify carries the handle its order last
+// returned, recorded from the drain as a gateway records the handle it acks,
+// and the engine keeps no id index. A client learns a handle only from the
+// ack, so a batch never names an order resting from within the same batch,
+// and an order still waiting on its handle is not drawn.
+template <class Engine>
+result run_stream(Engine& eng, const args& a) {
     if (a.depth == 0 || a.batch == 0) {
         return {};
     }
     std::uint64_t rng = a.seed;
-    std::vector<rec> live;
+    constexpr bool handles = !std::is_same_v<Engine, eng_t>;
+    struct entry {
+        rec r;
+        lob::order_handle h;
+        bool awaiting;
+    };
+    std::vector<entry> live;
     live.reserve(a.depth);
     lob::order_id_t next = 1;
     for (std::size_t i = 0; i < a.depth; ++i) {
         const auto m = rest(rng, next++);
-        eng.on_submit(m);
-        live.push_back({m.id, m.px, m.s == lob::side::bid});
+        const auto h = eng.on_submit(m);
+        live.push_back({.r = {m.id, m.px, m.s == lob::side::bid}, .h = h, .awaiting = false});
     }
+    constexpr std::size_t no_owner = ~std::size_t{0};
     std::vector<lob::command> cmds;
+    std::vector<std::size_t> owner;
     cmds.reserve(a.batch + 1);
+    owner.reserve(a.batch + 1);
+    const lob::prefetch_plan plan{.index_ahead = a.ahead, .order_ahead = a.ahead2};
     std::uint64_t cyc = 0;
     std::uint64_t op = 0;
     while (op < a.ops) {
         cmds.clear();
+        owner.clear();
         while (cmds.size() < a.batch && op < a.ops) {
             const auto sel = op++ % 20;  // 10 replace, 6 modify-px, 4 modify-qty
-            auto& e = live[below(splitmix(rng), live.size())];
+            std::size_t k = below(splitmix(rng), live.size());
+            while (live[k].awaiting)
+                k = below(splitmix(rng), live.size());
+            auto& e = live[k];
+            const auto h = e.h;
             if (sel < 10) {
-                cmds.push_back(lob::command::make_cancel({.id = e.id}));
+                cmds.push_back(lob::command::make_cancel({.id = e.r.id, .handle = h}));
+                owner.push_back(no_owner);
                 const auto m = rest(rng, next++);
                 cmds.push_back(lob::command::make_submit(m));
-                e = {m.id, m.px, m.s == lob::side::bid};
+                owner.push_back(k);
+                e.r = {m.id, m.px, m.s == lob::side::bid};
             } else {
                 if (sel < 16) {
                     const auto off = static_cast<lob::tick_t>(1 + splitmix(rng) % (mid - 2));
-                    e.px = e.bid ? (mid - off) : (mid + off);
+                    e.r.px = e.r.bid ? (mid - off) : (mid + off);
                 }
                 const lob::order_id_t renamed = a.rename ? next++ : 0;
-                cmds.push_back(lob::command::make_modify({.id = e.id,
-                                                          .new_px = e.px,
+                cmds.push_back(lob::command::make_modify({.id = e.r.id,
+                                                          .new_px = e.r.px,
                                                           .new_qty = 1 + splitmix(rng) % 100,
-                                                          .new_id = renamed}));
+                                                          .new_id = renamed,
+                                                          .handle = h}));
+                owner.push_back(k);
                 if (renamed != 0)
-                    e.id = renamed;
+                    e.r.id = renamed;
             }
+            e.awaiting = handles;
         }
         const auto n = static_cast<unsigned>(cmds.size());
         const auto at = [&cmds](unsigned i) noexcept -> const lob::command& { return cmds[i]; };
         const auto t0 = read_tsc();
-        lob::apply_batch(eng, n, at, {.index_ahead = a.ahead, .order_ahead = a.ahead2});
+        if constexpr (handles) {
+            lob::apply_batch(eng, n, at, plan,
+                             [&live, &owner](unsigned i, lob::order_handle h) noexcept {
+                                 if (owner[i] != no_owner) {
+                                     live[owner[i]].h = h;
+                                     live[owner[i]].awaiting = false;
+                                 }
+                             });
+        } else {
+            lob::apply_batch(eng, n, at, plan);
+        }
         cyc += read_tsc() - t0;
     }
     return {static_cast<double>(cyc) / static_cast<double>(a.ops)};
@@ -372,7 +414,7 @@ struct workload {
 
 constexpr workload workloads[] = {
     {"deep", plain<run_deep>, "depth-maintaining replace + modify mix"},
-    {"stream", run_stream, "deep mix drained a batch at a time, prefetching --ahead"},
+    {"stream", run_stream<eng_t>, "deep mix drained a batch at a time, prefetching --ahead"},
     {"submit", plain<run_submit>, "resting submit (paired cancel)"},
     {"cancel", plain<run_cancel>, "cancel of a pre-built book"},
     {"modifyp", plain<run_modifyp>, "non-crossing price-move modify"},
@@ -411,6 +453,9 @@ args parse_args(int argc, char** argv) {
         } else if (s == "--rename") {
             a.rename = true;
             ++i;
+        } else if (s == "--handles") {
+            a.handles = true;
+            ++i;
         } else if (s == "--list") {
             a.list = true;
             ++i;
@@ -436,10 +481,15 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "unknown workload %s; --list to see options\n", a.workload.c_str());
         return 2;
     }
+    if (a.handles && chosen->fn != run_stream<eng_t>) {
+        std::fprintf(stderr, "--handles applies to the stream workload only\n");
+        return 2;
+    }
     null_pub pub;
     // The engine embeds a multi-megabyte arena, so it lives on the heap.
-    const auto eng = std::make_unique<eng_t>(pub, lob::engine_config{});
-    const result r = chosen->fn(*eng, a);
+    const result r = a.handles
+                         ? run_stream(*std::make_unique<handle_eng_t>(pub, lob::engine_config{}), a)
+                         : chosen->fn(*std::make_unique<eng_t>(pub, lob::engine_config{}), a);
     std::printf("workload=%-8s ops=%llu depth=%zu  %.1f cyc/op\n", chosen->name,
                 static_cast<unsigned long long>(a.ops), a.depth, r.cyc_per_op);
     return 0;

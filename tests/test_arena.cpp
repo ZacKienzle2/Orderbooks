@@ -159,3 +159,21 @@ TEST_CASE("slab_arena is movable", "[arena]") {
     b.deallocate(p);
     REQUIRE(b.empty());
 }
+
+TEST_CASE("slab_arena generation is odd while a slot is allocated", "[arena][handle]") {
+    lob::slab_arena<cell, 4, /*Generations=*/true> arena;
+    REQUIRE(arena.generation(0) == 0);
+
+    auto* a = arena.allocate();
+    const auto i = arena.index_of(a);
+    REQUIRE(arena.slot_at(i) == a);
+    REQUIRE(arena.generation(i) == 1);
+
+    arena.deallocate(a);
+    REQUIRE(arena.generation(i) == 2);
+
+    // LIFO reuse hands the same slot back under a new generation.
+    auto* b = arena.allocate();
+    REQUIRE(b == a);
+    REQUIRE(arena.generation(i) == 3);
+}

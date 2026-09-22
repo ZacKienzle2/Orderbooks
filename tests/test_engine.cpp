@@ -12,6 +12,7 @@ namespace {
 
 using pub_t = lob::test::recording_publisher;
 using test_eng_t = lob::engine<pub_t, 256, 64>;
+using handle_eng_t = lob::engine<pub_t, 256, 64, lob::order_lookup::by_handle>;
 
 lob::submit_msg sub(lob::order_id_t id,
                     lob::tick_t px,
@@ -441,4 +442,40 @@ TEST_CASE("engine sequence numbers are monotonic across events", "[engine][seq]"
         REQUIRE(t.seq > last_seq);
         last_seq = t.seq;
     }
+}
+
+TEST_CASE("engine handle names only the order it was issued for", "[engine][handle]") {
+    pub_t pub;
+    handle_eng_t eng{pub, lob::engine_config{}};
+
+    const auto first = eng.on_submit(sub(7, 100, 10, lob::side::bid));
+    REQUIRE(first);
+    eng.on_cancel({.id = 7, .handle = first});
+    REQUIRE(!eng.book_view().bids().best().has_value());
+
+    // The arena reuses the freed slot, so the stale handle names the right
+    // slot and the right id but an older generation.
+    const auto second = eng.on_submit(sub(7, 101, 5, lob::side::bid));
+    REQUIRE(second.slot == first.slot);
+    REQUIRE(second != first);
+    eng.on_cancel({.id = 7, .handle = first});
+    REQUIRE(eng.book_view().bids().best() == 101);
+
+    // A live handle with the wrong id names nothing either, and without the
+    // index a cancel carrying no handle cannot find the order.
+    eng.on_cancel({.id = 8, .handle = second});
+    eng.on_cancel({.id = 7});
+    REQUIRE(eng.book_view().bids().best() == 101);
+
+    eng.on_cancel({.id = 7, .handle = second});
+    REQUIRE(!eng.book_view().bids().best().has_value());
+}
+
+TEST_CASE("engine returns no handle for an order that does not rest", "[engine][handle]") {
+    pub_t pub;
+    handle_eng_t eng{pub, lob::engine_config{}};
+
+    REQUIRE(eng.on_submit(sub(1, 100, 10, lob::side::ask)));
+    REQUIRE(!eng.on_submit(sub(2, 100, 10, lob::side::bid)));
+    REQUIRE(!eng.on_submit(sub(3, 100, 10, lob::side::bid, lob::tif::ioc)));
 }

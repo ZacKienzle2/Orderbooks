@@ -22,8 +22,14 @@ struct submit_msg {
 
 static_assert(std::is_trivially_copyable_v<submit_msg>);
 
+// A cancel or modify names its order by id and, to an engine that issues
+// handles, also carries the handle the engine returned when it rested. The
+// engine reaches the order through the handle and checks the id against it,
+// so a handle from an order that has since left the book, or a forged one,
+// names nothing.
 struct cancel_msg {
     order_id_t id;
+    order_handle handle{};
 };
 
 static_assert(std::is_trivially_copyable_v<cancel_msg>);
@@ -37,6 +43,7 @@ struct modify_msg {
     // next identity). Zero keeps the existing id. The caller owns id
     // uniqueness, exactly as it does for submit_msg::id.
     order_id_t new_id{0};
+    order_handle handle{};
 };
 
 static_assert(std::is_trivially_copyable_v<modify_msg>);

@@ -19,8 +19,8 @@
 
 namespace lob {
 
-// engine<P, Ticks, MaxOrders>
-// ---------------------------
+// engine<P, Ticks, MaxOrders, Lookup>
+// -----------------------------------
 // Single-symbol matching engine. The engine owns a book and a sequence
 // counter; it does not own the publisher (caller manages its lifetime).
 //
@@ -35,8 +35,22 @@ namespace lob {
 // consuming maker orders until the aggressor is filled or the price stops
 // crossing. Each fill emits a fill_msg with a monotonic seq. Top-of-book
 // changes emit a top_msg subject to engine_config::top_throttle.
-template <publisher P, std::size_t Ticks, std::size_t MaxOrders>
+//
+// Lookup picks how a cancel or modify reaches its order. With by_id the engine
+// keeps an id index and ignores the handle fields. With by_handle it keeps
+// none. Each order that rests returns a handle instead, and a cancel or modify
+// must carry it, which reaches the order with no lookup at all (ADR-0042). A
+// gateway that hands clients an exchange order id, FIX OrderID(37), can map it
+// to the handle. Restore reissues handles, so such a gateway rebuilds its map
+// from the restored book. The choice is a template parameter, so an engine of
+// either kind carries no code for the other.
+template <publisher P,
+          std::size_t Ticks,
+          std::size_t MaxOrders,
+          order_lookup Lookup = order_lookup::by_id>
 class engine {
+    static constexpr bool by_handle_ = Lookup == order_lookup::by_handle;
+
     // Belt-and-suspenders enforcement of the publisher::publish noexcept
     // contract. The publisher concept already constrains these overloads,
     // but the static_asserts make the assumption explicit at the engine's
@@ -66,16 +80,17 @@ class engine {
     engine& operator=(engine&&) = delete;
     ~engine() = default;
 
-    [[gnu::hot]] void on_submit(const submit_msg& m) noexcept {
-        if (m.s == side::bid)
-            handle_submit_<side::bid>(m);
-        else
-            handle_submit_<side::ask>(m);
+    // Returns the handle of the order left resting, or an empty one when none
+    // rests or the engine looks orders up by id.
+    [[gnu::hot]] order_handle on_submit(const submit_msg& m) noexcept {
+        const order_handle h =
+            (m.s == side::bid) ? handle_submit_<side::bid>(m) : handle_submit_<side::ask>(m);
         publish_top_if_changed_();
+        return h;
     }
 
     [[gnu::hot]] void on_cancel(const cancel_msg& m) noexcept {
-        auto* o = book_.index().take(m.id);
+        auto* o = find_(m.id, m.handle, /*unindex=*/true);
         if (o == nullptr)
             return;
         const auto cancel_side = o->s;
@@ -89,7 +104,11 @@ class engine {
         publish_top_if_changed_();
     }
 
-    [[gnu::hot]] void on_modify(const modify_msg& m) noexcept {
+    // Returns the order's handle after the modify. That is the handle the
+    // modify carried, unless a crossing price change cancels and resubmits the
+    // order, which rests under a new handle or leaves the book with none. The
+    // common paths therefore read nothing to build one.
+    [[gnu::hot]] order_handle on_modify(const modify_msg& m) noexcept {
         // ClOrdID chain. A cancel-replace names the order by its current id
         // and may assign the next one; rename the id_index entry first so
         // every path below, including the crossing cancel + resubmit, works
@@ -97,19 +116,20 @@ class engine {
         // the probe that finds it. Priority is governed solely by the px / qty
         // branches below.
         const bool rename = m.new_id != 0 && m.new_id != m.id;
-        auto* o = rename ? book_.index().take(m.id) : book_.index().lookup(m.id);
+        auto* o = find_(m.id, m.handle, /*unindex=*/rename);
         if (o == nullptr)
-            return;
+            return {};
         if (rename) {
             o->id = m.new_id;
-            book_.index().insert(m.new_id, o);
+            if constexpr (!by_handle_)
+                book_.index().insert(m.new_id, o);
         }
         const auto effective_id = o->id;
         const auto s = o->s;
         const auto t = o->t;
         if (m.new_px == o->px) {
             if (m.new_qty == o->remaining)
-                return;  // no-op beyond any id chain applied above
+                return m.handle;  // no-op beyond any id chain applied above
             // Qty-only fast path. Mutate the level aggregate in place.
             //
             // Spec choice, deliberate: a quantity change at the same price
@@ -129,7 +149,7 @@ class engine {
             o->remaining = m.new_qty;
             mark_top_(s, o->px);
             publish_top_if_changed_();
-            return;
+            return m.handle;
         }
         // Price change that still rests: relink the existing record in place.
         // The order survives, so its id_index entry and arena slot are
@@ -149,7 +169,7 @@ class engine {
                 mark_top_(side::bid, old_px);
                 mark_top_(side::bid, m.new_px);
                 publish_top_if_changed_();
-                return;
+                return m.handle;
             }
         } else {
             const auto best_bid = book_.bids().best();
@@ -162,7 +182,7 @@ class engine {
                 mark_top_(side::ask, old_px);
                 mark_top_(side::ask, m.new_px);
                 publish_top_if_changed_();
-                return;
+                return m.handle;
             }
         }
         // Crossing price change: cancel + resubmit at the new price so the
@@ -173,16 +193,17 @@ class engine {
         assert(state_.suppress_top_depth < std::numeric_limits<std::uint8_t>::max() &&
                "engine: suppress_top_depth would overflow; composite nesting too deep");
         ++state_.suppress_top_depth;
-        on_cancel(cancel_msg{.id = effective_id});
-        on_submit(submit_msg{.id = effective_id,
-                             .px = m.new_px,
-                             .qty = m.new_qty,
-                             .s = s,
-                             .t = t,
-                             ._pad = 0,
-                             .account_id = acct});
+        on_cancel(cancel_msg{.id = effective_id, .handle = m.handle});
+        const order_handle resubmitted = on_submit(submit_msg{.id = effective_id,
+                                                              .px = m.new_px,
+                                                              .qty = m.new_qty,
+                                                              .s = s,
+                                                              .t = t,
+                                                              ._pad = 0,
+                                                              .account_id = acct});
         --state_.suppress_top_depth;
         publish_top_if_changed_();
+        return resubmitted;
     }
 
     // Prefetch hint for a command that will be applied shortly. The engine is
@@ -199,7 +220,8 @@ class engine {
         switch (c.k) {
             case command::kind::submit: {
                 const auto& m = c.body.submit;
-                book_.index().prefetch(m.id);
+                if constexpr (!by_handle_)
+                    book_.index().prefetch(m.id);
                 if (m.s == side::bid)
                     book_.bids().prefetch_level(m.px);
                 else
@@ -207,13 +229,22 @@ class engine {
                 break;
             }
             case command::kind::cancel:
-                book_.index().prefetch(c.body.cancel.id);
+                // A handle names the order's own line and its slot's generation,
+                // two independent misses in place of a chain.
+                if constexpr (by_handle_)
+                    prefetch_slot_(c.body.cancel.handle);
+                else
+                    book_.index().prefetch(c.body.cancel.id);
                 break;
             case command::kind::modify:
-                book_.index().prefetch(c.body.modify.id);
-                // A cancel-replace also inserts its next id, a second random slot.
-                if (c.body.modify.new_id != 0)
-                    book_.index().prefetch(c.body.modify.new_id);
+                if constexpr (by_handle_) {
+                    prefetch_slot_(c.body.modify.handle);
+                } else {
+                    book_.index().prefetch(c.body.modify.id);
+                    // A cancel-replace also inserts its next id, a second random slot.
+                    if (c.body.modify.new_id != 0)
+                        book_.index().prefetch(c.body.modify.new_id);
+                }
                 break;
         }
     }
@@ -233,12 +264,14 @@ class engine {
                 break;
             }
             case command::kind::cancel:
-                if (const order* o = book_.index().lookup(c.body.cancel.id))
-                    __builtin_prefetch(o, 1, 3);
+                if constexpr (!by_handle_)
+                    if (const order* o = book_.index().lookup(c.body.cancel.id))
+                        __builtin_prefetch(o, 1, 3);
                 break;
             case command::kind::modify:
-                if (const order* o = book_.index().lookup(c.body.modify.id))
-                    __builtin_prefetch(o, 1, 3);
+                if constexpr (!by_handle_)
+                    if (const order* o = book_.index().lookup(c.body.modify.id))
+                        __builtin_prefetch(o, 1, 3);
                 break;
         }
     }
@@ -330,7 +363,9 @@ class engine {
         return true;
     }
 
-    [[nodiscard]] const book<Ticks, MaxOrders>& book_view() const noexcept { return book_; }
+    [[nodiscard]] const book<Ticks, MaxOrders, by_handle_>& book_view() const noexcept {
+        return book_;
+    }
 
     [[nodiscard]] const engine_config& config() const noexcept { return cfg_; }
 
@@ -338,7 +373,7 @@ class engine {
 
    private:
     template <side Side>
-    void handle_submit_(const submit_msg& m) noexcept {
+    order_handle handle_submit_(const submit_msg& m) noexcept {
         constexpr auto Opp = (Side == side::bid) ? side::ask : side::bid;
 
         // FOK precheck. Walk opposite levels from best toward `m.px` and sum
@@ -346,14 +381,14 @@ class engine {
         // whole order if the total is short.
         if (m.t == tif::fok) {
             if (!can_fully_fill_<Opp>(m.px, m.qty, m.account_id))
-                return;
+                return {};
         }
 
         qty_t remaining = m.qty;
         match_against_opposite_<Side>(m, remaining);
 
         if (remaining == 0)
-            return;
+            return {};
 
         switch (m.t) {
             case tif::ioc:
@@ -361,11 +396,10 @@ class engine {
                 // IOC always drops the residual. FOK never reaches here with
                 // residual > 0 unless we crossed multiple levels and lost
                 // qty to rounding (impossible with integer qty); drop too.
-                return;
+                return {};
             case tif::gtc:
             default:
-                rest_<Side>(m, remaining);
-                return;
+                return rest_<Side>(m, remaining);
         }
     }
 
@@ -421,7 +455,8 @@ class engine {
                     auto* victim = &maker;
                     const auto victim_id = victim->id;
                     lvl.fifo.pop_front();
-                    book_.index().erase(victim_id);
+                    if constexpr (!by_handle_)
+                        book_.index().erase(victim_id);
                     book_.arena().deallocate(victim);
                 }
             }
@@ -450,7 +485,8 @@ class engine {
                 const auto victim_id = victim->id;
                 lvl.aggregate -= maker.remaining;
                 lvl.fifo.pop_front();
-                book_.index().erase(victim_id);
+                if constexpr (!by_handle_)
+                    book_.index().erase(victim_id);
                 book_.arena().deallocate(victim);
                 state_.top_dirty = true;
                 return false;
@@ -474,7 +510,8 @@ class engine {
                     auto* victim = &maker;
                     const auto victim_id = victim->id;
                     lvl.fifo.pop_front();
-                    book_.index().erase(victim_id);
+                    if constexpr (!by_handle_)
+                        book_.index().erase(victim_id);
                     book_.arena().deallocate(victim);
                 }
                 return false;
@@ -484,7 +521,7 @@ class engine {
     }
 
     template <side Side>
-    void rest_(const submit_msg& m, qty_t remaining) noexcept {
+    order_handle rest_(const submit_msg& m, qty_t remaining) noexcept {
         auto* o = book_.arena().allocate();
         if (o == nullptr) [[unlikely]] {
             // Arena exhausted; the residual cannot rest. Publish the loss
@@ -498,7 +535,7 @@ class engine {
                                     .qty = remaining,
                                     .reason = reject_reason::arena_full,
                                     .seq = state_.seq});
-            return;
+            return {};
         }
         o->id = m.id;
         o->remaining = remaining;
@@ -508,8 +545,13 @@ class engine {
         o->_pad0 = 0;
         o->account_id = m.account_id;
         side_<Side>().add(*o);
-        book_.index().insert(m.id, o);
         mark_top_(Side, m.px);
+        if constexpr (by_handle_) {
+            return handle_of_(o);
+        } else {
+            book_.index().insert(m.id, o);
+            return {};
+        }
     }
 
     template <side Opp>
@@ -645,6 +687,47 @@ class engine {
         state_.have_top = true;
     }
 
+    // The order a cancel or modify names, through its handle on an engine that
+    // issues them and through the id index otherwise, which with unindex set
+    // gives up the entry in the probe that finds it.
+    [[nodiscard]] order* find_(order_id_t id, order_handle h, bool unindex) noexcept {
+        if constexpr (by_handle_)
+            return resolve_(h, id);
+        else
+            return unindex ? book_.index().take(id) : book_.index().lookup(id);
+    }
+
+    [[nodiscard]] order_handle handle_of_(const order* o) const noexcept
+        requires by_handle_
+    {
+        const auto idx = book_.arena().index_of(o);
+        return {.slot = static_cast<std::uint32_t>(idx),
+                .generation = book_.arena().generation(idx)};
+    }
+
+    // The order a live handle names, confirmed by id. A handle whose slot has
+    // been freed carries a generation the slot no longer has, one whose slot
+    // was reused names an order with another id, and the empty handle has an
+    // even generation, so none of them finds anything.
+    [[nodiscard]] order* resolve_(order_handle h, order_id_t id) noexcept
+        requires by_handle_
+    {
+        if (h.slot >= MaxOrders || (h.generation & 1U) == 0 ||
+            book_.arena().generation(h.slot) != h.generation)
+            return nullptr;
+        order* o = book_.arena().slot_at(h.slot);
+        return o->id == id ? o : nullptr;
+    }
+
+    void prefetch_slot_(order_handle h) const noexcept
+        requires by_handle_
+    {
+        if (h.slot < MaxOrders) {
+            __builtin_prefetch(book_.arena().slot_address(h.slot), 1, 3);
+            book_.arena().prefetch_generation(h.slot);
+        }
+    }
+
     static void prefetch_tail_(const level& lvl) noexcept {
         if (!lvl.fifo.empty())
             __builtin_prefetch(&lvl.fifo.back(), 1, 3);
@@ -722,7 +805,8 @@ class engine {
                 auto& o = lvl.fifo.front();
                 auto* victim = &o;
                 book_.bids().remove(o);
-                book_.index().erase(victim->id);
+                if constexpr (!by_handle_)
+                    book_.index().erase(victim->id);
                 book_.arena().deallocate(victim);
             }
         }
@@ -732,7 +816,8 @@ class engine {
                 auto& o = lvl.fifo.front();
                 auto* victim = &o;
                 book_.asks().remove(o);
-                book_.index().erase(victim->id);
+                if constexpr (!by_handle_)
+                    book_.index().erase(victim->id);
                 book_.arena().deallocate(victim);
             }
         }
@@ -772,7 +857,8 @@ class engine {
             book_.bids().add(*o);
         else
             book_.asks().add(*o);
-        book_.index().insert(rec.id, o);
+        if constexpr (!by_handle_)
+            book_.index().insert(rec.id, o);
         return true;
     }
 
@@ -804,7 +890,7 @@ class engine {
 
     P& pub_;
     engine_config cfg_;
-    book<Ticks, MaxOrders> book_{};
+    book<Ticks, MaxOrders, by_handle_> book_{};
     hot_state state_{};
 };
 

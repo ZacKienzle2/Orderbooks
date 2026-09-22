@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <thread>
+#include <type_traits>
 
 namespace lob {
 
@@ -66,30 +67,42 @@ struct alignas(64) padded_atomic {
     std::atomic<std::uint64_t> value{0};
 };
 
-// Apply one decoded command to a shard's engine. The engine owns the matching
-// semantics; this only fans the tagged union out to the right entry point.
+// Apply one decoded command to a shard's engine and return the handle the
+// engine reports, the resting order's for a submit or a modify and an empty
+// one for a cancel. The engine owns the matching semantics; this only fans the tagged
+// union out to the right entry point. An engine whose entry points return
+// nothing yields an empty handle.
 template <class Engine>
-inline void apply_command(Engine& eng, const command& c) noexcept {
+inline order_handle apply_command(Engine& eng, const command& c) noexcept {
+    const auto handle_from = [](auto&& call) noexcept -> order_handle {
+        if constexpr (std::is_void_v<decltype(call())>) {
+            call();
+            return {};
+        } else {
+            return call();
+        }
+    };
     switch (c.k) {
         case command::kind::submit:
-            eng.on_submit(c.body.submit);
-            break;
+            return handle_from([&] { return eng.on_submit(c.body.submit); });
         case command::kind::cancel:
             eng.on_cancel(c.body.cancel);
-            break;
+            return {};
         case command::kind::modify:
-            eng.on_modify(c.body.modify);
-            break;
+            return handle_from([&] { return eng.on_modify(c.body.modify); });
     }
+    return {};
 }
 
 // Apply the n commands at(0) .. at(n - 1) in order, running engine::prefetch
 // plan.index_ahead commands ahead and engine::prefetch_order plan.order_ahead
 // commands ahead of each, within the batch. The first commands of a batch are
 // prefetched as it opens. Semantics are those of applying each in turn with
-// apply_command; the prefetches read and never write.
-template <class Engine, class At>
-inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan = {}) noexcept {
+// apply_command; the prefetches read and never write. done(i, handle) receives
+// each command's result, so a caller that answers its clients, a gateway
+// acking an order with its handle, drains through the same path.
+template <class Engine, class At, class Done>
+inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan, Done done) noexcept {
     for (unsigned i = 0; i < plan.index_ahead && i < n; ++i)
         eng.prefetch(at(i));
     for (unsigned i = 0; i < plan.order_ahead && i < n; ++i)
@@ -99,8 +112,13 @@ inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan = {})
             eng.prefetch(at(i + plan.index_ahead));
         if (plan.order_ahead > 0 && i + plan.order_ahead < n)
             eng.prefetch_order(at(i + plan.order_ahead));
-        apply_command(eng, at(i));
+        done(i, apply_command(eng, at(i)));
     }
+}
+
+template <class Engine, class At>
+inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan = {}) noexcept {
+    apply_batch(eng, n, at, plan, [](unsigned, order_handle) noexcept {});
 }
 
 // Drive one shard. The worker pins and names itself, then drains its ingress
