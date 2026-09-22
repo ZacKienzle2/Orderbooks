@@ -18,6 +18,8 @@
 #include <lob/engine.hpp>
 #include <lob/latency_histogram.hpp>
 #include <lob/messages.hpp>
+#include <lob/spin.hpp>
+#include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
 #include "wire.hpp"
@@ -31,7 +33,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <thread>
 #include <vector>
@@ -54,19 +58,8 @@ constexpr std::size_t ticks = 4096;
 constexpr std::size_t max_orders = std::size_t{1} << 16;
 constexpr lob::tick_t mid = ticks / 2;
 
-[[nodiscard]] std::uint64_t now_tsc() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    return __builtin_ia32_rdtsc();
-#else
-    return static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-#endif
-}
-
-inline void cpu_relax() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    __builtin_ia32_pause();
-#endif
-}
+using lob::cpu_relax;
+using lob::read_tsc;
 
 // EAGAIN and EWOULDBLOCK are the same value on Linux, so testing both with a
 // logical or is a tautology gcc flags under -Wlogical-op. Collapse to one test
@@ -250,9 +243,9 @@ int run_client(std::uint16_t port, std::uint64_t orders) {
                    ack);
         const wire_order b{
             .id = next++, .qty = 1, .px = mid, .new_px = 0, .op = 0, .side = 0, .tif = 1, .pad = 0};
-        const auto t0 = now_tsc();
+        const auto t0 = read_tsc();
         send_order(cfd, b, ack);
-        hist.record(now_tsc() - t0);
+        hist.record(read_tsc() - t0);
         fills += ack.filled;
         submitted += 2;
     }
@@ -346,8 +339,8 @@ int run_pipeline_client(std::uint16_t port, std::uint64_t orders, std::size_t wi
         abuf.resize(obuf.size());
         if (!read_all(cfd, abuf.data(), abuf.size() * sizeof(wire_ack)))
             break;
-        for (const wire_ack& a : abuf)
-            fills += a.filled;
+        fills = std::transform_reduce(abuf.begin(), abuf.end(), fills, std::plus<>{},
+                                      [](const wire_ack& a) { return a.filled; });
         submitted += obuf.size();
         done += w;
     }

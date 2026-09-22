@@ -86,7 +86,7 @@ class slab_arena {
 
     [[nodiscard]] std::size_t in_use() const noexcept { return in_use_; }
 
-    [[nodiscard]] std::size_t capacity() const noexcept { return Capacity; }
+    [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Capacity; }
 
     [[nodiscard]] bool empty() const noexcept { return in_use_ == 0; }
 
@@ -103,7 +103,7 @@ class slab_arena {
         std::memcpy(s->bytes, &next, sizeof(next));
     }
 
-    static slot* load_link_(slot* s) noexcept {
+    static slot* load_link_(const slot* s) noexcept {
         slot* next{nullptr};
         std::memcpy(&next, s->bytes, sizeof(next));
         return next;

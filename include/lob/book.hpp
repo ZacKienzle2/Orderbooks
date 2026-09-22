@@ -48,14 +48,11 @@ class book_side {
             bm_.set(o.px);
         // A newly resting price can only equal or improve this side's best,
         // so one compare maintains the cache with no bitmap descent.
-        if (!has_best_) {
-            best_ = o.px;
-            has_best_ = true;
-        } else if constexpr (Side == side::bid) {
-            if (o.px > best_)
+        if constexpr (Side == side::bid) {
+            if (!best_ || o.px > *best_)
                 best_ = o.px;
         } else {
-            if (o.px < best_)
+            if (!best_ || o.px < *best_)
                 best_ = o.px;
         }
     }
@@ -68,7 +65,7 @@ class book_side {
             // The best moves only when the top level itself drains; a deeper
             // level emptying leaves the cache valid. The descent in
             // recompute_best_ therefore runs only on the top-of-book case.
-            if (o.px == best_)
+            if (best_ == o.px)
                 recompute_best_();
         }
     }
@@ -76,11 +73,7 @@ class book_side {
     // O(1) best-price query returning the incrementally maintained cache. The
     // bitmap stays the source of truth for next / prev_populated and for
     // refreshing this cache when the top level drains.
-    [[nodiscard]] std::optional<tick_t> best() const noexcept {
-        if (!has_best_)
-            return std::nullopt;
-        return best_;
-    }
+    [[nodiscard]] std::optional<tick_t> best() const noexcept { return best_; }
 
     [[nodiscard]] qty_t aggregate_at(tick_t px) const noexcept { return (*levels_)[px].aggregate; }
 
@@ -94,23 +87,26 @@ class book_side {
     // drained level was the top of book.
     void notify_level_emptied(tick_t px) noexcept {
         bm_.clear(px);
-        if (has_best_ && px == best_)
+        if (best_ == px)
             recompute_best_();
     }
 
     // Inspect the bitmap for FOK precheck without exposing internals.
     [[nodiscard]] std::optional<tick_t> next_populated_at_or_after(tick_t px) const noexcept {
-        const auto v = bm_.next_set_at_or_after(px);
-        if (!v.has_value())
-            return std::nullopt;
-        return static_cast<tick_t>(*v);
+        return to_tick_(bm_.next_set_at_or_after(px));
     }
 
     [[nodiscard]] std::optional<tick_t> prev_populated_at_or_before(tick_t px) const noexcept {
-        const auto v = bm_.prev_set_at_or_before(px);
-        if (!v.has_value())
-            return std::nullopt;
-        return static_cast<tick_t>(*v);
+        return to_tick_(bm_.prev_set_at_or_before(px));
+    }
+
+    // Visit every populated level in ascending price order, driven by the
+    // bitmap so empty stretches of the ladder cost nothing. For the cold
+    // snapshot and restore paths; fn receives the price and the level.
+    template <class F>
+    void for_each_level(F fn) const {
+        for (auto px = next_populated_at_or_after(0); px; px = next_populated_at_or_after(*px + 1))
+            fn(*px, level_at(*px));
     }
 
     [[nodiscard]] bool empty() const noexcept { return bm_.empty(); }
@@ -122,15 +118,23 @@ class book_side {
     // drains (remove / notify_level_emptied), so its descent is amortised
     // across the O(1) best() reads it enables everywhere else.
     void recompute_best_() noexcept {
-        const auto v = (Side == side::bid) ? bm_.highest_set() : bm_.lowest_set();
-        has_best_ = v.has_value();
-        best_ = has_best_ ? static_cast<tick_t>(*v) : tick_t{0};
+        if constexpr (Side == side::bid)
+            best_ = to_tick_(bm_.highest_set());
+        else
+            best_ = to_tick_(bm_.lowest_set());
+    }
+
+    // The bitmap indexes by std::size_t; every index it holds is below Ticks,
+    // so it narrows to tick_t without loss.
+    [[nodiscard]] static std::optional<tick_t> to_tick_(std::optional<std::size_t> v) noexcept {
+        if (!v)
+            return std::nullopt;
+        return static_cast<tick_t>(*v);
     }
 
     std::unique_ptr<std::array<level, Ticks>> levels_;
     hier_bitmap<Ticks> bm_{};
-    tick_t best_{0};
-    bool has_best_{false};
+    std::optional<tick_t> best_{};
 };
 
 // book<Ticks, MaxOrders>

@@ -10,7 +10,8 @@
 // The dispatch within a workload is deterministic, so its branch profile
 // belongs to the engine, not to the driver picking the next op. Pre-population
 // runs outside the timed region. Run the binary under perf stat or a sanitizer
-// build to attach counters or fault detection; scripts/profile.sh drives that.
+// build to attach counters or fault detection; the justfile's profile-* recipes
+// drive that.
 //
 // Workloads:
 //   deep      depth-maintaining mix (replace, price-move modify, qty modify) on
@@ -24,9 +25,12 @@
 
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
+#include <lob/hash.hpp>
 #include <lob/messages.hpp>
+#include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -55,24 +59,15 @@ constexpr std::size_t max_orders = std::size_t{1} << 17;
 constexpr lob::tick_t mid = ticks / 2;
 using eng_t = lob::engine<null_pub, ticks, max_orders>;
 
-[[nodiscard]] std::uint64_t now_tsc() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    return __builtin_ia32_rdtsc();
-#else
-    return 0;
-#endif
-}
+using lob::read_tsc;
 
+// SplitMix64 generator step: a Weyl increment finalised by lob::splitmix64.
 std::uint64_t splitmix(std::uint64_t& s) noexcept {
-    std::uint64_t z = (s += 0x9E3779B97F4A7C15ULL);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    return z ^ (z >> 31);
+    return lob::splitmix64(s += 0x9E3779B97F4A7C15ULL);
 }
 
 struct result {
     double cyc_per_op{0.0};
-    std::uint64_t fills{0};
 };
 
 struct rec {
@@ -109,7 +104,7 @@ result run_deep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t 
         eng.on_submit(m);
         live.push_back({m.id, m.px, m.s == lob::side::bid});
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const auto sel = i % 20;  // 10 replace, 6 modify-px, 4 modify-qty
         const std::size_t k = splitmix(rng) % live.size();
@@ -130,7 +125,7 @@ result run_deep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t 
                 .id = live[k].id, .new_px = live[k].px, .new_qty = 1 + splitmix(rng) % 100});
         }
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_submit(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -143,13 +138,13 @@ result run_submit(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_
         eng.on_submit(rest(rng, next++));
     }
     lob::order_id_t id = 1;
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         eng.on_cancel(lob::cancel_msg{.id = id});
         eng.on_submit(rest(rng, id));
         id = id % depth + 1;
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_cancel(eng_t& eng, std::uint64_t ops, std::size_t /*depth*/, std::uint64_t seed) {
@@ -162,11 +157,11 @@ result run_cancel(eng_t& eng, std::uint64_t ops, std::size_t /*depth*/, std::uin
         eng.on_submit(m);
         ids.push_back(m.id);
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (const auto id : ids) {
         eng.on_cancel(lob::cancel_msg{.id = id});
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_modifyp(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -185,7 +180,7 @@ result run_modifyp(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
                        ._pad = 0,
                        .account_id = 0});
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const lob::order_id_t id = 1 + splitmix(rng) % depth;
         eng.on_modify(
@@ -193,7 +188,7 @@ result run_modifyp(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
                             .new_px = static_cast<lob::tick_t>(lo + splitmix(rng) % (hi - lo)),
                             .new_qty = 1 + splitmix(rng) % 50});
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_modifyq(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -209,13 +204,13 @@ result run_modifyq(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
         eng.on_submit(m);
         live.push_back({m.id, m.px, m.s == lob::side::bid});
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const auto& e = live[splitmix(rng) % live.size()];
         eng.on_modify(
             lob::modify_msg{.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100});
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -225,7 +220,7 @@ result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
         eng.on_submit(rest(rng, next++));
     }
     lob::order_id_t taker = 1'000'000'000;
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const bool bid = (i & 1U) != 0;
         eng.on_submit({.id = taker++,
@@ -241,7 +236,7 @@ result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
             }
         }
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t /*seed*/) {
@@ -266,7 +261,7 @@ result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
     const std::uint64_t iters = depth > 0 ? ops / depth : 0;
     std::uint64_t cyc = 0;
     for (std::uint64_t i = 0; i < iters; ++i) {
-        const auto t0 = now_tsc();
+        const auto t0 = read_tsc();
         eng.on_submit({.id = taker++,
                        .px = px,
                        .qty = qd,
@@ -274,11 +269,11 @@ result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
                        .t = lob::tif::ioc,
                        ._pad = 0,
                        .account_id = 0});
-        cyc += now_tsc() - t0;
+        cyc += read_tsc() - t0;
         refill();
     }
     const auto fills = iters * depth;
-    return {fills > 0 ? static_cast<double>(cyc) / static_cast<double>(fills) : 0.0, 0};
+    return {fills > 0 ? static_cast<double>(cyc) / static_cast<double>(fills) : 0.0};
 }
 
 struct workload {
@@ -343,14 +338,8 @@ int main(int argc, char** argv) {
         }
         return 0;
     }
-    const workload* chosen = nullptr;
-    for (const auto& w : workloads) {
-        if (a.workload == w.name) {
-            chosen = &w;
-            break;
-        }
-    }
-    if (chosen == nullptr) {
+    const auto* chosen = std::ranges::find(workloads, a.workload, &workload::name);
+    if (chosen == std::ranges::end(workloads)) {
         std::fprintf(stderr, "unknown workload %s; --list to see options\n", a.workload.c_str());
         return 2;
     }

@@ -1,6 +1,7 @@
 #ifndef LOB_ID_INDEX_HPP
 #define LOB_ID_INDEX_HPP
 
+#include <lob/hash.hpp>
 #include <lob/order.hpp>
 #include <lob/types.hpp>
 
@@ -48,18 +49,6 @@ class id_index {
         order* value;
     };
 
-    [[nodiscard]] static constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
-        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
-        x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
-        return x ^ (x >> 31);
-    }
-
-    [[nodiscard]] static constexpr std::size_t round_up_pow2(std::size_t n) noexcept {
-        if (n <= 1)
-            return 1;
-        return std::size_t{1} << (64 - std::countl_zero(n - 1));
-    }
-
    public:
     id_index() : id_index(default_capacity_) {}
 
@@ -72,7 +61,7 @@ class id_index {
     // slab_arena treatment introduced in ADR-0016.
     explicit id_index(std::size_t capacity_hint) {
         const std::size_t want = capacity_hint == 0 ? default_capacity_ : capacity_hint;
-        const std::size_t cap = round_up_pow2(want * 2);
+        const std::size_t cap = std::bit_ceil(want * 2);
         slots_.reserve(cap);
         mask_ = cap - 1;
     }

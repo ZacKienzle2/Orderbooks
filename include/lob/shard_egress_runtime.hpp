@@ -155,7 +155,7 @@ class shard_egress_runtime {
         return pubs_[idx];
     }
 
-    [[nodiscard]] std::size_t shard_index_for(symbol_id_t sym) const noexcept {
+    [[nodiscard]] static constexpr std::size_t shard_index_for(symbol_id_t sym) noexcept {
         return shard_index(sym, NumShards);
     }
 

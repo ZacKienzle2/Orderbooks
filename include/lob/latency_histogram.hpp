@@ -70,9 +70,7 @@ class latency_histogram {
     }
 
     void reset() noexcept {
-        for (auto& c : counts_) {
-            c = 0;
-        }
+        std::ranges::fill(counts_, 0);
         total_ = 0;
         overflow_ = 0;
         min_ = UINT64_MAX;

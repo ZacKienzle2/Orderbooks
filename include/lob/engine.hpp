@@ -609,27 +609,14 @@ class engine {
     }
 
     [[nodiscard]] [[gnu::cold]] std::uint64_t count_resting_() const noexcept {
-        // Drive the walk from the bitmap so empty tiers cost nothing.
-        // count_resting_ is cold (called once per snapshot()), but the
-        // linear O(Ticks) scan was wasteful on sparse books with large
-        // Ticks. Bitmap descent collapses the empty bulk to a tier walk.
+        // Cold, once per snapshot(). for_each_level walks the bitmap, so
+        // empty stretches of a sparse ladder cost a tier step each.
         std::uint64_t count = 0;
-        for (auto px = book_.bids().next_populated_at_or_after(0); px.has_value();
-             px = (*px == Ticks - 1) ? std::nullopt
-                                     : book_.bids().next_populated_at_or_after(*px + 1)) {
-            for (const auto& o : book_.bids().level_at(*px).fifo) {
-                (void)o;
-                ++count;
-            }
-        }
-        for (auto px = book_.asks().next_populated_at_or_after(0); px.has_value();
-             px = (*px == Ticks - 1) ? std::nullopt
-                                     : book_.asks().next_populated_at_or_after(*px + 1)) {
-            for (const auto& o : book_.asks().level_at(*px).fifo) {
-                (void)o;
-                ++count;
-            }
-        }
+        const auto add = [&count](tick_t, const level& lvl) noexcept {
+            count += lvl.order_count();
+        };
+        book_.bids().for_each_level(add);
+        book_.asks().for_each_level(add);
         return count;
     }
 
@@ -648,29 +635,24 @@ class engine {
         // Snapshot contract. Records are emitted in (price ascending,
         // FIFO front-to-back) order so restore() replays them in the
         // same order and reproduces FIFO time priority at each level.
-        // The iteration is driven by the bitmap (always ascending via
-        // next_populated_at_or_after) regardless of which side is best
-        // at the high or low end of the ladder.
-        auto emit_from = [&](auto& side) {
-            for (auto px = side.next_populated_at_or_after(0); px.has_value();
-                 px = (*px == Ticks - 1) ? std::nullopt
-                                         : side.next_populated_at_or_after(*px + 1)) {
-                for (const auto& o : side.level_at(*px).fifo) {
-                    snapshot_order_record rec{};
-                    rec.id = o.id;
-                    rec.remaining = o.remaining;
-                    rec.px = o.px;
-                    rec.s = static_cast<std::uint8_t>(Side);
-                    rec.t = static_cast<std::uint8_t>(o.t);
-                    rec.account_id = o.account_id;
-                    emit_bytes_(sink, &rec, sizeof(rec));
-                }
+        // for_each_level walks ascending on either side, whichever end of
+        // the ladder holds that side's best.
+        const auto emit_level = [&sink](tick_t, const level& lvl) {
+            for (const auto& o : lvl.fifo) {
+                snapshot_order_record rec{};
+                rec.id = o.id;
+                rec.remaining = o.remaining;
+                rec.px = o.px;
+                rec.s = static_cast<std::uint8_t>(Side);
+                rec.t = static_cast<std::uint8_t>(o.t);
+                rec.account_id = o.account_id;
+                emit_bytes_(sink, &rec, sizeof(rec));
             }
         };
         if constexpr (Side == side::bid)
-            emit_from(book_.bids());
+            book_.bids().for_each_level(emit_level);
         else
-            emit_from(book_.asks());
+            book_.asks().for_each_level(emit_level);
     }
 
     [[gnu::cold]] bool clear_state_and_fail_() noexcept {

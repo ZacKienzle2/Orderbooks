@@ -137,8 +137,8 @@ class shard_runtime {
         return router_.shard(idx);
     }
 
-    [[nodiscard]] std::size_t shard_index_for(symbol_id_t sym) const noexcept {
-        return router_.shard_index_for(sym);
+    [[nodiscard]] static constexpr std::size_t shard_index_for(symbol_id_t sym) noexcept {
+        return router_type::shard_index_for(sym);
     }
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }

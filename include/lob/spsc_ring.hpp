@@ -1,6 +1,7 @@
 #ifndef LOB_SPSC_RING_HPP
 #define LOB_SPSC_RING_HPP
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <bit>
@@ -87,9 +88,7 @@ class spsc_ring {
             if (head_cache_ == tail) [[unlikely]]
                 return 0;
         }
-        const std::uint64_t avail = head_cache_ - tail;
-        const unsigned n =
-            avail < static_cast<std::uint64_t>(max_n) ? static_cast<unsigned>(avail) : max_n;
+        const auto n = static_cast<unsigned>(std::min<std::uint64_t>(head_cache_ - tail, max_n));
         for (unsigned i = 0; i < n; ++i) {
             fn(buf_[(tail + i) & mask]);
         }

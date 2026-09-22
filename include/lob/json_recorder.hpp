@@ -10,28 +10,28 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <initializer_list>
 #include <ios>
 #include <ostream>
 #include <string_view>
-#include <system_error>
 
 namespace lob {
 
 // Publisher that writes one JSON Lines event per emit to an output stream.
 //
 // Format: each line is a self-describing JSON object with a "kind" tag
-// (fill / top / trade / self_trade), the engine seq, and the type-specific
-// fields. Numeric fields are emitted as JSON numbers; std::uint64_t values
-// fit in IEEE 754 binary64 up to 2^53 - 1, which covers any realistic
-// order_id / seq / qty for testing and visualisation.
+// (fill / top / trade / self_trade / reject), the engine seq, and the
+// type-specific fields. Numeric fields are emitted as JSON numbers;
+// std::uint64_t values fit in IEEE 754 binary64 up to 2^53 - 1, which covers
+// any realistic order_id / seq / qty for testing and visualisation.
 //
 // Intended for the replay tool and for analysis pipelines that consume the
 // event stream from a Python harness; not used on the production hot path.
 //
-// Encoding: each publish() formats the line into a fixed stack buffer via
-// std::to_chars (locale-free, allocation-free) and issues a single
-// out_.write() call. This avoids the per-call locale lock that the
-// previous operator<< chain paid on every numeric field.
+// Encoding: each publish() names its fields once and line_ formats them into
+// a fixed stack buffer via std::to_chars (locale-free, allocation-free), then
+// issues a single out_.write() call. This avoids the per-call locale lock that
+// an operator<< chain pays on every numeric field.
 //
 // noexcept: publish() is declared noexcept to satisfy the publisher
 // concept. The caller is responsible for constructing out_ with the
@@ -50,110 +50,82 @@ class json_recorder {
     }
 
     void publish(const fill_msg& m) noexcept {
-        std::array<char, 384> buf{};
-        char* p = buf.data();
-        constexpr std::string_view head{R"({"kind":"fill","seq":)"};
-        p = append_(p, head);
-        p = append_num_(p, m.seq);
-        p = append_(p, R"(,"maker":)");
-        p = append_num_(p, m.maker);
-        p = append_(p, R"(,"taker":)");
-        p = append_num_(p, m.taker);
-        p = append_(p, R"(,"px":)");
-        p = append_num_(p, m.px);
-        p = append_(p, R"(,"qty":)");
-        p = append_num_(p, m.qty);
-        p = append_(p, "}\n");
-        out_.write(buf.data(), p - buf.data());
+        line_("fill", m.seq,
+              {{"maker", m.maker}, {"taker", m.taker}, {"px", m.px}, {"qty", m.qty}});
     }
 
     void publish(const top_msg& m) noexcept {
-        std::array<char, 384> buf{};
-        char* p = buf.data();
-        constexpr std::string_view head{R"({"kind":"top","seq":)"};
-        p = append_(p, head);
-        p = append_num_(p, m.seq);
-        p = append_(p, R"(,"bid_px":)");
-        p = append_num_(p, m.bid_px);
-        p = append_(p, R"(,"ask_px":)");
-        p = append_num_(p, m.ask_px);
-        p = append_(p, R"(,"bid_qty":)");
-        p = append_num_(p, m.bid_qty);
-        p = append_(p, R"(,"ask_qty":)");
-        p = append_num_(p, m.ask_qty);
-        p = append_(p, "}\n");
-        out_.write(buf.data(), p - buf.data());
+        line_("top", m.seq,
+              {{"bid_px", m.bid_px},
+               {"ask_px", m.ask_px},
+               {"bid_qty", m.bid_qty},
+               {"ask_qty", m.ask_qty}});
     }
 
     void publish(const trade_msg& m) noexcept {
-        std::array<char, 384> buf{};
-        char* p = buf.data();
-        constexpr std::string_view head{R"({"kind":"trade","seq":)"};
-        p = append_(p, head);
-        p = append_num_(p, m.seq);
-        p = append_(p, R"(,"px":)");
-        p = append_num_(p, m.px);
-        p = append_(p, R"(,"qty":)");
-        p = append_num_(p, m.qty);
-        p = append_(p, "}\n");
-        out_.write(buf.data(), p - buf.data());
+        line_("trade", m.seq, {{"px", m.px}, {"qty", m.qty}});
     }
 
     void publish(const self_trade_msg& m) noexcept {
-        std::array<char, 384> buf{};
-        char* p = buf.data();
-        constexpr std::string_view head{R"({"kind":"self_trade","seq":)"};
-        p = append_(p, head);
-        p = append_num_(p, m.seq);
-        p = append_(p, R"(,"aggressor":)");
-        p = append_num_(p, m.aggressor);
-        p = append_(p, R"(,"resting":)");
-        p = append_num_(p, m.resting);
-        p = append_(p, R"(,"account":)");
-        p = append_num_(p, m.account);
-        p = append_(p, R"(,"px":)");
-        p = append_num_(p, m.px);
-        p = append_(p, R"(,"qty":)");
-        p = append_num_(p, m.qty);
-        p = append_(p, "}\n");
-        out_.write(buf.data(), p - buf.data());
+        line_("self_trade", m.seq,
+              {{"aggressor", m.aggressor},
+               {"resting", m.resting},
+               {"account", m.account},
+               {"px", m.px},
+               {"qty", m.qty}});
     }
 
     void publish(const reject_msg& m) noexcept {
-        std::array<char, 384> buf{};
+        line_("reject", m.seq,
+              {{"id", m.id},
+               {"account", m.account},
+               {"px", m.px},
+               {"qty", m.qty},
+               {"reason", static_cast<std::uint64_t>(m.reason)}});
+    }
+
+   private:
+    struct field {
+        std::string_view key;
+        std::uint64_t value;
+    };
+
+    // The longest line, a self_trade, is under 200 bytes: five keys of at
+    // most twelve bytes, each value at most twenty digits, and the fixed
+    // punctuation. The buffer leaves room for a field more.
+    static constexpr std::size_t line_capacity = 384;
+    static constexpr std::size_t max_fields = 6;
+
+    void line_(std::string_view kind, seq_t seq, std::initializer_list<field> fields) noexcept {
+        assert(fields.size() <= max_fields && "json_recorder: line_capacity sized for six fields");
+        std::array<char, line_capacity> buf{};
         char* p = buf.data();
-        constexpr std::string_view head{R"({"kind":"reject","seq":)"};
-        p = append_(p, head);
-        p = append_num_(p, m.seq);
-        p = append_(p, R"(,"id":)");
-        p = append_num_(p, m.id);
-        p = append_(p, R"(,"account":)");
-        p = append_num_(p, m.account);
-        p = append_(p, R"(,"px":)");
-        p = append_num_(p, m.px);
-        p = append_(p, R"(,"qty":)");
-        p = append_num_(p, m.qty);
-        p = append_(p, R"(,"reason":)");
-        p = append_num_(p, static_cast<std::uint32_t>(m.reason));
+        p = append_(p, R"({"kind":")");
+        p = append_(p, kind);
+        p = append_(p, R"(","seq":)");
+        p = append_num_(p, seq);
+        for (const field& f : fields) {
+            p = append_(p, R"(,")");
+            p = append_(p, f.key);
+            p = append_(p, R"(":)");
+            p = append_num_(p, f.value);
+        }
         p = append_(p, "}\n");
         out_.write(buf.data(), p - buf.data());
     }
 
-   private:
     static char* append_(char* p, std::string_view s) noexcept {
         std::memcpy(p, s.data(), s.size());
         return p + s.size();
     }
 
     // Format an integer into a tight 24-byte local temporary (max digit
-    // count for an unsigned 64-bit value is 20, so 24 covers any signed
-    // 64-bit value with sign and slack). The bounded local write lets
+    // count for an unsigned 64-bit value is 20). The bounded local write lets
     // GCC's -Werror=array-bounds analysis prove that subsequent appends
     // into the caller's buffer remain in range; without it, GCC tracks
     // the worst case of to_chars writing all the way to end and concludes
     // the trailing literal could overflow.
-    template <class T>
-    static char* append_num_(char* p, T v) noexcept {
+    static char* append_num_(char* p, std::uint64_t v) noexcept {
         std::array<char, 24> digits{};
         const auto r = std::to_chars(digits.data(), digits.data() + digits.size(), v);
         const auto n = static_cast<std::size_t>(r.ptr - digits.data());

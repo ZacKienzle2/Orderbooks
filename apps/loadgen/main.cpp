@@ -17,6 +17,8 @@
 #include <lob/latency_histogram.hpp>
 #include <lob/messages.hpp>
 #include <lob/shard_egress_runtime.hpp>
+#include <lob/spin.hpp>
+#include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
 #include <atomic>
@@ -47,19 +49,8 @@ constexpr std::size_t slot_mask = slots - 1;
 
 using runtime_t = lob::shard_egress_runtime<ticks, max_orders, num_shards, ingress_cap, egress_cap>;
 
-[[nodiscard]] std::uint64_t now_tsc() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    return __builtin_ia32_rdtsc();
-#else
-    return static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-#endif
-}
-
-inline void cpu_relax() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    __builtin_ia32_pause();
-#endif
-}
+using lob::cpu_relax;
+using lob::read_tsc;
 
 // Forwards every merged event and, for a taker fill whose submit stamp is
 // parked, records the end-to-end latency. The latency phase stamps only the
@@ -76,7 +67,7 @@ struct latency_sink {
         if (e.k == lob::event::kind::fill) {
             const auto t0 = send_tsc[e.body.fill.taker & slot_mask].load(std::memory_order_relaxed);
             if (t0 != 0) {
-                hist.record(now_tsc() - t0);
+                hist.record(read_tsc() - t0);
                 samples.fetch_add(1, std::memory_order_release);
             }
         }
@@ -187,7 +178,7 @@ int main(int argc, char** argv) {
         while (!rt.try_submit(sym, ask(next++))) {
         }
         const lob::order_id_t bid_id = next++;
-        send_tsc[bid_id & slot_mask].store(now_tsc(), std::memory_order_relaxed);
+        send_tsc[bid_id & slot_mask].store(read_tsc(), std::memory_order_relaxed);
         while (!rt.try_submit(sym, bid(bid_id))) {
         }
         while (sink.samples.load(std::memory_order_acquire) == prev) {
