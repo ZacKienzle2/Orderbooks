@@ -1,6 +1,7 @@
 include_guard(GLOBAL)
 
 find_package(Boost REQUIRED COMPONENTS headers)
+find_package(hdr_histogram CONFIG REQUIRED)
 
 if(LOB_BUILD_TESTS)
   find_package(Catch2 3 CONFIG REQUIRED)

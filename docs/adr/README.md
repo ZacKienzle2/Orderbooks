@@ -70,7 +70,7 @@ update the index below. The template is the scaffold.
 | [0021](0021-merging-egress-consumer.md)                       | Accepted               | Single-threaded merging egress consumer                         |
 | [0022](0022-publisher-seam-for-merged-egress.md)              | Accepted               | Publisher-concept seam for the merged egress stream             |
 | [0023](0023-hugepage-backed-arena.md)                         | Accepted               | Huge-page-backed slab arena                                     |
-| [0024](0024-hdr-latency-histogram.md)                         | Accepted               | From-scratch HDR histogram for latency measurement              |
+| [0024](0024-hdr-latency-histogram.md)                         | Superseded by ADR-0045 | From-scratch HDR histogram for latency measurement              |
 | [0025](0025-match-sweep-prefetch.md)                          | Superseded by ADR-0027 | Software prefetch and invariant hoist in the match sweep        |
 | [0026](0026-absolute-latency-ceiling-gate.md)                 | Superseded             | Absolute latency-ceiling gate in CI                             |
 | [0027](0027-match-sweep-prefetch-reverted.md)                 | Accepted               | Match-sweep prefetch measured and reverted                      |
@@ -91,6 +91,7 @@ update the index below. The template is the scaffold.
 | [0042](0042-engine-assigned-order-handles.md)                 | Accepted               | Engine-assigned order handles                                   |
 | [0043](0043-boost-unordered-flat-map-id-index.md)             | Accepted               | Boost unordered_flat_map for the id index                       |
 | [0044](0044-library-spsc-queues-measured-against-the-ring.md) | Accepted               | Library SPSC queues measured against the ring                   |
+| [0045](0045-hdrhistogram-c-for-latency.md)                    | Accepted               | HdrHistogram_c for latency measurement                          |
 
 ## References
 

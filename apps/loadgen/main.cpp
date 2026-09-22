@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -131,11 +132,7 @@ lob::submit_msg bid(lob::order_id_t id) noexcept {
             .account_id = 0};
 }
 
-}  // namespace
-
-int main(int argc, char** argv) {
-    const args a = parse_args(argc, argv);
-
+int run(const args& a) {
     std::vector<std::atomic<std::uint64_t>> send_tsc(slots);
     lob::latency_histogram hist{10'000'000, 3};
 
@@ -228,4 +225,15 @@ int main(int argc, char** argv) {
             static_cast<unsigned long long>(hist.overflow_count()));
     }
     return 0;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    try {
+        return run(parse_args(argc, argv));
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "lob_loadgen: %s\n", e.what());
+        return 1;
+    }
 }

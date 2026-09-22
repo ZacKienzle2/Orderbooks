@@ -5,7 +5,7 @@
   "description": "Low-latency limit order book and matching engine.",
   "homepage": "https://github.com/ZacKienzle2/Orderbooks",
   "license": "MIT",
-  "dependencies": ["boost-intrusive", "boost-unordered"],
+  "dependencies": ["boost-intrusive", "boost-unordered", "hdr-histogram"],
   "features": {
     "tests": {
       "description": "Catch2 v3 unit, property and differential tests against the reference engine.",

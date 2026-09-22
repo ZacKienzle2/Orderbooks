@@ -23,7 +23,15 @@ target_sources(lob_core PUBLIC FILE_SET HEADERS BASE_DIRS "${CMAKE_SOURCE_DIR}/i
 target_include_directories(lob_core PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
                                            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
+# vcpkg builds HdrHistogram_c as the shared target on a dynamic triplet and the static one
+# otherwise, so link whichever the package defined.
+if(TARGET hdr_histogram::hdr_histogram)
+  set(_lob_hdr_histogram hdr_histogram::hdr_histogram)
+else()
+  set(_lob_hdr_histogram hdr_histogram::hdr_histogram_static)
+endif()
+
 target_link_libraries(
   lob_core
-  PUBLIC Boost::headers
+  PUBLIC Boost::headers ${_lob_hdr_histogram}
   PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening)
