@@ -295,6 +295,7 @@ struct args {
     unsigned ahead{lob::prefetch_plan{}.index_ahead};
     unsigned ahead2{lob::prefetch_plan{}.order_ahead};
     unsigned batch{64};
+    bool rename{false};
     bool list{false};
 };
 
@@ -302,9 +303,10 @@ struct args {
 // as consume_claim claims them from the ingress ring, and the timed region is
 // the drain of each batch through apply_batch with nothing else in it, which
 // is what drive_shard does. --ahead and --ahead2 set the index and order
-// prefetch distances, and zero turns a stage off. Reported per deep-mix op,
-// where a replace is a cancel and a submit, so the figure compares with the
-// deep workload's.
+// prefetch distances, and zero turns a stage off. --rename gives every modify
+// a fresh id, as a FIX cancel-replace assigns the next ClOrdID. Reported per
+// deep-mix op, where a replace is a cancel and a submit, so the figure
+// compares with the deep workload's.
 result run_stream(eng_t& eng, const args& a) {
     if (a.depth == 0 || a.batch == 0) {
         return {};
@@ -332,14 +334,18 @@ result run_stream(eng_t& eng, const args& a) {
                 const auto m = rest(rng, next++);
                 cmds.push_back(lob::command::make_submit(m));
                 e = {m.id, m.px, m.s == lob::side::bid};
-            } else if (sel < 16) {
-                const auto off = static_cast<lob::tick_t>(1 + splitmix(rng) % (mid - 2));
-                e.px = e.bid ? (mid - off) : (mid + off);
-                cmds.push_back(lob::command::make_modify(
-                    {.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100}));
             } else {
-                cmds.push_back(lob::command::make_modify(
-                    {.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100}));
+                if (sel < 16) {
+                    const auto off = static_cast<lob::tick_t>(1 + splitmix(rng) % (mid - 2));
+                    e.px = e.bid ? (mid - off) : (mid + off);
+                }
+                const lob::order_id_t renamed = a.rename ? next++ : 0;
+                cmds.push_back(lob::command::make_modify({.id = e.id,
+                                                          .new_px = e.px,
+                                                          .new_qty = 1 + splitmix(rng) % 100,
+                                                          .new_id = renamed}));
+                if (renamed != 0)
+                    e.id = renamed;
             }
         }
         const auto n = static_cast<unsigned>(cmds.size());
@@ -402,6 +408,9 @@ args parse_args(int argc, char** argv) {
         } else if (s == "--batch" && has_val) {
             a.batch = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
             i += 2;
+        } else if (s == "--rename") {
+            a.rename = true;
+            ++i;
         } else if (s == "--list") {
             a.list = true;
             ++i;
