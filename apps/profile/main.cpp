@@ -70,6 +70,14 @@ struct result {
     double cyc_per_op{0.0};
 };
 
+// Map a uniform 64-bit draw onto [0, n) with a multiply and a shift rather
+// than a division, which costs tens of cycles inside the timed loop and was
+// charged to the engine (Lemire, doi:10.1145/3230636). The high half of the
+// draw times n stays below 2^64 for n below 2^32, which every size here is.
+[[nodiscard]] std::uint64_t below(std::uint64_t x, std::uint64_t n) noexcept {
+    return ((x >> 32U) * n) >> 32U;
+}
+
 struct rec {
     lob::order_id_t id;
     lob::tick_t px;
@@ -107,7 +115,7 @@ result run_deep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t 
     const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const auto sel = i % 20;  // 10 replace, 6 modify-px, 4 modify-qty
-        const std::size_t k = splitmix(rng) % live.size();
+        const std::size_t k = below(splitmix(rng), live.size());
         if (sel < 10) {
             eng.on_cancel(lob::cancel_msg{.id = live[k].id});
             const auto m = rest(rng, next++);
@@ -142,7 +150,7 @@ result run_submit(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_
     for (std::uint64_t i = 0; i < ops; ++i) {
         eng.on_cancel(lob::cancel_msg{.id = id});
         eng.on_submit(rest(rng, id));
-        id = id % depth + 1;
+        id = id == depth ? 1 : id + 1;
     }
     return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
@@ -182,7 +190,7 @@ result run_modifyp(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
     }
     const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
-        const lob::order_id_t id = 1 + splitmix(rng) % depth;
+        const lob::order_id_t id = 1 + below(splitmix(rng), depth);
         eng.on_modify(
             lob::modify_msg{.id = id,
                             .new_px = static_cast<lob::tick_t>(lo + splitmix(rng) % (hi - lo)),
@@ -206,7 +214,7 @@ result run_modifyq(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
     }
     const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
-        const auto& e = live[splitmix(rng) % live.size()];
+        const auto& e = live[below(splitmix(rng), live.size())];
         eng.on_modify(
             lob::modify_msg{.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100});
     }
