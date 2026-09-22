@@ -87,6 +87,7 @@ update the index below. The template is the scaffold.
 | [0038](0038-group-prefetch-across-drained-batch.md)        | Accepted               | Prefetch across the commands of a drained batch                 |
 | [0039](0039-release-store-processed-counter.md)            | Accepted               | Publish the processed counter with a release store              |
 | [0040](0040-publish-each-ring-slot-in-its-own-line.md)     | Accepted               | Publish each ring slot through a sequence in its own line       |
+| [0041](0041-lazy-fifo-deletion-measured-and-rejected.md)   | Rejected               | Lazy deletion in the level FIFO measured and rejected           |
 
 ## References
 
