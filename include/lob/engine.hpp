@@ -78,13 +78,6 @@ class engine {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
-        // The order's hot fields (s, px, remaining, account_id) and the
-        // FIFO hook share the order's cache line. on_cancel mutates that
-        // line (remove unlinks the hook; deallocate writes the freelist
-        // link), so issue a write-prefetch (rw=1) with T0 locality so the
-        // line lands in L1 already in Modified state and the upcoming
-        // RFO upgrade is skipped.
-        __builtin_prefetch(o, 1, 3);
         const auto cancel_side = o->s;
         const auto cancel_px = o->px;
         if (o->s == side::bid)
@@ -101,12 +94,6 @@ class engine {
         auto* o = book_.index().lookup(m.id);
         if (o == nullptr)
             return;
-        // Issue the write-prefetch first so the line is in flight while
-        // the branch below resolves; the field reads then hit cache
-        // instead of paying the miss latency synchronously. Modify
-        // mutates remaining and (on price change) reroutes the FIFO
-        // hook, so the write hint (rw=1) avoids an RFO upgrade later.
-        __builtin_prefetch(o, 1, 3);
         const auto s = o->s;
         const auto t = o->t;
         // ClOrdID chain. A cancel-replace names the order by its current id
