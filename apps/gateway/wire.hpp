@@ -77,12 +77,10 @@ struct accum_pub {
     }
 };
 
-// Order ids live in [1, 2^64 - 2]. Zero is the "keep the current id"
-// sentinel of modify_msg::new_id, and 2^64 - 1 is the id_index empty-slot
-// sentinel; inserting it would write a slot that reads as empty and truncate
-// other ids' probe chains, silently stranding live orders.
+// Order ids are nonzero. Zero is the "keep the current id" sentinel of
+// modify_msg::new_id.
 [[nodiscard]] constexpr bool valid_order_id(std::uint64_t id) noexcept {
-    return id != 0 && id != ~std::uint64_t{0};
+    return id != 0;
 }
 
 // Validates one wire_order against the engine's tick ladder, quantity cap,
@@ -91,7 +89,7 @@ struct accum_pub {
 // assert compiled out under NDEBUG), casting an arbitrary byte to lob::tif is
 // UB before any switch sees it, quantities above
 // engine_config::max_order_qty would erode the level-aggregate overflow
-// headroom, and the two reserved id values corrupt or alias index state, so
+// headroom, and the reserved zero id would alias modify's keep-the-id sentinel, so
 // every field a command consumes is range-checked here. Rejected orders are
 // refused outright rather than clamped, since clamping would silently
 // reprice or resize the client's order.

@@ -79,7 +79,7 @@ update the index below. The template is the scaffold.
 | [0030](0030-end-to-end-load-harness.md)                    | Accepted               | End-to-end load harness for system throughput and latency       |
 | [0031](0031-binary-order-entry-gateway.md)                 | Accepted               | Binary order-entry gateway over TCP                             |
 | [0032](0032-batch-worker-processed-counter.md)             | Superseded by ADR-0039 | Batch the shard worker's processed counter                      |
-| [0033](0033-aos-id-index-layout.md)                        | Accepted               | AoS slot layout for the id_index                                |
+| [0033](0033-aos-id-index-layout.md)                        | Superseded by ADR-0043 | AoS slot layout for the id_index                                |
 | [0034](0034-engine-cache-floor.md)                         | Accepted               | Engine hot path is at its cache-miss floor                      |
 | [0035](0035-reject-event-on-publisher-seam.md)             | Accepted               | Arena exhaustion publishes a reject event                       |
 | [0036](0036-disjoint-seq-ranges-per-shard.md)              | Accepted               | Shards seed disjoint event-sequence ranges                      |
@@ -89,6 +89,7 @@ update the index below. The template is the scaffold.
 | [0040](0040-publish-each-ring-slot-in-its-own-line.md)     | Accepted               | Publish each ring slot through a sequence in its own line       |
 | [0041](0041-lazy-fifo-deletion-measured-and-rejected.md)   | Rejected               | Lazy deletion in the level FIFO measured and rejected           |
 | [0042](0042-engine-assigned-order-handles.md)              | Accepted               | Engine-assigned order handles                                   |
+| [0043](0043-boost-unordered-flat-map-id-index.md)          | Accepted               | Boost unordered_flat_map for the id index                       |
 
 ## References
 
