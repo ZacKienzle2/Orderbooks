@@ -90,22 +90,23 @@ class engine {
     }
 
     [[gnu::hot]] void on_modify(const modify_msg& m) noexcept {
-        auto* o = book_.index().lookup(m.id);
-        if (o == nullptr)
-            return;
-        const auto s = o->s;
-        const auto t = o->t;
         // ClOrdID chain. A cancel-replace names the order by its current id
         // and may assign the next one; rename the id_index entry first so
         // every path below, including the crossing cancel + resubmit, works
-        // with the order's new identity. Priority is governed solely by the
-        // px / qty branches below.
-        const auto effective_id = (m.new_id == 0 || m.new_id == o->id) ? o->id : m.new_id;
-        if (effective_id != o->id) {
-            book_.index().erase(o->id);
-            o->id = effective_id;
-            book_.index().insert(effective_id, o);
+        // with the order's new identity. A rename takes the old entry out in
+        // the probe that finds it. Priority is governed solely by the px / qty
+        // branches below.
+        const bool rename = m.new_id != 0 && m.new_id != m.id;
+        auto* o = rename ? book_.index().take(m.id) : book_.index().lookup(m.id);
+        if (o == nullptr)
+            return;
+        if (rename) {
+            o->id = m.new_id;
+            book_.index().insert(m.new_id, o);
         }
+        const auto effective_id = o->id;
+        const auto s = o->s;
+        const auto t = o->t;
         if (m.new_px == o->px) {
             if (m.new_qty == o->remaining)
                 return;  // no-op beyond any id chain applied above
@@ -210,6 +211,9 @@ class engine {
                 break;
             case command::kind::modify:
                 book_.index().prefetch(c.body.modify.id);
+                // A cancel-replace also inserts its next id, a second random slot.
+                if (c.body.modify.new_id != 0)
+                    book_.index().prefetch(c.body.modify.new_id);
                 break;
         }
     }
