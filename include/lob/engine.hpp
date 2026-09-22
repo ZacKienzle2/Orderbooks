@@ -198,6 +198,61 @@ class engine {
         publish_top_if_changed_();
     }
 
+    // Prefetch hint for a command that will be applied shortly. The engine is
+    // bound by a chain of dependent cache misses per command, the index slot
+    // and then the order it names, and a single command offers nothing to
+    // overlap them with. A consumer holding a batch calls this for the command
+    // a few positions ahead, so its first misses are in flight while the
+    // earlier commands run. This is the group prefetching of Chen, Ailamaki,
+    // Gibbons and Mowry for hash joins (doi:10.1145/1272743.1272747), with
+    // the batch the ingress ring already delivers as the group. It reads the
+    // message and the index's own arrays, writes nothing, and never changes
+    // what a command does.
+    void prefetch(const command& c) const noexcept {
+        switch (c.k) {
+            case command::kind::submit: {
+                const auto& m = c.body.submit;
+                book_.index().prefetch(m.id);
+                if (m.s == side::bid)
+                    book_.bids().prefetch_level(m.px);
+                else
+                    book_.asks().prefetch_level(m.px);
+                break;
+            }
+            case command::kind::cancel:
+                book_.index().prefetch(c.body.cancel.id);
+                break;
+            case command::kind::modify:
+                book_.index().prefetch(c.body.modify.id);
+                break;
+        }
+    }
+
+    // Second stage, called closer to the command than prefetch. The index slot
+    // has had time to arrive, so reading it is cheap, and the miss it starts is
+    // the next link of the chain: the order a cancel or modify names, or the
+    // tail order a resting submit links behind.
+    void prefetch_order(const command& c) const noexcept {
+        switch (c.k) {
+            case command::kind::submit: {
+                const auto& m = c.body.submit;
+                if (m.s == side::bid)
+                    prefetch_tail_(book_.bids().level_at(m.px));
+                else
+                    prefetch_tail_(book_.asks().level_at(m.px));
+                break;
+            }
+            case command::kind::cancel:
+                if (const order* o = book_.index().lookup(c.body.cancel.id))
+                    __builtin_prefetch(o, 1, 3);
+                break;
+            case command::kind::modify:
+                if (const order* o = book_.index().lookup(c.body.modify.id))
+                    __builtin_prefetch(o, 1, 3);
+                break;
+        }
+    }
+
     // Serialise the engine's complete state into a snapshot_sink.
     //
     // The wire layout is a snapshot_header followed by num_orders
@@ -598,6 +653,11 @@ class engine {
         state_.last_bid_qty = bid_qty;
         state_.last_ask_qty = ask_qty;
         state_.have_top = true;
+    }
+
+    static void prefetch_tail_(const level& lvl) noexcept {
+        if (!lvl.fifo.empty())
+            __builtin_prefetch(&lvl.fifo.back(), 1, 3);
     }
 
     template <side S>

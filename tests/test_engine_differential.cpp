@@ -1,5 +1,6 @@
 #include <lob/engine.hpp>
 #include <lob/messages.hpp>
+#include <lob/shard_worker.hpp>
 #include <lob/types.hpp>
 
 #include "recording_publisher.hpp"
@@ -22,8 +23,6 @@ constexpr std::size_t cmd_qty = 4'000;
 using pub_t = lob::test::recording_publisher;
 using fast_t = lob::engine<pub_t, ticks, max_ord>;
 using ref_t = lob::test::reference_engine;
-
-enum class op_kind { submit, cancel, modify };
 
 struct gen_state {
     std::mt19937_64 rng;
@@ -86,41 +85,23 @@ lob::modify_msg gen_modify(gen_state& g) {
     return {.id = old_id, .new_px = px(g.rng), .new_qty = qty(g.rng), .new_id = new_id};
 }
 
-void replay(fast_t& fast, ref_t& ref, gen_state& g, std::uint8_t n_accounts) {
+// One command from the mix every stream here draws, six submits, two cancels
+// and two modifies in ten, and a submit whenever nothing is live.
+lob::command gen_command(gen_state& g, std::uint8_t n_accounts) {
     std::uniform_int_distribution<int> op_dist{0, 9};
+    const int roll = g.live.empty() ? 0 : op_dist(g.rng);
+    if (roll < 6)
+        return lob::command::make_submit(gen_submit(g, n_accounts));
+    if (roll < 8)
+        return lob::command::make_cancel(gen_cancel(g));
+    return lob::command::make_modify(gen_modify(g));
+}
+
+void replay(fast_t& fast, ref_t& ref, gen_state& g, std::uint8_t n_accounts) {
     for (std::size_t i = 0; i < cmd_qty; ++i) {
-        op_kind k;
-        if (g.live.empty()) {
-            k = op_kind::submit;
-        } else {
-            const auto roll = op_dist(g.rng);
-            if (roll < 6)
-                k = op_kind::submit;
-            else if (roll < 8)
-                k = op_kind::cancel;
-            else
-                k = op_kind::modify;
-        }
-        switch (k) {
-            case op_kind::submit: {
-                const auto m = gen_submit(g, n_accounts);
-                fast.on_submit(m);
-                ref.on_submit(m);
-                break;
-            }
-            case op_kind::cancel: {
-                const auto m = gen_cancel(g);
-                fast.on_cancel(m);
-                ref.on_cancel(m);
-                break;
-            }
-            case op_kind::modify: {
-                const auto m = gen_modify(g);
-                fast.on_modify(m);
-                ref.on_modify(m);
-                break;
-            }
-        }
+        const auto c = gen_command(g, n_accounts);
+        lob::apply_command(fast, c);
+        lob::apply_command(ref, c);
     }
 }
 
@@ -316,6 +297,44 @@ TEST_CASE("engine matches reference at arena capacity", "[engine][differential][
     // The stream must actually have exhausted the arena, or this case
     // proves nothing.
     REQUIRE(pub.rejects.size() > 0);
+    compare_fills(pub.fills, ref.fills);
+    compare_trades(pub.trades, ref.trades);
+    compare_self_trades(pub.self_trades, ref.self_trades);
+    compare_rejects(pub.rejects, ref.rejects);
+    compare_tops(pub.tops, ref.tops);
+    compare_book_state(fast, ref);
+}
+
+TEST_CASE("prefetching batch drain matches reference", "[engine][differential][prefetch]") {
+    // apply_batch runs engine::prefetch and engine::prefetch_order ahead of
+    // each command. They read and never write, so a drain through it has to
+    // match the reference at every distance and batch size, including where a
+    // hint looks up an id that an earlier command of the same batch has yet
+    // to insert or has just erased.
+    const auto [index_ahead, order_ahead] =
+        GENERATE(table<unsigned, unsigned>({{0, 0}, {2, 1}, {8, 4}}));
+    const auto batch = GENERATE(1U, 7U, 64U);
+    const auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL);
+    const lob::prefetch_plan plan{.index_ahead = index_ahead, .order_ahead = order_ahead};
+    const lob::engine_config cfg{.self_cross = lob::self_cross_policy::cancel_newest};
+
+    pub_t pub;
+    fast_t fast{pub, cfg};
+    ref_t ref{cfg, max_ord};
+
+    gen_state g{.rng = std::mt19937_64{seed}, .next_id = 1, .live = {}};
+    std::vector<lob::command> cmds;
+    cmds.reserve(batch);
+    for (std::size_t done = 0; done < cmd_qty; done += cmds.size()) {
+        cmds.clear();
+        while (cmds.size() < batch && done + cmds.size() < cmd_qty)
+            cmds.push_back(gen_command(g, /*n_accounts=*/4));
+        const auto at = [&cmds](unsigned i) noexcept -> const lob::command& { return cmds[i]; };
+        lob::apply_batch(fast, static_cast<unsigned>(cmds.size()), at, plan);
+        for (const auto& c : cmds)
+            lob::apply_command(ref, c);
+    }
+
     compare_fills(pub.fills, ref.fills);
     compare_trades(pub.trades, ref.trades);
     compare_self_trades(pub.self_trades, ref.self_trades);

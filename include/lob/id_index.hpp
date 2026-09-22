@@ -88,6 +88,15 @@ class id_index {
         }
     }
 
+    // Start the cache miss on id's home slot and do nothing else. A consumer
+    // draining a batch calls it a few commands ahead of the lookup, insert or
+    // erase, so the miss overlaps the commands in between. Write intent,
+    // because cancel, modify and submit all write the slot they probe.
+    void prefetch(order_id_t id) const noexcept {
+        if (storage_initialised_) [[likely]]
+            __builtin_prefetch(&slots_[splitmix64(id) & mask_], 1, 3);
+    }
+
     [[nodiscard]] order* lookup(order_id_t id) const noexcept {
         if (!storage_initialised_) [[unlikely]]
             return nullptr;

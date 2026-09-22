@@ -77,6 +77,9 @@ class book_side {
 
     [[nodiscard]] qty_t aggregate_at(tick_t px) const noexcept { return (*levels_)[px].aggregate; }
 
+    // Start the cache miss on the level at px ahead of an add or remove there.
+    void prefetch_level(tick_t px) const noexcept { __builtin_prefetch(&(*levels_)[px], 1, 3); }
+
     [[nodiscard]] const level& level_at(tick_t px) const noexcept { return (*levels_)[px]; }
 
     [[nodiscard]] level& level_at(tick_t px) noexcept { return (*levels_)[px]; }

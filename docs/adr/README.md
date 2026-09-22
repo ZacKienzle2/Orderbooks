@@ -84,6 +84,7 @@ update the index below. The template is the scaffold.
 | [0035](0035-reject-event-on-publisher-seam.md)             | Accepted               | Arena exhaustion publishes a reject event                       |
 | [0036](0036-disjoint-seq-ranges-per-shard.md)              | Accepted               | Shards seed disjoint event-sequence ranges                      |
 | [0037](0037-clordid-chaining-on-cancel-replace.md)         | Accepted               | Modify carries the next ClOrdID                                 |
+| [0038](0038-group-prefetch-across-drained-batch.md)        | Accepted               | Prefetch across the commands of a drained batch                 |
 
 ## References
 

@@ -82,6 +82,18 @@ class spsc_ring {
     // contract as try_pop and must be noexcept in effect.
     template <class F>
     [[nodiscard]] unsigned consume_batch(unsigned max_n, F fn) noexcept {
+        return consume_claim(max_n, [&fn](unsigned n, auto at) noexcept {
+            for (unsigned i = 0; i < n; ++i)
+                fn(at(i));
+        });
+    }
+
+    // The claim consume_batch walks, handed over whole. fn receives the count
+    // claimed and an accessor, at(i) naming the i-th slot in FIFO order, so a
+    // consumer can read ahead of the element it is processing, which a
+    // one-element callback cannot. The same claim and release rules hold.
+    template <class F>
+    [[nodiscard]] unsigned consume_claim(unsigned max_n, F fn) noexcept {
         const auto tail = tail_.load(std::memory_order_relaxed);
         if (head_cache_ == tail) {
             head_cache_ = head_.load(std::memory_order_acquire);
@@ -89,9 +101,7 @@ class spsc_ring {
                 return 0;
         }
         const auto n = static_cast<unsigned>(std::min<std::uint64_t>(head_cache_ - tail, max_n));
-        for (unsigned i = 0; i < n; ++i) {
-            fn(buf_[(tail + i) & mask]);
-        }
+        fn(n, [this, tail](unsigned i) noexcept -> const T& { return buf_[(tail + i) & mask]; });
         tail_.store(tail + n, std::memory_order_release);
         return n;
     }

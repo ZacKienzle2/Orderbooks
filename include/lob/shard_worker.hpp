@@ -14,7 +14,27 @@
 
 namespace lob {
 
-// Host placement and busy-wait policy shared by every shard worker.
+// How far ahead of the command being applied apply_batch runs each of the
+// engine's prefetch stages, in commands. Zero turns a stage off.
+//
+// A command on the resting path costs a short chain of dependent last-level
+// cache hits, the index slot and then the order it names, and one command has
+// nothing to overlap them with. The lob_profile stream workload drains the deep
+// mix through apply_batch a claim at a time. Over 21 interleaved rounds on one
+// pinned core, the index stage two commands ahead and the order stage one ahead
+// took a 64-command drain from 156 to 125 cycles per op at the minimum and from
+// 167 to 132 at the median, and a 16-command drain from 163 to 138 at the
+// median. The index stage alone reached 146. A batch of one, which has nothing
+// to look ahead to, moved from 210 to 214, inside the noise. Distances of eight
+// and more gained less, because the latency being hidden is a last-level hit of
+// about fifty cycles, and a third stage that also prefetched the order's level
+// and FIFO neighbours lost ground. See ADR-0038.
+struct prefetch_plan {
+    unsigned index_ahead{2};
+    unsigned order_ahead{1};
+};
+
+// Host placement, busy-wait and prefetch policy shared by every shard worker.
 //
 // When pin_threads is set, worker i is pinned to core (first_core + i *
 // core_stride) via lob::pin_this_thread_to_core. A stride above one skips
@@ -27,11 +47,16 @@ namespace lob {
 // empty spins with cpu_relax up to spin_budget times, then yields to the
 // scheduler. A large budget minimises wake latency on a dedicated isolated
 // core. A small one returns the core to other work sooner on a shared host.
+//
+// prefetch sets how far ahead of each command the worker prefetches within a
+// drained batch. The best distance follows the host's cache latency, so it is
+// a setting rather than a constant.
 struct shard_runtime_config {
     bool pin_threads{true};
     std::size_t first_core{0};
     std::size_t core_stride{1};
     unsigned spin_budget{1024};
+    prefetch_plan prefetch{};
 };
 
 // A 64-bit counter padded to its own cache line. A worker's release store to
@@ -55,6 +80,26 @@ inline void apply_command(Engine& eng, const command& c) noexcept {
         case command::kind::modify:
             eng.on_modify(c.body.modify);
             break;
+    }
+}
+
+// Apply the n commands at(0) .. at(n - 1) in order, running engine::prefetch
+// plan.index_ahead commands ahead and engine::prefetch_order plan.order_ahead
+// commands ahead of each, within the batch. The first commands of a batch are
+// prefetched as it opens. Semantics are those of applying each in turn with
+// apply_command; the prefetches read and never write.
+template <class Engine, class At>
+inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan = {}) noexcept {
+    for (unsigned i = 0; i < plan.index_ahead && i < n; ++i)
+        eng.prefetch(at(i));
+    for (unsigned i = 0; i < plan.order_ahead && i < n; ++i)
+        eng.prefetch_order(at(i));
+    for (unsigned i = 0; i < n; ++i) {
+        if (plan.index_ahead > 0 && i + plan.index_ahead < n)
+            eng.prefetch(at(i + plan.index_ahead));
+        if (plan.order_ahead > 0 && i + plan.order_ahead < n)
+            eng.prefetch_order(at(i + plan.order_ahead));
+        apply_command(eng, at(i));
     }
 }
 
@@ -87,11 +132,15 @@ inline void drive_shard(std::size_t idx,
     // commands before one release store amortises the atomic read-modify-write
     // and its fence over the batch, while a single release store still
     // publishes every engine mutation in it to the producer's acquire load.
+    // Each claim is applied through apply_batch, so the prefetch stages look
+    // ahead within whatever the ring delivered.
     constexpr unsigned batch = 64;
-    const auto run = [&eng](const command& c) noexcept { apply_command(eng, c); };
+    const auto run = [&eng, &cfg](unsigned n, auto at) noexcept {
+        apply_batch(eng, n, at, cfg.prefetch);
+    };
     unsigned idle = 0;
     for (;;) {
-        const unsigned n = ingress.consume_batch(batch, run);
+        const unsigned n = ingress.consume_claim(batch, run);
         if (n > 0) {
             processed.fetch_add(n, std::memory_order_release);
             idle = 0;
@@ -99,8 +148,8 @@ inline void drive_shard(std::size_t idx,
         }
         if (stop.load(std::memory_order_acquire)) {
             unsigned m = 0;
-            for (unsigned k = ingress.consume_batch(batch, run); k > 0;
-                 k = ingress.consume_batch(batch, run)) {
+            for (unsigned k = ingress.consume_claim(batch, run); k > 0;
+                 k = ingress.consume_claim(batch, run)) {
                 m += k;
             }
             if (m > 0)

@@ -16,6 +16,8 @@
 // Workloads:
 //   deep      depth-maintaining mix (replace, price-move modify, qty modify) on
 //             a deep two-sided book; the realistic resting-path profile.
+//   stream    the deep mix drained a batch at a time, as the shard worker drains
+//             its ingress ring, prefetching --ahead commands ahead.
 //   submit    resting submits with a paired cancel to bound the book.
 //   cancel    cancels of a pre-built book.
 //   modifyp   non-crossing price-move modifies on a one-sided book.
@@ -27,6 +29,7 @@
 #include <lob/engine.hpp>
 #include <lob/hash.hpp>
 #include <lob/messages.hpp>
+#include <lob/shard_worker.hpp>
 #include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
@@ -284,28 +287,92 @@ result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
     return {fills > 0 ? static_cast<double>(cyc) / static_cast<double>(fills) : 0.0};
 }
 
-struct workload {
-    const char* name;
-    result (*fn)(eng_t&, std::uint64_t, std::size_t, std::uint64_t);
-    const char* note;
-};
-
-constexpr workload workloads[] = {
-    {"deep", run_deep, "depth-maintaining replace + modify mix"},
-    {"submit", run_submit, "resting submit (paired cancel)"},
-    {"cancel", run_cancel, "cancel of a pre-built book"},
-    {"modifyp", run_modifyp, "non-crossing price-move modify"},
-    {"modifyq", run_modifyq, "quantity-only modify"},
-    {"cross", run_cross, "marketable cross with replenish"},
-    {"sweep", run_sweep, "deep single-price FIFO sweep (cyc per fill)"},
-};
-
 struct args {
     std::string workload{"deep"};
     std::uint64_t ops{20'000'000};
     std::size_t depth{40'000};
     std::uint64_t seed{0xC0FFEEULL};
+    unsigned ahead{lob::prefetch_plan{}.index_ahead};
+    unsigned ahead2{lob::prefetch_plan{}.order_ahead};
+    unsigned batch{64};
     bool list{false};
+};
+
+// The deep mix as the shard worker sees it. Commands arrive a batch at a time,
+// as consume_claim claims them from the ingress ring, and the timed region is
+// the drain of each batch through apply_batch with nothing else in it, which
+// is what drive_shard does. --ahead and --ahead2 set the index and order
+// prefetch distances, and zero turns a stage off. Reported per deep-mix op,
+// where a replace is a cancel and a submit, so the figure compares with the
+// deep workload's.
+result run_stream(eng_t& eng, const args& a) {
+    if (a.depth == 0 || a.batch == 0) {
+        return {};
+    }
+    std::uint64_t rng = a.seed;
+    std::vector<rec> live;
+    live.reserve(a.depth);
+    lob::order_id_t next = 1;
+    for (std::size_t i = 0; i < a.depth; ++i) {
+        const auto m = rest(rng, next++);
+        eng.on_submit(m);
+        live.push_back({m.id, m.px, m.s == lob::side::bid});
+    }
+    std::vector<lob::command> cmds;
+    cmds.reserve(a.batch + 1);
+    std::uint64_t cyc = 0;
+    std::uint64_t op = 0;
+    while (op < a.ops) {
+        cmds.clear();
+        while (cmds.size() < a.batch && op < a.ops) {
+            const auto sel = op++ % 20;  // 10 replace, 6 modify-px, 4 modify-qty
+            auto& e = live[below(splitmix(rng), live.size())];
+            if (sel < 10) {
+                cmds.push_back(lob::command::make_cancel({.id = e.id}));
+                const auto m = rest(rng, next++);
+                cmds.push_back(lob::command::make_submit(m));
+                e = {m.id, m.px, m.s == lob::side::bid};
+            } else if (sel < 16) {
+                const auto off = static_cast<lob::tick_t>(1 + splitmix(rng) % (mid - 2));
+                e.px = e.bid ? (mid - off) : (mid + off);
+                cmds.push_back(lob::command::make_modify(
+                    {.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100}));
+            } else {
+                cmds.push_back(lob::command::make_modify(
+                    {.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100}));
+            }
+        }
+        const auto n = static_cast<unsigned>(cmds.size());
+        const auto at = [&cmds](unsigned i) noexcept -> const lob::command& { return cmds[i]; };
+        const auto t0 = read_tsc();
+        lob::apply_batch(eng, n, at, {.index_ahead = a.ahead, .order_ahead = a.ahead2});
+        cyc += read_tsc() - t0;
+    }
+    return {static_cast<double>(cyc) / static_cast<double>(a.ops)};
+}
+
+// Adapts a workload that takes the op count, depth and seed to the table's
+// signature, so each of them keeps its own parameter list.
+template <result (*F)(eng_t&, std::uint64_t, std::size_t, std::uint64_t)>
+result plain(eng_t& eng, const args& a) {
+    return F(eng, a.ops, a.depth, a.seed);
+}
+
+struct workload {
+    const char* name;
+    result (*fn)(eng_t&, const args&);
+    const char* note;
+};
+
+constexpr workload workloads[] = {
+    {"deep", plain<run_deep>, "depth-maintaining replace + modify mix"},
+    {"stream", run_stream, "deep mix drained a batch at a time, prefetching --ahead"},
+    {"submit", plain<run_submit>, "resting submit (paired cancel)"},
+    {"cancel", plain<run_cancel>, "cancel of a pre-built book"},
+    {"modifyp", plain<run_modifyp>, "non-crossing price-move modify"},
+    {"modifyq", plain<run_modifyq>, "quantity-only modify"},
+    {"cross", plain<run_cross>, "marketable cross with replenish"},
+    {"sweep", plain<run_sweep>, "deep single-price FIFO sweep (cyc per fill)"},
 };
 
 args parse_args(int argc, char** argv) {
@@ -325,6 +392,15 @@ args parse_args(int argc, char** argv) {
             i += 2;
         } else if (s == "--seed" && has_val) {
             a.seed = std::strtoull(argv[i + 1], nullptr, 10);
+            i += 2;
+        } else if (s == "--ahead" && has_val) {
+            a.ahead = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
+            i += 2;
+        } else if (s == "--ahead2" && has_val) {
+            a.ahead2 = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
+            i += 2;
+        } else if (s == "--batch" && has_val) {
+            a.batch = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
             i += 2;
         } else if (s == "--list") {
             a.list = true;
@@ -354,7 +430,7 @@ int main(int argc, char** argv) {
     null_pub pub;
     // The engine embeds a multi-megabyte arena, so it lives on the heap.
     const auto eng = std::make_unique<eng_t>(pub, lob::engine_config{});
-    const result r = chosen->fn(*eng, a.ops, a.depth, a.seed);
+    const result r = chosen->fn(*eng, a);
     std::printf("workload=%-8s ops=%llu depth=%zu  %.1f cyc/op\n", chosen->name,
                 static_cast<unsigned long long>(a.ops), a.depth, r.cyc_per_op);
     return 0;
