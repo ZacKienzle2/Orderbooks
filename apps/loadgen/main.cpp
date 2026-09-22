@@ -61,10 +61,14 @@ struct latency_sink {
     lob::latency_histogram& hist;
     std::uint64_t events{0};
     std::atomic<std::uint64_t> samples{0};
+    // Set once the latency phase begins. The throughput phase stamps nothing,
+    // so until then a fill skips the stamp table, a random load into 8 MiB
+    // that would otherwise slow the merger it is measuring.
+    std::atomic<bool> stamping{false};
 
     void on_event(const lob::event& e, std::uint64_t /*merge_seq*/) noexcept {
         ++events;
-        if (e.k == lob::event::kind::fill) {
+        if (e.k == lob::event::kind::fill && stamping.load(std::memory_order_relaxed)) {
             const auto t0 = send_tsc[e.body.fill.taker & slot_mask].load(std::memory_order_relaxed);
             if (t0 != 0) {
                 hist.record(read_tsc() - t0);
@@ -167,6 +171,17 @@ int main(int argc, char** argv) {
     const auto wall1 = std::chrono::steady_clock::now();
     const double secs = std::chrono::duration<double>(wall1 - wall0).count();
 
+    // The saturated phase can leave the egress rings full behind a merger that
+    // trails the workers, and a full ring drops an event rather than block. A
+    // dropped fill would leave the closed loop below waiting on a sample that
+    // never comes, so let the merger take the whole backlog first.
+    for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
+        while (rt.egress_backlog(s) != 0) {
+            cpu_relax();
+        }
+    }
+    sink.stamping.store(true, std::memory_order_relaxed);
+
     // Phase 2: latency. Closed loop with one pair in flight, so the pipeline
     // stays unsaturated and the stamp-to-echo difference is processing latency,
     // not queueing. Only these orders are stamped, so the histogram holds only
@@ -193,9 +208,14 @@ int main(int argc, char** argv) {
     std::printf("throughput: orders=%llu  wall=%.3fs  %.2f Morders/s\n",
                 static_cast<unsigned long long>(submitted), secs,
                 static_cast<double>(submitted) / secs / 1e6);
-    std::printf("latency: unloaded round-trip samples=%llu  events=%llu\n",
+    std::uint64_t dropped = 0;
+    for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
+        dropped += rt.publisher(s).dropped();
+    }
+    std::printf("latency: unloaded round-trip samples=%llu  events=%llu  dropped=%llu\n",
                 static_cast<unsigned long long>(sink.samples.load(std::memory_order_relaxed)),
-                static_cast<unsigned long long>(sink.events));
+                static_cast<unsigned long long>(sink.events),
+                static_cast<unsigned long long>(dropped));
     std::printf("end-to-end latency (reference cycles): p50=%llu p99=%llu p99.9=%llu max=%llu\n",
                 static_cast<unsigned long long>(hist.value_at_percentile(50.0)),
                 static_cast<unsigned long long>(hist.value_at_percentile(99.0)),

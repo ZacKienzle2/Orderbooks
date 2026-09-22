@@ -155,6 +155,13 @@ class shard_egress_runtime {
         return pubs_[idx];
     }
 
+    // Events published to a shard's egress ring and not yet consumed. A
+    // monitor reads it to see how far the consumer trails; once the workers
+    // are quiescent, zero means the consumer has taken every event.
+    [[nodiscard]] std::size_t egress_backlog(std::size_t idx) const noexcept {
+        return egress_[idx].size();
+    }
+
     [[nodiscard]] static constexpr std::size_t shard_index_for(symbol_id_t sym) noexcept {
         return shard_index(sym, NumShards);
     }
