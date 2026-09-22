@@ -18,6 +18,12 @@ namespace lob {
 // being hoisted, fused, or optimised into a tight read with no observable
 // progress.
 //
+// It also paces the poll of a line another core is about to write. With the
+// hint replaced by a bare compiler barrier in every spin loop, lob_loadgen's
+// unloaded p50 rose from 754 to 1126 reference cycles over ten balanced runs,
+// because an unthrottled reader keeps pulling the line the writer needs to
+// own. Keep it.
+//
 // The hint is advisory. It changes scheduling and power behaviour, never
 // program semantics. Use it as the body of a bounded spin before falling
 // back to a kernel yield, never as a substitute for one on an unbounded wait.
