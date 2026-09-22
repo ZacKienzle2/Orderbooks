@@ -75,7 +75,7 @@ class engine {
     }
 
     [[gnu::hot]] void on_cancel(const cancel_msg& m) noexcept {
-        auto* o = book_.index().lookup(m.id);
+        auto* o = book_.index().take(m.id);
         if (o == nullptr)
             return;
         const auto cancel_side = o->s;
@@ -84,7 +84,6 @@ class engine {
             book_.bids().remove(*o);
         else
             book_.asks().remove(*o);
-        book_.index().erase(o->id);
         book_.arena().deallocate(o);
         mark_top_(cancel_side, cancel_px);
         publish_top_if_changed_();

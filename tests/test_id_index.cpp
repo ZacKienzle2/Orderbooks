@@ -89,7 +89,9 @@ TEST_CASE("id_index differential against std::unordered_map on random workloads"
                 break;
             }
             case 1: {
-                idx.erase(id);
+                const auto it = oracle.find(id);
+                const auto* expected = (it == oracle.end()) ? nullptr : it->second;
+                REQUIRE(idx.take(id) == expected);
                 oracle.erase(id);
                 break;
             }

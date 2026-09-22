@@ -111,23 +111,28 @@ class id_index {
         }
     }
 
-    void erase(order_id_t id) noexcept {
+    // Remove id and return the order it named, or nullptr when absent. A
+    // cancel needs both, and this is one probe where a lookup followed by an
+    // erase hashes and walks the chain twice.
+    [[nodiscard]] order* take(order_id_t id) noexcept {
         assert(id != empty_key && "id_index: sentinel id is reserved");
         if (!storage_initialised_) [[unlikely]]
-            return;
+            return nullptr;
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
-            const order_id_t k = slots_[i].key;
-            if (k == empty_key)
-                return;
-            if (k == id) {
+            const slot s = slots_[i];
+            if (s.key == id) [[likely]] {
                 shift_back_from_(i);
                 --size_;
-                return;
+                return s.value;
             }
+            if (s.key == empty_key)
+                return nullptr;
             i = (i + 1) & mask_;
         }
     }
+
+    void erase(order_id_t id) noexcept { (void)take(id); }
 
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
