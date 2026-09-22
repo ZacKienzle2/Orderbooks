@@ -86,6 +86,7 @@ update the index below. The template is the scaffold.
 | [0037](0037-clordid-chaining-on-cancel-replace.md)         | Accepted               | Modify carries the next ClOrdID                                 |
 | [0038](0038-group-prefetch-across-drained-batch.md)        | Accepted               | Prefetch across the commands of a drained batch                 |
 | [0039](0039-release-store-processed-counter.md)            | Accepted               | Publish the processed counter with a release store              |
+| [0040](0040-publish-each-ring-slot-in-its-own-line.md)     | Accepted               | Publish each ring slot through a sequence in its own line       |
 
 ## References
 
