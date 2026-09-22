@@ -77,6 +77,14 @@ within one invocation:
 The p50 was lower in all nine pairs. The streaming `bench_producer_consumer`
 stayed inside its spread.
 
+That harness started its latency phase with the egress rings still full and
+counted no dropped events. Once it drained the backlog first and reported drops,
+nine further runs with only this file differing gave 111.9 against 167.8
+Morders/s at the median, 102,097 against 32,579 dropped events, and 914 against
+707 cycles at p50 and 25,391 against 6,935 at p99. The merger sheds fewer events
+at the higher rate, because it too no longer reads a line the producer rewrites
+on every push.
+
 ### Consequences
 
 - Positive: a handoff moves one line, and the round trip across two rings fell
