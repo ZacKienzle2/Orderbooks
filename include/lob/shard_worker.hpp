@@ -104,15 +104,15 @@ inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan = {})
 }
 
 // Drive one shard. The worker pins and names itself, then drains its ingress
-// ring into the engine until stop is requested, incrementing processed after
-// each command so a producer can observe quiescence.
+// ring into the engine until stop is requested, publishing processed after
+// each drained batch so a producer can observe quiescence.
 //
 // On a stop request the worker drains the ring to empty before returning. The
 // acquire load of stop pairs with the controller's release store, so every
 // command the producer pushed before requesting stop is visible and applied,
 // provided the producer stops feeding before it requests stop. Each processed
-// increment is a release store, so a drain poll that observes the final count
-// has also acquired every engine mutation this worker made.
+// update is a release store, so a drain poll that observes the final count has
+// also acquired every engine mutation this worker made.
 template <class Engine, std::size_t Capacity>
 inline void drive_shard(std::size_t idx,
                         spsc_ring<command, Capacity>& ingress,
@@ -128,21 +128,25 @@ inline void drive_shard(std::size_t idx,
     (void)set_this_thread_name(name);
 
     // The processed counter is read only by a draining producer, never on the
-    // matching path, so its update is batched. Draining up to a batch of
-    // commands before one release store amortises the atomic read-modify-write
-    // and its fence over the batch, while a single release store still
-    // publishes every engine mutation in it to the producer's acquire load.
+    // matching path, so it is published once per drained batch. This worker is
+    // its only writer, so the running total lives in a local and each batch
+    // publishes it with a release store, which is a plain store on x86 and
+    // stlr on AArch64 where a fetch_add is a locked read-modify-write. The
+    // release store orders every engine mutation of the batch before the count
+    // a producer's acquire load observes, exactly as the read-modify-write did.
     // Each claim is applied through apply_batch, so the prefetch stages look
     // ahead within whatever the ring delivered.
     constexpr unsigned batch = 64;
     const auto run = [&eng, &cfg](unsigned n, auto at) noexcept {
         apply_batch(eng, n, at, cfg.prefetch);
     };
+    std::uint64_t done = processed.load(std::memory_order_relaxed);
     unsigned idle = 0;
     for (;;) {
         const unsigned n = ingress.consume_claim(batch, run);
         if (n > 0) {
-            processed.fetch_add(n, std::memory_order_release);
+            done += n;
+            processed.store(done, std::memory_order_release);
             idle = 0;
             continue;
         }
@@ -152,8 +156,10 @@ inline void drive_shard(std::size_t idx,
                  k = ingress.consume_claim(batch, run)) {
                 m += k;
             }
-            if (m > 0)
-                processed.fetch_add(m, std::memory_order_release);
+            if (m > 0) {
+                done += m;
+                processed.store(done, std::memory_order_release);
+            }
             return;
         }
         if (idle < cfg.spin_budget) {

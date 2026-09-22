@@ -78,13 +78,14 @@ update the index below. The template is the scaffold.
 | [0029](0029-guard-top-recompute.md)                        | Accepted               | Guard the top-of-book recompute behind a price test             |
 | [0030](0030-end-to-end-load-harness.md)                    | Accepted               | End-to-end load harness for system throughput and latency       |
 | [0031](0031-binary-order-entry-gateway.md)                 | Accepted               | Binary order-entry gateway over TCP                             |
-| [0032](0032-batch-worker-processed-counter.md)             | Accepted               | Batch the shard worker's processed counter                      |
+| [0032](0032-batch-worker-processed-counter.md)             | Superseded by ADR-0039 | Batch the shard worker's processed counter                      |
 | [0033](0033-aos-id-index-layout.md)                        | Accepted               | AoS slot layout for the id_index                                |
 | [0034](0034-engine-cache-floor.md)                         | Accepted               | Engine hot path is at its cache-miss floor                      |
 | [0035](0035-reject-event-on-publisher-seam.md)             | Accepted               | Arena exhaustion publishes a reject event                       |
 | [0036](0036-disjoint-seq-ranges-per-shard.md)              | Accepted               | Shards seed disjoint event-sequence ranges                      |
 | [0037](0037-clordid-chaining-on-cancel-replace.md)         | Accepted               | Modify carries the next ClOrdID                                 |
 | [0038](0038-group-prefetch-across-drained-batch.md)        | Accepted               | Prefetch across the commands of a drained batch                 |
+| [0039](0039-release-store-processed-counter.md)            | Accepted               | Publish the processed counter with a release store              |
 
 ## References
 
