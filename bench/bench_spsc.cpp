@@ -1,6 +1,8 @@
+#include <lob/messages.hpp>
 #include <lob/spsc_ring.hpp>
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <thread>
 
@@ -64,5 +66,41 @@ void bench_producer_consumer(benchmark::State& state) {
 }
 
 BENCHMARK(bench_producer_consumer)->UseRealTime()->MinTime(0.5);
+
+// One command out on one ring and back on another, the handoff every order pays
+// twice on its way through the runtime, ingress to the worker and egress to the
+// merger. An iteration is one round trip, so half of it is the one-way latency
+// of a ring with nothing queued.
+void bench_round_trip(benchmark::State& state) {
+    using ring_t = lob::spsc_ring<lob::command, 1024>;
+    ring_t out;
+    ring_t back;
+    std::atomic<bool> stop{false};
+
+    std::thread echo{[&] {
+        lob::command c;
+        while (!stop.load(std::memory_order_relaxed)) {
+            if (out.try_pop(c)) {
+                while (!back.try_push(c)) {
+                }
+            }
+        }
+    }};
+
+    const lob::command sent = lob::command::make_cancel({.id = 1});
+    lob::command got;
+    for (auto _ : state) {
+        while (!out.try_push(sent)) {
+        }
+        while (!back.try_pop(got)) {
+        }
+        benchmark::DoNotOptimize(got);
+    }
+
+    stop.store(true, std::memory_order_relaxed);
+    echo.join();
+}
+
+BENCHMARK(bench_round_trip)->UseRealTime()->MinTime(0.5);
 
 }  // namespace
