@@ -1,23 +1,19 @@
 name: CMake
 
+# No paths filter. This is the correctness gate, and a filter that omits one
+# of the build's directories is silence rather than a failure: the workflow
+# does not run, nothing reports it, and a green pull request means only that
+# nothing was built. PR #56 was that for apps/**, and fuzz/** was the same hole
+# again once add_subdirectory(fuzz) arrived and clang-tidy began reading those
+# sources. actionlint validates the glob syntax of a filter and no tool checks
+# whether one covers the build, so the filter was a list kept by hand.
+#
+# It bought runner minutes, which GitHub does not charge for a public
+# repository on standard runners, and main requires no status check, so a
+# skipped workflow was never what let a pull request merge either.
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "include/**"
-      - "src/**"
-      - "apps/**"
-      - "tests/**"
-      - "bench/**"
-      - "cmake/**"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - "vcpkg.json"
-      - "vcpkg-configuration.json"
-      - ".clang-format"
-      - ".clang-tidy"
-      - ".github/actions/cmake-preset/action.yml"
-      - ".github/workflows/cmake.yml"
   workflow_dispatch: {}
 
 permissions:
