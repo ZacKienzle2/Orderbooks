@@ -156,8 +156,9 @@ class shm_region {
                 // The peer must not map more than the owner sized, which would
                 // fault past the end of the segment on first touch.
                 struct stat st{};
-                if (::fstat(fd, &st) != 0 || static_cast<std::size_t>(st.st_size) < bytes) {
-                    r.err_ = ::fstat(fd, &st) == 0 ? EINVAL : errno;
+                const bool sized = ::fstat(fd, &st) == 0;
+                if (!sized || static_cast<std::size_t>(st.st_size) < bytes) {
+                    r.err_ = sized ? EINVAL : errno;
                     ::close(fd);
                     return r;
                 }
