@@ -24,6 +24,7 @@ set(LOB_PGO_PROFILE
     "${CMAKE_SOURCE_DIR}/artifacts/pgo/train.profdata"
     CACHE FILEPATH "Merged profile read when LOB_PGO=use")
 option(LOB_ENABLE_NATIVE "Enable -march=native (host-specific Release builds)" OFF)
+option(LOB_COVERAGE "Instrument for llvm-cov source-based coverage" OFF)
 
 include(StandardProjectSettings)
 include(CompilerFlags)

@@ -77,3 +77,23 @@ pgo-train ops="2000000" depth="40000":
 pgo-build:
     cmake -S . -B build/pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOB_PGO=use
     cmake --build build/pgo --parallel
+
+# Region, line and branch coverage of the library under the test suite.
+coverage:
+    cmake -S . -B build/coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLOB_COVERAGE=ON
+    cmake --build build/coverage --target lob_tests --parallel
+    mkdir -p artifacts/coverage
+    LLVM_PROFILE_FILE=artifacts/coverage/tests.profraw build/coverage/tests/lob_tests
+    llvm-profdata merge -sparse artifacts/coverage/tests.profraw -o artifacts/coverage/tests.profdata
+    llvm-cov report build/coverage/tests/lob_tests -instr-profile=artifacts/coverage/tests.profdata -ignore-filename-regex='(vcpkg|catch2|rapidcheck|/usr/|/tests/)'
+
+# What the fuzz corpora reach, replayed under the same instrumentation. A
+# corpus grown over minutes covers the parser further than the suite does, so
+# this is the honest figure for the code behind the harnesses.
+coverage-fuzz:
+    cmake -S . -B build/coverage-fuzz -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLOB_COVERAGE=ON -DLOB_BUILD_FUZZ=ON -DLOB_BUILD_TESTS=OFF -DLOB_BUILD_BENCH=OFF -DLOB_SANITIZER=""
+    cmake --build build/coverage-fuzz --parallel
+    mkdir -p artifacts/coverage
+    for t in fix_raw fix_framed snapshot_restore gateway_wire; do         LLVM_PROFILE_FILE="artifacts/coverage/$t.profraw"             build/coverage-fuzz/fuzz/lob_fuzz_$t "artifacts/fuzz/corpus/$t" -runs=0 >/dev/null 2>&1;     done
+    llvm-profdata merge -sparse artifacts/coverage/*.profraw -o artifacts/coverage/fuzz.profdata
+    llvm-cov report build/coverage-fuzz/fuzz/lob_fuzz_fix_raw -object build/coverage-fuzz/fuzz/lob_fuzz_fix_framed -object build/coverage-fuzz/fuzz/lob_fuzz_snapshot_restore -object build/coverage-fuzz/fuzz/lob_fuzz_gateway_wire -instr-profile=artifacts/coverage/fuzz.profdata -ignore-filename-regex='(vcpkg|/usr/|fuzz_)'

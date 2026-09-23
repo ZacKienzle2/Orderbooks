@@ -71,8 +71,22 @@ compile until it is handled.
 Measured on the development host, 30 seconds per harness: 21.5 million
 executions of `fix_raw`, 581 thousand of `fix_framed`, 541 thousand of
 `snapshot_restore` and 274 thousand of `gateway_wire`, with no crash, no
-sanitizer report and no timeout. The corpora are kept as CI artifacts so later
-runs start from the coverage earlier ones found.
+sanitizer report and no timeout.
+
+How much that is worth is measurable, because a corpus can be replayed under
+coverage instrumentation. Replaying the two parser corpora and reporting with
+llvm-cov:
+
+| Corpus age             | Parser lines | Parser branches |
+| ---------------------- | -----------: | --------------: |
+| 30 seconds per harness |        50.6% |           44.9% |
+| a few minutes          |        95.3% |           93.4% |
+
+The unit suite reaches 78.1% of the parser's lines and 72.1% of its branches. A
+corpus grown for a few minutes therefore covers the parser further than every
+hand-written parser test put together, which is the argument for keeping the
+corpora as CI artifacts rather than starting cold: the coverage is in the
+corpus, and a run that starts from it begins where the last one stopped.
 
 ### Consequences
 

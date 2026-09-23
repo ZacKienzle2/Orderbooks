@@ -94,3 +94,16 @@ elseif(LOB_PGO STREQUAL "use")
 elseif(NOT LOB_PGO STREQUAL "off")
   message(FATAL_ERROR "LOB_PGO must be off, generate or use")
 endif()
+
+# Source-based coverage instrumentation, which llvm-cov reads to report which regions, lines and
+# branches a run reached. Used by `just coverage` over the test suite and by `just coverage-fuzz` to
+# replay the fuzz corpora, which is how the parser's real coverage is measured: the corpora reach
+# parts of it no unit test does.
+if(LOB_COVERAGE)
+  if(MSVC)
+    message(WARNING "LOB_COVERAGE ignored on MSVC")
+  else()
+    target_compile_options(lob_compiler_flags INTERFACE -fprofile-instr-generate -fcoverage-mapping)
+    target_link_options(lob_compiler_flags INTERFACE -fprofile-instr-generate -fcoverage-mapping)
+  endif()
+endif()
