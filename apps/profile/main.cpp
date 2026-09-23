@@ -254,6 +254,7 @@ result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
     return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
+// cppcheck-suppress constParameterCallback  // one signature for the workload table
 result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t /*seed*/) {
     constexpr lob::tick_t px = mid;
     const lob::qty_t qd = depth;
