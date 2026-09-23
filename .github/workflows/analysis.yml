@@ -1,7 +1,12 @@
 name: Analysis
 
-# The analysers that need no compilation database, and the API documentation.
-# clang-tidy has its own job in cmake.yml because it does need one.
+# The analyser that needs no compilation database, and the API documentation.
+#
+# clang-tidy has its own job in cmake.yml, which configures the preset first and
+# so can resolve the dependencies' headers. Clang's path-sensitive analyser is
+# not run separately here: .clang-tidy already selects the clang-analyzer
+# checks, so that job runs it against a database that resolves every include,
+# where a standalone invocation here resolved none.
 
 on:
   pull_request:
@@ -22,7 +27,7 @@ concurrency:
 
 jobs:
   static:
-    name: cppcheck and the clang analyser
+    name: cppcheck
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -36,10 +41,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install the analysers
+      - name: Install cppcheck
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cppcheck clang
+          sudo apt-get install -y --no-install-recommends cppcheck
 
       # Suppressions live next to the code they cover, as cppcheck's own inline
       # comments, so there is no central list to drift from the source.
@@ -49,13 +54,6 @@ jobs:
             --std=c++20 --language=c++ --suppress=missingIncludeSystem \
             --suppress=unusedFunction --suppress=unmatchedSuppression \
             --error-exitcode=1 -q -I include -I . include/lob apps
-
-      - name: clang static analyser
-        run: |
-          for f in apps/*/main.cpp; do
-            clang++ --analyze -Xanalyzer -analyzer-output=text -std=c++20 \
-              -I include -I . "$f" -o /dev/null
-          done
 
   docs:
     name: Doxygen

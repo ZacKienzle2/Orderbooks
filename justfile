@@ -98,12 +98,12 @@ coverage-fuzz:
     llvm-profdata merge -sparse artifacts/coverage/*.profraw -o artifacts/coverage/fuzz.profdata
     llvm-cov report build/coverage-fuzz/fuzz/lob_fuzz_fix_raw -object build/coverage-fuzz/fuzz/lob_fuzz_fix_framed -object build/coverage-fuzz/fuzz/lob_fuzz_snapshot_restore -object build/coverage-fuzz/fuzz/lob_fuzz_gateway_wire -instr-profile=artifacts/coverage/fuzz.profdata -ignore-filename-regex='(vcpkg|/usr/|fuzz_)'
 
-# Static analysers that do not need a compilation database: cppcheck's own
-# checks and clang's path-sensitive analyser. clang-tidy is separate because it
-# does need one; `just lint` runs that.
-static preset=preset:
+# cppcheck, which needs no compilation database. Clang's path-sensitive
+# analyser is not run here: .clang-tidy already selects the clang-analyzer
+# checks, so `just lint` runs it against the preset's database, which resolves
+# the dependencies' headers where a standalone invocation does not.
+static:
     cppcheck --enable=warning,performance,portability,style --inline-suppr --std=c++20 --language=c++ --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=unmatchedSuppression --error-exitcode=1 -q -I include -I . include/lob apps
-    for f in apps/*/main.cpp; do         clang++ --analyze -Xanalyzer -analyzer-output=text -std=c++20 -I include -I . "$f" -o /dev/null;     done
 
 # API documentation from the headers. Graphs are drawn when graphviz is
 # installed and skipped when it is not, so the build works either way.
