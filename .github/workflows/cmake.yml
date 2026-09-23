@@ -138,11 +138,17 @@ jobs:
       # commands. They are generated during the build, which this job skips,
       # so clang-tidy cannot open them and reports a clang-diagnostic-error.
       # Disable scanning so the exported compile commands carry no modmap.
+      #
+      # The fuzz harnesses are built too, though this job compiles nothing,
+      # because their commands are what puts them in the database. Without
+      # them clang-tidy falls back to a guessed command carrying the build
+      # type's NDEBUG, which deletes the assertions the harnesses are written
+      # around and reports every variable they check as unused.
       - name: Configure the compilation database
         uses: ./.github/actions/cmake-preset
         with:
           preset: linux-clang-rel
-          configure-args: -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+          configure-args: -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DLOB_BUILD_FUZZ=ON
           build: "false"
 
       # cpp-linter runs clang-tidy over the files the pull request changed, with
