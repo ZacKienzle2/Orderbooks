@@ -153,7 +153,7 @@ TEST_CASE("shard_runtime matches a crossing pair and drains to empty", "[runtime
 
     REQUIRE(pub.fills.load() == 1);
 
-    const auto& book = rt.shard(rt.shard_index_for(sym)).book_view();
+    const auto& book = rt.shard(runtime_t::shard_index_for(sym)).book_view();
     REQUIRE_FALSE(book.bids().best().has_value());
     REQUIRE(book.asks().best() == 100);
     REQUIRE(book.asks().aggregate_at(100) == 6);
@@ -190,6 +190,6 @@ TEST_CASE("shard_runtime survives repeated start and stop cycles", "[runtime]") 
         rt.stop();
     }
 
-    const auto& book = rt.shard(rt.shard_index_for(sym)).book_view();
+    const auto& book = rt.shard(runtime_t::shard_index_for(sym)).book_view();
     REQUIRE_FALSE(book.bids().best().has_value());
 }

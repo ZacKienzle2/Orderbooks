@@ -64,7 +64,6 @@ designed for sub-microsecond order processing on Linux x86_64.
 
 ### Observability
 
-- Latency histograms via `nanobench` for tail-aware p50 / p99 / p99.9.
 - In-process HDR latency histogram (`lob::latency_histogram`) with O(1)
   allocation-free record and exact percentile queries for the engine's own
   timing loops.
@@ -118,7 +117,7 @@ uv run pre-commit install --install-hooks
 include/lob/    public headers (header-only domain types + engine ABI)
 src/lob/        translation units (build-only internals)
 tests/          Catch2 v3 unit + property tests, reference engine, replay fixtures
-bench/          Google Benchmark microbenches + nanobench tail reports
+bench/          Google Benchmark microbenches with HDR latency counters
 cmake/          warnings, sanitisers, hardening, dependencies modules
 scripts/        perfstat, formatting, lint, replay helpers
 docs/           design specs, dev guides, ADRs

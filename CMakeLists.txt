@@ -11,13 +11,22 @@ project(
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Build-shape switches must be declared before Dependencies.cmake runs so the conditional
-# find_package calls (Catch2, RapidCheck under LOB_BUILD_TESTS; Google Benchmark + nanobench under
-# LOB_BUILD_BENCH) see the correct values on the first configure of a clean build directory.
+# find_package calls (Catch2 under LOB_BUILD_TESTS; Google Benchmark under LOB_BUILD_BENCH) see the
+# correct values on the first configure of a clean build directory.
 option(LOB_BUILD_TESTS "Build unit and property tests" ON)
 option(LOB_BUILD_BENCH "Build microbenchmarks" ON)
 option(LOB_BUILD_FUZZ "Build libFuzzer harnesses (clang only)" OFF)
 option(LOB_ENABLE_LTO "Enable Link-Time Optimisation in Release" OFF)
+set(LOB_PGO
+    "off"
+    CACHE STRING "Profile-guided optimisation: off, generate, or use")
+set(LOB_PGO_PROFILE
+    "${CMAKE_SOURCE_DIR}/artifacts/pgo/train.profdata"
+    CACHE FILEPATH "Merged profile read when LOB_PGO=use")
 option(LOB_ENABLE_NATIVE "Enable -march=native (host-specific Release builds)" OFF)
+option(LOB_COVERAGE "Instrument for llvm-cov source-based coverage" OFF)
+option(LOB_HEADER_SELF_CONTAINMENT
+       "Compile each public header on its own, so analysers see every one" ON)
 
 include(StandardProjectSettings)
 include(CompilerFlags)
@@ -25,6 +34,7 @@ include(CompilerWarnings)
 include(Sanitizers)
 include(Hardening)
 include(Dependencies)
+include(HeaderSelfContainment)
 
 if(LOB_ENABLE_LTO)
   include(CheckIPOSupported)
@@ -36,6 +46,10 @@ if(LOB_ENABLE_LTO)
 endif()
 
 add_subdirectory(src/lob)
+
+if(LOB_HEADER_SELF_CONTAINMENT)
+  lob_add_header_self_containment_target(lob_header_tus)
+endif()
 add_subdirectory(apps/replay)
 add_subdirectory(apps/loadgen)
 add_subdirectory(apps/gateway)
@@ -49,6 +63,10 @@ endif()
 
 if(LOB_BUILD_BENCH)
   add_subdirectory(bench)
+endif()
+
+if(LOB_BUILD_FUZZ)
+  add_subdirectory(fuzz)
 endif()
 
 # Install rules deferred until the engine ABI is settled; consumers should currently embed the

@@ -1,10 +1,15 @@
 ---
-status: "Accepted"
+status: "Superseded by ADR-0039"
 date: "2026-06-20"
 deciders: ["Zac Kienzle"]
 ---
 
 # 0032. Batch the shard worker's processed counter
+
+> Superseded by [ADR-0039](0039-release-store-processed-counter.md). The
+> batching stands, and the per-batch release fetch_add became a release store of
+> the running total, since the worker is the counter's only writer. The
+> reasoning below is retained as the original record.
 
 ## Context and Problem Statement
 

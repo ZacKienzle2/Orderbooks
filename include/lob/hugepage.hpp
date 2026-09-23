@@ -102,10 +102,10 @@ class hugepage_region {
         constexpr int huge_2mb = 21 << 26;  // 2 MiB selector in the MAP_HUGE bitfield
 #endif
         const std::size_t rounded = round_up_(bytes, huge_page_bytes);
-        void* huge = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE,
-                            MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_2mb, -1, 0);
-        if (huge != MAP_FAILED) {
-            ptr_ = huge;
+        void* huge_map = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_2mb, -1, 0);
+        if (huge_map != MAP_FAILED) {
+            ptr_ = huge_map;
             mapped_bytes_ = rounded;
             backing_ = backing::huge;
             return;

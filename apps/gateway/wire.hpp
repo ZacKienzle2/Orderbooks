@@ -15,6 +15,15 @@
 
 namespace lob_gateway {
 
+// What a wire_order's op byte may say. The protocol defines these three and
+// nothing else, so the validator refuses any other value rather than letting
+// it fall through to a command the client did not ask for.
+enum class wire_op : std::uint8_t {
+    submit = 0,
+    cancel = 1,
+    modify = 2,
+};
+
 // Client -> gateway. Fixed layout, trivially copyable, read straight off the
 // socket. op selects the command; new_px is used only by modify.
 struct wire_order {
@@ -99,15 +108,21 @@ template <std::size_t Ticks>
 [[nodiscard]] bool validate_order(const wire_order& wo, lob::qty_t max_qty) noexcept {
     if (!valid_order_id(wo.id))
         return false;
-    switch (wo.op) {
-        case 0:
+    // An op the protocol does not define is refused outright. Treating an
+    // unknown byte as the last case would turn a client's typo, or a hostile
+    // record, into a modify of one of its own resting orders.
+    if (wo.op > static_cast<std::uint8_t>(wire_op::modify))
+        return false;
+    switch (static_cast<wire_op>(wo.op)) {
+        case wire_op::submit:
             return wo.px < Ticks && wo.qty > 0 && wo.qty <= max_qty &&
                    wo.tif <= static_cast<std::uint8_t>(lob::tif::fok);
-        case 1:
+        case wire_op::cancel:
             return true;  // cancel consumes only the id
-        default:
+        case wire_op::modify:
             return wo.new_px < Ticks && wo.qty > 0 && wo.qty <= max_qty;
     }
+    return false;
 }
 
 // Decode one wire_order into its command, run it on the engine, and fill the
@@ -124,8 +139,8 @@ void apply_order(lob::engine<accum_pub, Ticks, MaxOrders>& eng,
         return;
     }
     std::uint32_t status = 0;
-    switch (wo.op) {
-        case 0:
+    switch (static_cast<wire_op>(wo.op)) {
+        case wire_op::submit:
             eng.on_submit(lob::submit_msg{.id = wo.id,
                                           .px = wo.px,
                                           .qty = wo.qty,
@@ -143,11 +158,11 @@ void apply_order(lob::engine<accum_pub, Ticks, MaxOrders>& eng,
                 status = ack_accepted;
             }
             break;
-        case 1:
+        case wire_op::cancel:
             eng.on_cancel(lob::cancel_msg{.id = wo.id});
             status = ack_processed;
             break;
-        default:
+        case wire_op::modify:
             eng.on_modify(lob::modify_msg{.id = wo.id, .new_px = wo.new_px, .new_qty = wo.qty});
             status = ack_processed;
             break;

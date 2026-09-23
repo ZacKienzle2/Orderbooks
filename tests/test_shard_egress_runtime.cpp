@@ -150,7 +150,7 @@ TEST_CASE("shard_egress_runtime publishes a fill on the owning shard's egress ri
     }
     rt.drain();
 
-    const auto sh = rt.shard_index_for(sym);
+    const auto sh = runtime_t::shard_index_for(sym);
     std::size_t fills = 0;
     std::size_t tops = 0;
     lob::event e{};
@@ -175,7 +175,7 @@ TEST_CASE("shard_egress_runtime drops events when an undrained egress ring fills
     rt.start();
 
     constexpr lob::symbol_id_t sym = 7;
-    const auto sh = rt.shard_index_for(sym);
+    const auto sh = runtime_t::shard_index_for(sym);
     for (lob::order_id_t i = 1; i <= 60; ++i) {
         while (!rt.try_submit(sym, sub(i, static_cast<lob::tick_t>(i), 1, lob::side::bid))) {
         }

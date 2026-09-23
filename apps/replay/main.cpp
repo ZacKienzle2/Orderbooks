@@ -41,7 +41,9 @@ struct args {
            "  --accounts N     number of distinct account ids 1..N (default 4)\n"
            "  --self-cross K   0 cancel_newest, 1 cancel_oldest, 2 decrement_trade (default 0)\n"
            "  --help           show this help\n";
-    std::exit(code);
+    // std::exit is flagged mt-unsafe, but argument parsing runs
+    // single-threaded before the engine or any writer exists.
+    std::exit(code);  // NOLINT(concurrency-mt-unsafe)
 }
 
 args parse_args(int argc, char** argv) {
@@ -51,7 +53,7 @@ args parse_args(int argc, char** argv) {
         auto next = [&](const char* k) -> std::string {
             if (i + 1 >= argc) {
                 std::cerr << "missing value for " << k << "\n";
-                std::exit(2);
+                std::exit(2);  // NOLINT(concurrency-mt-unsafe) see usage()
             }
             return argv[++i];
         };

@@ -1,0 +1,88 @@
+name: Analysis
+
+# The analyser that needs no compilation database, and the API documentation.
+#
+# clang-tidy has its own job in cmake.yml, which configures the preset first and
+# so can resolve the dependencies' headers. Clang's path-sensitive analyser is
+# not run separately here: .clang-tidy already selects the clang-analyzer
+# checks, so that job runs it against a database that resolves every include,
+# where a standalone invocation here resolved none.
+
+on:
+  pull_request:
+    paths:
+      - "include/lob/**"
+      - "apps/**"
+      - "fuzz/**"
+      - "Doxyfile"
+      - ".github/workflows/analysis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analysis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: cppcheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cppcheck
+
+      # Suppressions live next to the code they cover, as cppcheck's own inline
+      # comments, so there is no central list to drift from the source.
+      - name: cppcheck
+        run: |
+          cppcheck --enable=warning,performance,portability,style --inline-suppr \
+            --std=c++20 --language=c++ --suppress=missingIncludeSystem \
+            --suppress=unusedFunction --suppress=unmatchedSuppression \
+            --error-exitcode=1 -q -I include -I . include/lob apps
+
+  docs:
+    name: Doxygen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install doxygen and graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends doxygen graphviz
+
+      - name: Build the API documentation
+        run: |
+          mkdir -p artifacts/doxygen
+          DOXYGEN_HAVE_DOT=YES doxygen Doxyfile
+
+      - name: Upload the generated documentation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: doxygen-html
+          path: artifacts/doxygen/html/
+          retention-days: 14

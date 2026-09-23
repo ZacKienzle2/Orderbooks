@@ -1,6 +1,7 @@
 #ifndef LOB_ID_INDEX_HPP
 #define LOB_ID_INDEX_HPP
 
+#include <lob/hash.hpp>
 #include <lob/order.hpp>
 #include <lob/types.hpp>
 
@@ -48,18 +49,6 @@ class id_index {
         order* value;
     };
 
-    [[nodiscard]] static constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
-        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
-        x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
-        return x ^ (x >> 31);
-    }
-
-    [[nodiscard]] static constexpr std::size_t round_up_pow2(std::size_t n) noexcept {
-        if (n <= 1)
-            return 1;
-        return std::size_t{1} << (64 - std::countl_zero(n - 1));
-    }
-
    public:
     id_index() : id_index(default_capacity_) {}
 
@@ -72,7 +61,7 @@ class id_index {
     // slab_arena treatment introduced in ADR-0016.
     explicit id_index(std::size_t capacity_hint) {
         const std::size_t want = capacity_hint == 0 ? default_capacity_ : capacity_hint;
-        const std::size_t cap = round_up_pow2(want * 2);
+        const std::size_t cap = std::bit_ceil(want * 2);
         slots_.reserve(cap);
         mask_ = cap - 1;
     }
@@ -99,6 +88,15 @@ class id_index {
         }
     }
 
+    // Start the cache miss on id's home slot and do nothing else. A consumer
+    // draining a batch calls it a few commands ahead of the lookup, insert or
+    // erase, so the miss overlaps the commands in between. Write intent,
+    // because cancel, modify and submit all write the slot they probe.
+    void prefetch(order_id_t id) const noexcept {
+        if (storage_initialised_) [[likely]]
+            __builtin_prefetch(&slots_[splitmix64(id) & mask_], 1, 3);
+    }
+
     [[nodiscard]] order* lookup(order_id_t id) const noexcept {
         if (!storage_initialised_) [[unlikely]]
             return nullptr;
@@ -113,23 +111,28 @@ class id_index {
         }
     }
 
-    void erase(order_id_t id) noexcept {
+    // Remove id and return the order it named, or nullptr when absent. A
+    // cancel needs both, and this is one probe where a lookup followed by an
+    // erase hashes and walks the chain twice.
+    [[nodiscard]] order* take(order_id_t id) noexcept {
         assert(id != empty_key && "id_index: sentinel id is reserved");
         if (!storage_initialised_) [[unlikely]]
-            return;
+            return nullptr;
         std::size_t i = splitmix64(id) & mask_;
         while (true) {
-            const order_id_t k = slots_[i].key;
-            if (k == empty_key)
-                return;
-            if (k == id) {
+            const slot s = slots_[i];
+            if (s.key == id) [[likely]] {
                 shift_back_from_(i);
                 --size_;
-                return;
+                return s.value;
             }
+            if (s.key == empty_key)
+                return nullptr;
             i = (i + 1) & mask_;
         }
     }
+
+    void erase(order_id_t id) noexcept { (void)take(id); }
 
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
 

@@ -79,6 +79,12 @@ void bench_steady_state_churn(benchmark::State& state) {
     live.reserve(n);
     for (std::size_t i = 0; i < n; ++i)
         live.push_back(arena.allocate());
+    if (n == 0) {
+        // The registered range starts at 64, so this cannot happen. Saying so
+        // is what lets the analyser see a divisor for the modulo below.
+        state.SkipWithError("bench_steady_state_churn needs a positive range");
+        return;
+    }
     std::size_t head = 0;
     for (auto _ : state) {
         arena.deallocate(live[head]);
