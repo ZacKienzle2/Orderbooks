@@ -110,8 +110,6 @@ class vector_snapshot_buffer {
 
     [[nodiscard]] std::size_t size() const noexcept { return bytes_.size(); }
 
-    [[nodiscard]] std::size_t cursor() const noexcept { return cursor_; }
-
    private:
     std::vector<std::byte> bytes_;
     std::size_t cursor_{0};

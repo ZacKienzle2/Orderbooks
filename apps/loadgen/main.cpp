@@ -82,12 +82,14 @@ struct latency_sink {
 struct args {
     std::uint64_t orders{20'000'000};
     bool pin{false};
+    bool direct{false};
 };
 
 [[noreturn]] void usage(int code) {
     std::cerr << "usage: lob_loadgen [options]\n"
                  "  --orders N   total orders to submit (default 20000000)\n"
                  "  --pin        pin shard workers to cores\n"
+                 "  --direct     no merger thread: the client drains the shard rings itself\n"
                  "  --help       show this help\n";
     // std::exit is flagged mt-unsafe, but arg parsing runs single-threaded
     // before any worker is spawned.
@@ -102,6 +104,8 @@ args parse_args(int argc, char** argv) {
             a.orders = std::strtoull(argv[++i], nullptr, 10);
         } else if (s == "--pin") {
             a.pin = true;
+        } else if (s == "--direct") {
+            a.direct = true;
         } else if (s == "--help") {
             usage(0);
         } else {
@@ -111,6 +115,14 @@ args parse_args(int argc, char** argv) {
     }
     return a;
 }
+
+// What the direct client claims from one shard per visit, and how often it
+// visits while producing. The batch is the merger's own bound, so both paths
+// claim the same way and the comparison is of the hop rather than of the claim
+// size. The interval is that bound shared among the shards, so a producer
+// running flat out still drains each ring before it can overflow.
+constexpr unsigned poll_batch_max = lob::merger_config{}.batch_max;
+constexpr std::uint64_t poll_interval = poll_batch_max / runtime_t::shard_count();
 
 lob::submit_msg ask(lob::order_id_t id) noexcept {
     return {.id = id,
@@ -146,8 +158,24 @@ int run(const args& a) {
     lob::egress_merger<runtime_t, latency_sink> merger{rt, sink,
                                                        lob::merger_config{.pin_thread = false}};
 
+    // The merged stream is one consumer of the per-shard rings, not the only
+    // one there could be (ADR-0021). With --direct the client drains them
+    // itself, which takes the merger thread out of the reply path: an event
+    // then crosses one core boundary, from the shard that produced it to the
+    // client, where the merged path crosses two. The client remains a single
+    // consumer per ring, which is the contract spsc_ring states.
+    const auto poll_all = [&rt, &sink]() noexcept {
+        unsigned n = 0;
+        for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
+            n += rt.poll_batch(s, poll_batch_max,
+                               [&sink](const lob::event& e) noexcept { sink.on_event(e, 0); });
+        }
+        return n;
+    };
+
     rt.start();
-    merger.start();
+    if (!a.direct)
+        merger.start();
 
     lob::order_id_t next = 1;
 
@@ -163,6 +191,10 @@ int run(const args& a) {
         while (!rt.try_submit(sym, bid(next++))) {
         }
         submitted += 2;
+        // Nobody else is draining in direct mode, so the producer has to, or
+        // the rings fill and the publisher starts dropping events.
+        if (a.direct && (i % poll_interval) == 0)
+            (void)poll_all();
     }
     rt.drain();
     const auto wall1 = std::chrono::steady_clock::now();
@@ -174,6 +206,8 @@ int run(const args& a) {
     // never comes, so let the merger take the whole backlog first.
     for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
         while (rt.egress_backlog(s) != 0) {
+            if (a.direct)
+                (void)poll_all();
             cpu_relax();
         }
     }
@@ -194,12 +228,21 @@ int run(const args& a) {
         while (!rt.try_submit(sym, bid(bid_id))) {
         }
         while (sink.samples.load(std::memory_order_acquire) == prev) {
+            if (a.direct)
+                (void)poll_all();
             cpu_relax();
         }
     }
 
     rt.drain();
-    merger.stop();
+    if (a.direct) {
+        // Whatever the workers published after the last poll still has to be
+        // taken before the run reports, or the event count understates.
+        while (poll_all() != 0) {
+        }
+    } else {
+        merger.stop();
+    }
     rt.stop();
 
     std::printf("throughput: orders=%llu  wall=%.3fs  %.2f Morders/s\n",

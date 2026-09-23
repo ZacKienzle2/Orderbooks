@@ -168,12 +168,6 @@ class shard_egress_runtime {
 
     [[nodiscard]] static constexpr std::size_t shard_count() noexcept { return NumShards; }
 
-    [[nodiscard]] static constexpr std::size_t ingress_capacity() noexcept {
-        return IngressCapacity;
-    }
-
-    [[nodiscard]] static constexpr std::size_t egress_capacity() noexcept { return EgressCapacity; }
-
    private:
     [[nodiscard]] bool enqueue_(symbol_id_t sym, const command& c) noexcept {
         const auto idx = shard_index(sym, NumShards);

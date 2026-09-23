@@ -44,58 +44,60 @@ update the index below. The template is the scaffold.
 
 ## Index
 
-| ID                                                              | Status                 | Title                                                           |
-| --------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------- |
-| [0000](0000-record-architecture-decisions.md)                   | Accepted               | Record architecture decisions                                   |
-| [0001](0001-cpp20-baseline.md)                                  | Accepted               | C++20 as the language baseline                                  |
-| [0002](0002-cmake-vcpkg-manifest-mode.md)                       | Accepted               | CMake 3.28 with vcpkg manifest mode                             |
-| [0003](0003-linux-x86-64-primary-macos-dev.md)                  | Accepted               | Linux x86_64 primary target, macOS for development              |
-| [0004](0004-dense-tick-ladder-book.md)                          | Accepted               | Dense tick-ladder order book representation                     |
-| [0005](0005-hierarchical-bitmap-best-price.md)                  | Accepted               | Hierarchical bitmap for best-price queries                      |
-| [0006](0006-slab-arena-intrusive-fifo.md)                       | Accepted               | Slab arena with intrusive FIFOs for orders                      |
-| [0007](0007-unordered-dense-id-index.md)                        | Superseded by ADR-0017 | ankerl::unordered_dense for the order-id index                  |
-| [0008](0008-single-thread-engine-spsc-boundary.md)              | Accepted               | Single-threaded engine with SPSC boundary rings                 |
-| [0009](0009-crtp-publisher-no-virtual-hot-path.md)              | Accepted               | CRTP and concepts in place of virtual functions on the hot path |
-| [0010](0010-conventional-commits-git-cliff-changelog.md)        | Accepted               | Conventional Commits with git-cliff-generated CHANGELOG         |
-| [0011](0011-tif-coverage-gtc-ioc-fok.md)                        | Accepted               | Time-in-force coverage: GTC, IOC, FOK                           |
-| [0012](0012-self-cross-policy-configurable.md)                  | Accepted               | Self-cross policy is a construction-time configuration          |
-| [0013](0013-account-aware-self-cross.md)                        | Accepted               | Account-aware self-cross detection and enforcement              |
-| [0014](0014-snapshot-wire-format.md)                            | Accepted               | Snapshot wire format for warm-start                             |
-| [0015](0015-multi-symbol-shard-router.md)                       | Accepted               | Multi-symbol shard router                                       |
-| [0016](0016-numa-first-touch-arena.md)                          | Accepted               | NUMA-correct first-touch initialisation for the slab arena      |
-| [0017](0017-soa-open-addressed-id-index.md)                     | Superseded by ADR-0033 | Open-addressed SoA hash table for the id_index                  |
-| [0018](0018-zero-copy-fix-order-entry-parser.md)                | Accepted               | Zero-copy FIX 4.4 order-entry parser                            |
-| [0019](0019-threaded-shard-runtime-core-pinned-workers.md)      | Accepted               | Threaded shard runtime with core-pinned workers                 |
-| [0020](0020-per-shard-egress-rings.md)                          | Accepted               | Per-shard egress rings for the threaded runtime                 |
-| [0021](0021-merging-egress-consumer.md)                         | Accepted               | Single-threaded merging egress consumer                         |
-| [0022](0022-publisher-seam-for-merged-egress.md)                | Accepted               | Publisher-concept seam for the merged egress stream             |
-| [0023](0023-hugepage-backed-arena.md)                           | Accepted               | Huge-page-backed slab arena                                     |
-| [0024](0024-hdr-latency-histogram.md)                           | Superseded by ADR-0045 | From-scratch HDR histogram for latency measurement              |
-| [0025](0025-match-sweep-prefetch.md)                            | Superseded by ADR-0027 | Software prefetch and invariant hoist in the match sweep        |
-| [0026](0026-absolute-latency-ceiling-gate.md)                   | Superseded             | Absolute latency-ceiling gate in CI                             |
-| [0027](0027-match-sweep-prefetch-reverted.md)                   | Accepted               | Match-sweep prefetch measured and reverted                      |
-| [0028](0028-in-place-modify-relink.md)                          | Accepted               | In-place relink for a resting price-move modify                 |
-| [0029](0029-guard-top-recompute.md)                             | Accepted               | Guard the top-of-book recompute behind a price test             |
-| [0030](0030-end-to-end-load-harness.md)                         | Accepted               | End-to-end load harness for system throughput and latency       |
-| [0031](0031-binary-order-entry-gateway.md)                      | Accepted               | Binary order-entry gateway over TCP                             |
-| [0032](0032-batch-worker-processed-counter.md)                  | Superseded by ADR-0039 | Batch the shard worker's processed counter                      |
-| [0033](0033-aos-id-index-layout.md)                             | Accepted               | AoS slot layout for the id_index                                |
-| [0034](0034-engine-cache-floor.md)                              | Accepted               | Engine hot path is at its cache-miss floor                      |
-| [0035](0035-reject-event-on-publisher-seam.md)                  | Accepted               | Arena exhaustion publishes a reject event                       |
-| [0036](0036-disjoint-seq-ranges-per-shard.md)                   | Accepted               | Shards seed disjoint event-sequence ranges                      |
-| [0037](0037-clordid-chaining-on-cancel-replace.md)              | Accepted               | Modify carries the next ClOrdID                                 |
-| [0038](0038-group-prefetch-across-drained-batch.md)             | Accepted               | Prefetch across the commands of a drained batch                 |
-| [0039](0039-release-store-processed-counter.md)                 | Accepted               | Publish the processed counter with a release store              |
-| [0040](0040-publish-each-ring-slot-in-its-own-line.md)          | Accepted               | Publish each ring slot through a sequence in its own line       |
-| [0041](0041-lazy-fifo-deletion-measured-and-rejected.md)        | Rejected               | Lazy deletion in the level FIFO measured and rejected           |
-| [0042](0042-engine-assigned-order-handles.md)                   | Accepted               | Engine-assigned order handles                                   |
-| [0044](0044-library-spsc-queues-measured-against-the-ring.md)   | Accepted               | Library SPSC queues measured against the ring                   |
-| [0045](0045-hdrhistogram-c-for-latency.md)                      | Accepted               | HdrHistogram_c for latency measurement                          |
-| [0046](0046-library-hash-tables-measured-and-rejected.md)       | Accepted               | Library hash tables measured and rejected for the id index      |
-| [0047](0047-structural-index-parse-measured-and-rejected.md)    | Rejected               | Structural-index FIX parse measured and rejected                |
-| [0048](0048-shared-memory-client-channel.md)                    | Accepted               | Shared-memory channel for local order entry                     |
-| [0049](0049-property-and-model-based-testing.md)                | Accepted               | Property and model-based testing instead of hand-rolled streams |
-| [0050](0050-coverage-guided-fuzzing-at-the-trust-boundaries.md) | Accepted               | Coverage-guided fuzzing at the trust boundaries                 |
+| ID                                                              | Status                 | Title                                                             |
+| --------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------- |
+| [0000](0000-record-architecture-decisions.md)                   | Accepted               | Record architecture decisions                                     |
+| [0001](0001-cpp20-baseline.md)                                  | Accepted               | C++20 as the language baseline                                    |
+| [0002](0002-cmake-vcpkg-manifest-mode.md)                       | Accepted               | CMake 3.28 with vcpkg manifest mode                               |
+| [0003](0003-linux-x86-64-primary-macos-dev.md)                  | Accepted               | Linux x86_64 primary target, macOS for development                |
+| [0004](0004-dense-tick-ladder-book.md)                          | Accepted               | Dense tick-ladder order book representation                       |
+| [0005](0005-hierarchical-bitmap-best-price.md)                  | Accepted               | Hierarchical bitmap for best-price queries                        |
+| [0006](0006-slab-arena-intrusive-fifo.md)                       | Accepted               | Slab arena with intrusive FIFOs for orders                        |
+| [0007](0007-unordered-dense-id-index.md)                        | Superseded by ADR-0017 | ankerl::unordered_dense for the order-id index                    |
+| [0008](0008-single-thread-engine-spsc-boundary.md)              | Accepted               | Single-threaded engine with SPSC boundary rings                   |
+| [0009](0009-crtp-publisher-no-virtual-hot-path.md)              | Accepted               | CRTP and concepts in place of virtual functions on the hot path   |
+| [0010](0010-conventional-commits-git-cliff-changelog.md)        | Accepted               | Conventional Commits with git-cliff-generated CHANGELOG           |
+| [0011](0011-tif-coverage-gtc-ioc-fok.md)                        | Accepted               | Time-in-force coverage: GTC, IOC, FOK                             |
+| [0012](0012-self-cross-policy-configurable.md)                  | Accepted               | Self-cross policy is a construction-time configuration            |
+| [0013](0013-account-aware-self-cross.md)                        | Accepted               | Account-aware self-cross detection and enforcement                |
+| [0014](0014-snapshot-wire-format.md)                            | Accepted               | Snapshot wire format for warm-start                               |
+| [0015](0015-multi-symbol-shard-router.md)                       | Accepted               | Multi-symbol shard router                                         |
+| [0016](0016-numa-first-touch-arena.md)                          | Accepted               | NUMA-correct first-touch initialisation for the slab arena        |
+| [0017](0017-soa-open-addressed-id-index.md)                     | Superseded by ADR-0033 | Open-addressed SoA hash table for the id_index                    |
+| [0018](0018-zero-copy-fix-order-entry-parser.md)                | Accepted               | Zero-copy FIX 4.4 order-entry parser                              |
+| [0019](0019-threaded-shard-runtime-core-pinned-workers.md)      | Accepted               | Threaded shard runtime with core-pinned workers                   |
+| [0020](0020-per-shard-egress-rings.md)                          | Accepted               | Per-shard egress rings for the threaded runtime                   |
+| [0021](0021-merging-egress-consumer.md)                         | Accepted               | Single-threaded merging egress consumer                           |
+| [0022](0022-publisher-seam-for-merged-egress.md)                | Accepted               | Publisher-concept seam for the merged egress stream               |
+| [0023](0023-hugepage-backed-arena.md)                           | Accepted               | Huge-page-backed slab arena                                       |
+| [0024](0024-hdr-latency-histogram.md)                           | Superseded by ADR-0045 | From-scratch HDR histogram for latency measurement                |
+| [0025](0025-match-sweep-prefetch.md)                            | Superseded by ADR-0027 | Software prefetch and invariant hoist in the match sweep          |
+| [0026](0026-absolute-latency-ceiling-gate.md)                   | Superseded             | Absolute latency-ceiling gate in CI                               |
+| [0027](0027-match-sweep-prefetch-reverted.md)                   | Accepted               | Match-sweep prefetch measured and reverted                        |
+| [0028](0028-in-place-modify-relink.md)                          | Accepted               | In-place relink for a resting price-move modify                   |
+| [0029](0029-guard-top-recompute.md)                             | Accepted               | Guard the top-of-book recompute behind a price test               |
+| [0030](0030-end-to-end-load-harness.md)                         | Accepted               | End-to-end load harness for system throughput and latency         |
+| [0031](0031-binary-order-entry-gateway.md)                      | Accepted               | Binary order-entry gateway over TCP                               |
+| [0032](0032-batch-worker-processed-counter.md)                  | Superseded by ADR-0039 | Batch the shard worker's processed counter                        |
+| [0033](0033-aos-id-index-layout.md)                             | Accepted               | AoS slot layout for the id_index                                  |
+| [0034](0034-engine-cache-floor.md)                              | Accepted               | Engine hot path is at its cache-miss floor                        |
+| [0035](0035-reject-event-on-publisher-seam.md)                  | Accepted               | Arena exhaustion publishes a reject event                         |
+| [0036](0036-disjoint-seq-ranges-per-shard.md)                   | Accepted               | Shards seed disjoint event-sequence ranges                        |
+| [0037](0037-clordid-chaining-on-cancel-replace.md)              | Accepted               | Modify carries the next ClOrdID                                   |
+| [0038](0038-group-prefetch-across-drained-batch.md)             | Accepted               | Prefetch across the commands of a drained batch                   |
+| [0039](0039-release-store-processed-counter.md)                 | Accepted               | Publish the processed counter with a release store                |
+| [0040](0040-publish-each-ring-slot-in-its-own-line.md)          | Accepted               | Publish each ring slot through a sequence in its own line         |
+| [0041](0041-lazy-fifo-deletion-measured-and-rejected.md)        | Rejected               | Lazy deletion in the level FIFO measured and rejected             |
+| [0042](0042-engine-assigned-order-handles.md)                   | Accepted               | Engine-assigned order handles                                     |
+| [0044](0044-library-spsc-queues-measured-against-the-ring.md)   | Accepted               | Library SPSC queues measured against the ring                     |
+| [0045](0045-hdrhistogram-c-for-latency.md)                      | Accepted               | HdrHistogram_c for latency measurement                            |
+| [0046](0046-library-hash-tables-measured-and-rejected.md)       | Accepted               | Library hash tables measured and rejected for the id index        |
+| [0047](0047-structural-index-parse-measured-and-rejected.md)    | Rejected               | Structural-index FIX parse measured and rejected                  |
+| [0048](0048-shared-memory-client-channel.md)                    | Accepted               | Shared-memory channel for local order entry                       |
+| [0049](0049-property-and-model-based-testing.md)                | Accepted               | Property and model-based testing instead of hand-rolled streams   |
+| [0050](0050-coverage-guided-fuzzing-at-the-trust-boundaries.md) | Accepted               | Coverage-guided fuzzing at the trust boundaries                   |
+| [0051](0051-compiler-directed-optimisation.md)                  | Accepted               | Compiler-directed optimisation: remarks surveyed, profile adopted |
+| [0052](0052-the-merger-is-not-on-the-reply-path.md)             | Accepted               | The merger belongs to consumers that need a total order           |
 
 ## References
 
