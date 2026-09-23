@@ -1,7 +1,10 @@
 # Written by copier. Do not edit by hand: `copier update` rewrites it, and a
 # hand-edited answer is the drift this template exists to remove.
-_commit: 674c521
+_commit: v1.2.0
 _src_path: https://github.com/ZacKienzle2/repo-template.git
+cpp_sanitizer_presets: {}
+cpp_source_dir: .
+gitattributes_own: []
 github_repository: ZacKienzle2/Orderbooks
 gitignore_own:
 - /out/
@@ -13,10 +16,21 @@ gitignore_own:
 - perf.data.old
 - '*.profraw'
 - '*.profdata'
+has_adrs: false
+has_ast_grep: false
+has_chezmoi: false
+has_cog: false
 has_cpp: true
+has_discussions: true
 has_generated_changelog: true
 has_import_linter: false
 has_latex: false
 has_node: false
 has_notebooks: false
 has_python: true
+has_snakemake: false
+is_public: true
+is_template: false
+mypy_overrides: {}
+precommit_exclude_own: []
+track_benchmarks: false

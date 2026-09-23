@@ -1,28 +1,24 @@
 {
   "[c]": {
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-    "editor.tabSize": 4
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
   "[cmake]": {
-    "editor.defaultFormatter": "cheshirekow.cmake-format",
-    "editor.tabSize": 2
+    "editor.defaultFormatter": "cheshirekow.cmake-format"
   },
   "[cpp]": {
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-    "editor.tabSize": 4
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
   "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.tabSize": 2
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.tabSize": 2
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.rulers": [80],
-    "editor.tabSize": 2,
+    "editor.rulers": [
+      80
+    ],
     "editor.wordWrap": "off"
   },
   "[python]": {
@@ -31,29 +27,28 @@
     },
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
-  "[toml]": {
-    "editor.tabSize": 2
-  },
   "[yaml]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.tabSize": 2
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "cmake.configureOnOpen": false,
   "cmake.useCMakePresets": "always",
   "editor.formatOnSave": true,
-  "editor.insertSpaces": true,
-  "editor.rulers": [72, 100, 120],
-  "editor.tabSize": 4,
-  "files.encoding": "utf8",
-  "files.eol": "\n",
-  "files.insertFinalNewline": true,
+  "editor.rulers": [
+    72,
+    100,
+    120
+  ],
   "files.trimFinalNewlines": true,
-  "files.trimTrailingWhitespace": true,
   "git.confirmSync": true,
   "git.enableSmartCommit": false,
   "git.inputValidationLength": 72,
   "git.inputValidationSubjectLength": 72,
   "git.useEditorAsCommitInput": true,
+  "material-icon-theme.folders.associations": {
+    "references": "bibliography",
+    "results": "dist",
+    "workflow": "pipe"
+  },
   "yaml.schemas": {
     "https://json.schemastore.org/dependabot-2.0.json": ".github/dependabot.yml",
     "https://json.schemastore.org/github-issue-forms.json": ".github/ISSUE_TEMPLATE/*.yml",

@@ -42,6 +42,7 @@ def _parse_argv() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Draw the dashboard, reading the log and benchmark paths from the sidebar."""
     args = _parse_argv()
     st.set_page_config(page_title="Orderbooks", layout="wide")
     st.title("Orderbooks dashboard")
@@ -61,18 +62,20 @@ def main() -> None:
         f"**trades** {len(log.trades)}  |  **self-trades** {len(log.self_trades)}"
     )
 
-    tab_top, tab_depth, tab_flow, tab_heatmap = st.tabs([
-        "Top-of-book",
-        "Depth snapshot",
-        "Fill density",
-        "Occupancy heatmap",
-    ])
+    tab_top, tab_depth, tab_flow, tab_heatmap = st.tabs(
+        [
+            "Top-of-book",
+            "Depth snapshot",
+            "Fill density",
+            "Occupancy heatmap",
+        ]
+    )
 
     with tab_top:
         st.pyplot(top_series.render(log))
 
     with tab_depth:
-        max_seq = int(log.tops["seq"].max()) if not log.tops.empty else 0
+        max_seq = 0 if log.tops.empty else int(log.tops["seq"].to_numpy().max())
         chosen = st.slider("Sequence", 1, max(1, max_seq), value=max_seq)
         st.pyplot(depth.render(depth.at_seq(log, chosen)))
 

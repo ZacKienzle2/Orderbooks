@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
-from .event_log import EventLog
+from .event_log import NoTopEventsError
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from matplotlib.figure import Figure
+
+    from .event_log import EventLog
 
 
-def render(log: EventLog, output: str | Path | None = None) -> plt.Figure:
+def render(log: EventLog, output: str | Path | None = None) -> Figure:
     """Render the top-of-book time series.
 
     The x axis is the event sequence; the y axis is price in ticks. Best bid
@@ -19,7 +26,7 @@ def render(log: EventLog, output: str | Path | None = None) -> plt.Figure:
     Returns the matplotlib Figure; saves to `output` if a path is given.
     """
     if log.tops.empty:
-        raise ValueError("event log has no top events")
+        raise NoTopEventsError
 
     tops = log.tops.sort_values("seq")
 

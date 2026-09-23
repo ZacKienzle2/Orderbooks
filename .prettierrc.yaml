@@ -1,6 +1,22 @@
+# prettier's defaults are the base. The widths are the template's, so
+# .editorconfig and the editor rulers state the same numbers.
 proseWrap: always
 printWidth: 80
 overrides:
   - files: ["*.yml", "*.yaml", ".clang-*", "*.cff"]
     options:
       printWidth: 120
+  # The VS Code files are serialised by Jinja's tojson with an indent of 2,
+  # which prints as JSON.stringify does. prettier's json-stringify parser keeps
+  # that whitespace, where the json parser folds a short array onto one line
+  # and copier update then conflicts on the folded lines.
+  - files: [".vscode/*.json"]
+    options:
+      parser: json-stringify
+  # Three documents the template writes with an answer inside a line of prose:
+  # the repository URL in CONTRIBUTING.md and SUPPORT.md, the package name in
+  # WORKFLOW.md. Reflowing at the print width would move a line break by the
+  # length of the answer, so the wrapping stays the source's.
+  - files: ["CONTRIBUTING.md", "SUPPORT.md", "WORKFLOW.md"]
+    options:
+      proseWrap: preserve

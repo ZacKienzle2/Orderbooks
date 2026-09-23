@@ -1,5 +1,9 @@
-# Assembled by copier from github.com/gitattributes/gitattributes; the source
-# files are in the template repository, not here.
+# Assembled by copier from github.com/gitattributes/gitattributes, the
+# published collection. The template repository keeps upstream's files
+# unedited, fetched by vendir at the commit its vendir.lock.yml records, and
+# which of them apply follows the answers in .copier-answers.yml. A rule of
+# this repository's own, such as a Git LFS filter, is the gitattributes_own
+# answer, rendered at the end, so nothing in this file is written by hand.
 # Common settings that generally should always be used with your language specific settings
 
 # Auto detect text files and perform LF normalization
@@ -99,7 +103,6 @@
 .gitignore     export-ignore
 .gitkeep       export-ignore
 
-
 # Sources
 *.c     text diff=cpp
 *.cc    text diff=cpp
@@ -137,7 +140,6 @@
 *.exe   binary
 *.out   binary
 *.app   binary
-
 
 # Basic .gitattributes for a python repo.
 

@@ -2,9 +2,16 @@
 # it reads the generated ignore file rather than repeating what that lists.
 gitignore: true
 
-config:
-  default: true
+# CHANGELOG.md is git-cliff's rendering of the commit history, so a rule firing
+# on it asks for an edit the next regeneration discards. .vale.ini gives it an
+# empty BasedOnStyles for the same reason, and a generated file is exempted once
+# rather than a rule at a time.
+ignores:
+  - CHANGELOG.md
 
+# Every rule is on unless disabled: markdownlint enables all rules when the
+# configuration has no default key, so none is set.
+config:
   MD013: false
   MD033: false
   MD041: false

@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .event_log import EventLog
+from .event_log import NoTopEventsError
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from matplotlib.figure import Figure
+
+    from .event_log import EventLog
 
 
 @dataclass(slots=True, frozen=True)
@@ -38,7 +45,7 @@ def at_seq(log: EventLog, seq: int) -> BookSnapshot:
     on the interactive path.
     """
     if log.tops.empty:
-        raise ValueError("event log has no top events")
+        raise NoTopEventsError
     seqs = log.tops["seq"].to_numpy()
     idx = int(np.searchsorted(seqs, seq, side="right")) - 1
     if idx < 0:
@@ -53,7 +60,7 @@ def at_seq(log: EventLog, seq: int) -> BookSnapshot:
     )
 
 
-def render(snapshot: BookSnapshot, output: str | Path | None = None) -> plt.Figure:
+def render(snapshot: BookSnapshot, output: str | Path | None = None) -> Figure:
     """Render a horizontal bid/ask depth bar.
 
     Bids on the negative axis, asks on the positive axis. Useful in the
