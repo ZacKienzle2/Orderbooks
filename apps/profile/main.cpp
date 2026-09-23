@@ -296,8 +296,8 @@ struct args {
     std::uint64_t ops{20'000'000};
     std::size_t depth{40'000};
     std::uint64_t seed{0xC0FFEEULL};
-    unsigned ahead{lob::prefetch_plan{}.first_ahead};
-    unsigned ahead2{lob::prefetch_plan{}.second_ahead};
+    unsigned ahead{lob::prefetch_plan{}.index_ahead};
+    unsigned ahead2{lob::prefetch_plan{}.order_ahead};
     unsigned batch{64};
     bool rename{false};
     bool handles{false};
@@ -343,7 +343,7 @@ result run_stream(Engine& eng, const args& a) {
     std::vector<std::size_t> owner;
     cmds.reserve(a.batch + 1);
     owner.reserve(a.batch + 1);
-    const lob::prefetch_plan plan{.first_ahead = a.ahead, .second_ahead = a.ahead2};
+    const lob::prefetch_plan plan{.index_ahead = a.ahead, .order_ahead = a.ahead2};
     std::uint64_t cyc = 0;
     std::uint64_t op = 0;
     while (op < a.ops) {

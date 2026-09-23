@@ -314,11 +314,11 @@ TEST_CASE("prefetching batch drain matches reference", "[engine][differential][p
     // match the reference at every distance and batch size, including where a
     // hint looks up an id that an earlier command of the same batch has yet
     // to insert or has just erased.
-    const auto [first_ahead, second_ahead] =
+    const auto [index_ahead, order_ahead] =
         GENERATE(table<unsigned, unsigned>({{0, 0}, {2, 1}, {8, 4}}));
     const auto batch = GENERATE(1U, 7U, 64U);
     const auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL);
-    const lob::prefetch_plan plan{.first_ahead = first_ahead, .second_ahead = second_ahead};
+    const lob::prefetch_plan plan{.index_ahead = index_ahead, .order_ahead = order_ahead};
     const lob::engine_config cfg{.self_cross = lob::self_cross_policy::cancel_newest};
 
     pub_t pub;

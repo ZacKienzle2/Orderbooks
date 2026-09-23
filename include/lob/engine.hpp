@@ -27,7 +27,8 @@ namespace lob {
 // Hot-path methods (on_submit, on_cancel, on_modify) are noexcept by
 // contract. The gateway is responsible for upstream validation of px, qty,
 // side, tif, and ids; the engine treats out-of-range inputs as UB. Order
-// ids are nonzero, since zero is modify_msg::new_id's keep-the-id sentinel.
+// ids live in [1, 2^64 - 2]: zero is modify_msg::new_id's keep-the-id
+// sentinel and 2^64 - 1 is the id_index empty-slot sentinel.
 //
 // Matching follows strict price-time priority. When an aggressor crosses
 // the opposite best, the engine walks that level's FIFO from the front,
@@ -206,20 +207,21 @@ class engine {
     }
 
     // Prefetch hint for a command that will be applied shortly. The engine is
-    // bound by a chain of dependent cache misses per command, and a single
-    // command offers nothing to overlap them with. A consumer holding a batch
-    // calls this for the command a few positions ahead, so its first misses
-    // are in flight while the earlier commands run. This is the group
-    // prefetching of Chen, Ailamaki, Gibbons and Mowry for hash joins
-    // (doi:10.1145/1272743.1272747), with the batch the ingress ring already
-    // delivers as the group. The first stage starts the level a submit rests
-    // at, and the order and slot generation a handle names, two independent
-    // misses in place of a chain. It reads the message, writes nothing, and
-    // never changes what a command does.
+    // bound by a chain of dependent cache misses per command, the index slot
+    // and then the order it names, and a single command offers nothing to
+    // overlap them with. A consumer holding a batch calls this for the command
+    // a few positions ahead, so its first misses are in flight while the
+    // earlier commands run. This is the group prefetching of Chen, Ailamaki,
+    // Gibbons and Mowry for hash joins (doi:10.1145/1272743.1272747), with
+    // the batch the ingress ring already delivers as the group. It reads the
+    // message and the index's own arrays, writes nothing, and never changes
+    // what a command does.
     void prefetch(const command& c) const noexcept {
         switch (c.k) {
             case command::kind::submit: {
                 const auto& m = c.body.submit;
+                if constexpr (!by_handle_)
+                    book_.index().prefetch(m.id);
                 if (m.s == side::bid)
                     book_.bids().prefetch_level(m.px);
                 else
@@ -227,20 +229,30 @@ class engine {
                 break;
             }
             case command::kind::cancel:
+                // A handle names the order's own line and its slot's generation,
+                // two independent misses in place of a chain.
                 if constexpr (by_handle_)
                     prefetch_slot_(c.body.cancel.handle);
+                else
+                    book_.index().prefetch(c.body.cancel.id);
                 break;
             case command::kind::modify:
-                if constexpr (by_handle_)
+                if constexpr (by_handle_) {
                     prefetch_slot_(c.body.modify.handle);
+                } else {
+                    book_.index().prefetch(c.body.modify.id);
+                    // A cancel-replace also inserts its next id, a second random slot.
+                    if (c.body.modify.new_id != 0)
+                        book_.index().prefetch(c.body.modify.new_id);
+                }
                 break;
         }
     }
 
-    // Second stage, called closer to the command than prefetch. It starts the
-    // order a cancel or modify names by id, found through the index, and the
-    // tail order a resting submit links behind, whose level the first stage
-    // brought in.
+    // Second stage, called closer to the command than prefetch. The index slot
+    // has had time to arrive, so reading it is cheap, and the miss it starts is
+    // the next link of the chain: the order a cancel or modify names, or the
+    // tail order a resting submit links behind.
     void prefetch_order(const command& c) const noexcept {
         switch (c.k) {
             case command::kind::submit: {
@@ -818,9 +830,10 @@ class engine {
         // could never have emitted before the bytes reach an enum cast, an
         // unchecked ladder index, the id_index, or a resting zero-quantity
         // order. px must be on the ladder, s and t must be enumerators, a
-        // resting order always has quantity, and ids are nonzero because zero
-        // is modify's keep-the-id sentinel.
-        if (rec.id == 0)
+        // resting order always has quantity, and ids live in [1, 2^64 - 2]
+        // because zero is modify's keep-the-id sentinel and 2^64 - 1 is the
+        // id_index empty-slot sentinel, which would poison probe chains.
+        if (rec.id == 0 || rec.id == std::numeric_limits<order_id_t>::max())
             return false;
         if (rec.px >= Ticks)
             return false;

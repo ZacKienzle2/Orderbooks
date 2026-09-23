@@ -1,61 +1,189 @@
 #ifndef LOB_ID_INDEX_HPP
 #define LOB_ID_INDEX_HPP
 
+#include <lob/hash.hpp>
 #include <lob/order.hpp>
 #include <lob/types.hpp>
 
-#include <boost/unordered/unordered_flat_map.hpp>
-
+#include <algorithm>
+#include <bit>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <vector>
 
 namespace lob {
 
-// Maps order_id_t to the order* resting in the arena, over
-// boost::unordered_flat_map, an open-addressed table that probes a group of
-// fifteen slots with one SIMD compare of their metadata (ADR-0043). This class
-// adds only the engine's vocabulary. take() removes an id and returns what it
-// named in one probe, and the table is reserved for the engine's capacity at
-// construction, so no operation on the hot path rehashes or allocates.
+// Open-addressed AoS hash table mapping order_id_t to order*.
 //
-// Single-threaded by contract, like the engine that owns it.
+// Layout: a single slot array, each slot holding one key next to its
+// value, sized to the next power of two above 2 * capacity. The load
+// factor stays at or below 0.5 and the expected probe length around 1.5.
+// Co-locating a key with its value in one 16-byte slot means a probe
+// touches one cache line where a split key array and value array would
+// touch two, which removes an L1 miss from every lookup, insert, and
+// erase on the hot path. The key field is initialised to
+// std::numeric_limits<order_id_t>::max() which acts as the empty
+// sentinel; that single id value is reserved and must not be inserted.
+//
+// Hash: SplitMix64 of the id, masked by (capacity - 1). Linear probing
+// resolves collisions. Erase uses backward-shift deletion to keep probe
+// sequences tight without tombstones.
+//
+// Thread safety: single-threaded by contract. insert, lookup, erase, and
+// clear share mutable storage with no synchronisation. The engine drives
+// the index on a single shard thread; cross-thread access is undefined.
+//
+// insert with a key already present overwrites the stored pointer. The
+// engine never inserts duplicates; the overwrite path is defensive only.
+//
+// All operations are noexcept and allocation-free on the hot path; the
+// only allocation occurs in the constructor when the storage vector is
+// sized. See ADR-0017 for the rationale.
 class id_index {
+    static constexpr order_id_t empty_key = std::numeric_limits<order_id_t>::max();
+
+    struct slot {
+        order_id_t key;
+        order* value;
+    };
+
    public:
     id_index() : id_index(default_capacity_) {}
 
+    // The constructor sizes the storage but does not first-touch the
+    // pages: the slots_ vector is reserve()d to the target capacity and
+    // the empty-key initialisation runs lazily on the first insert /
+    // lookup / erase call. The consuming thread therefore becomes the
+    // first writer to every slot page, and Linux's first-touch NUMA
+    // policy binds the pages to the consumer's node. Mirrors the
+    // slab_arena treatment introduced in ADR-0016.
     explicit id_index(std::size_t capacity_hint) {
-        map_.reserve(capacity_hint == 0 ? default_capacity_ : capacity_hint);
+        const std::size_t want = capacity_hint == 0 ? default_capacity_ : capacity_hint;
+        const std::size_t cap = std::bit_ceil(want * 2);
+        slots_.reserve(cap);
+        mask_ = cap - 1;
     }
 
-    // The engine never inserts an id twice; a repeated insert overwrites.
-    void insert(order_id_t id, order* p) noexcept { map_.insert_or_assign(id, p); }
+    void insert(order_id_t id, order* p) noexcept {
+        assert(id != empty_key && "id_index: sentinel id is reserved");
+        assert(size_ < (mask_ + 1) / 2 && "id_index: load factor invariant violated");
+        if (!storage_initialised_) [[unlikely]]
+            init_storage_();
+        std::size_t i = splitmix64(id) & mask_;
+        while (true) {
+            slot& s = slots_[i];
+            if (s.key == empty_key) {
+                s.key = id;
+                s.value = p;
+                ++size_;
+                return;
+            }
+            if (s.key == id) {
+                s.value = p;
+                return;
+            }
+            i = (i + 1) & mask_;
+        }
+    }
+
+    // Start the cache miss on id's home slot and do nothing else. A consumer
+    // draining a batch calls it a few commands ahead of the lookup, insert or
+    // erase, so the miss overlaps the commands in between. Write intent,
+    // because cancel, modify and submit all write the slot they probe.
+    void prefetch(order_id_t id) const noexcept {
+        if (storage_initialised_) [[likely]]
+            __builtin_prefetch(&slots_[splitmix64(id) & mask_], 1, 3);
+    }
 
     [[nodiscard]] order* lookup(order_id_t id) const noexcept {
-        const auto it = map_.find(id);
-        return it == map_.end() ? nullptr : it->second;
-    }
-
-    // Remove id and return the order it named, or nullptr when absent.
-    [[nodiscard]] order* take(order_id_t id) noexcept {
-        const auto it = map_.find(id);
-        if (it == map_.end())
+        if (!storage_initialised_) [[unlikely]]
             return nullptr;
-        order* p = it->second;
-        map_.erase(it);
-        return p;
+        std::size_t i = splitmix64(id) & mask_;
+        while (true) {
+            const slot& s = slots_[i];
+            if (s.key == id) [[likely]]
+                return s.value;
+            if (s.key == empty_key)
+                return nullptr;
+            i = (i + 1) & mask_;
+        }
     }
 
-    void erase(order_id_t id) noexcept { map_.erase(id); }
+    // Remove id and return the order it named, or nullptr when absent. A
+    // cancel needs both, and this is one probe where a lookup followed by an
+    // erase hashes and walks the chain twice.
+    [[nodiscard]] order* take(order_id_t id) noexcept {
+        assert(id != empty_key && "id_index: sentinel id is reserved");
+        if (!storage_initialised_) [[unlikely]]
+            return nullptr;
+        std::size_t i = splitmix64(id) & mask_;
+        while (true) {
+            const slot s = slots_[i];
+            if (s.key == id) [[likely]] {
+                shift_back_from_(i);
+                --size_;
+                return s.value;
+            }
+            if (s.key == empty_key)
+                return nullptr;
+            i = (i + 1) & mask_;
+        }
+    }
 
-    [[nodiscard]] std::size_t size() const noexcept { return map_.size(); }
+    void erase(order_id_t id) noexcept { (void)take(id); }
 
-    [[nodiscard]] bool empty() const noexcept { return map_.empty(); }
+    [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
-    void clear() noexcept { map_.clear(); }
+    [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
+
+    void clear() noexcept {
+        if (storage_initialised_)
+            std::fill(slots_.begin(), slots_.end(), slot{empty_key, nullptr});
+        size_ = 0;
+    }
 
    private:
+    void init_storage_() noexcept {
+        const std::size_t cap = mask_ + 1;
+        slots_.assign(cap, slot{empty_key, nullptr});
+        storage_initialised_ = true;
+    }
+
+    // Backward-shift deletion: starting from the freshly emptied slot,
+    // walk forward and pull back any entry whose preferred bucket sits
+    // at or before the emptied slot (modulo wrap-around), repeating
+    // until reaching an empty slot. Keeps probe sequences tight; no
+    // tombstones required.
+    void shift_back_from_(std::size_t hole) noexcept {
+        std::size_t j = (hole + 1) & mask_;
+        while (true) {
+            const order_id_t k = slots_[j].key;
+            if (k == empty_key) {
+                slots_[hole].key = empty_key;
+                slots_[hole].value = nullptr;
+                return;
+            }
+            const std::size_t home = splitmix64(k) & mask_;
+            // Distance from home to hole vs home to j; if hole is closer
+            // (along the linear-probe direction), pull this entry back.
+            const std::size_t hole_dist = (hole - home) & mask_;
+            const std::size_t j_dist = (j - home) & mask_;
+            if (hole_dist < j_dist) {
+                slots_[hole] = slots_[j];
+                hole = j;
+            }
+            j = (j + 1) & mask_;
+        }
+    }
+
     static constexpr std::size_t default_capacity_ = 256;
 
-    boost::unordered_flat_map<order_id_t, order*> map_;
+    std::vector<slot> slots_{};
+    std::size_t mask_{0};
+    std::size_t size_{0};
+    mutable bool storage_initialised_{false};
 };
 
 }  // namespace lob

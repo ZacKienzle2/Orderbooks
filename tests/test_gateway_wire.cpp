@@ -68,7 +68,8 @@ TEST_CASE("gateway rejects a modify with new_px at or beyond the tick ladder", "
     CHECK(ack.status == lob_gateway::ack_rejected);
 
     // The resting order is untouched at its original price.
-    REQUIRE(f.eng->book_view().bids().best() == 10);
+    REQUIRE(f.eng->book_view().bids().best().has_value());
+    CHECK(*f.eng->book_view().bids().best() == 10);
     CHECK(f.eng->book_view().bids().aggregate_at(10) == 5);
     CHECK(f.eng->last_seq() == seq_before);
 }
@@ -151,19 +152,31 @@ TEST_CASE("gateway acks killed for an IOC or FOK that executes nothing", "[gatew
     CHECK(f.eng->book_view().bids().aggregate_at(10) == 5);
 }
 
-TEST_CASE("gateway rejects the reserved order id", "[gateway]") {
+TEST_CASE("gateway rejects the reserved order ids", "[gateway]") {
     fixture f;
 
-    // Zero is modify's keep-the-id sentinel.
+    // Zero is modify's keep-the-id sentinel; 2^64 - 1 is the id_index
+    // empty-slot sentinel, which would write a slot that reads as empty and
+    // truncate other ids' probe chains.
     const lob_gateway::wire_order zero_id{
         .id = 0, .qty = 5, .px = 10, .new_px = 0, .op = 0, .side = 0, .tif = 0, .pad = 0};
     CHECK(f.apply(zero_id).status == lob_gateway::ack_rejected);
+
+    const lob_gateway::wire_order sentinel_id{.id = ~std::uint64_t{0},
+                                              .qty = 5,
+                                              .px = 10,
+                                              .new_px = 0,
+                                              .op = 0,
+                                              .side = 0,
+                                              .tif = 0,
+                                              .pad = 0};
+    CHECK(f.apply(sentinel_id).status == lob_gateway::ack_rejected);
     CHECK(!f.eng->book_view().bids().best().has_value());
 
-    // Every other id works, the largest included, and the book stays
-    // reachable by id afterwards.
-    CHECK(f.apply(submit(~std::uint64_t{0}, 10, 5)).status == lob_gateway::ack_accepted);
-    const lob_gateway::wire_order cxl{.id = ~std::uint64_t{0},
+    // Orders with ordinary ids near the boundary still work, and the book
+    // stays reachable by id afterwards.
+    CHECK(f.apply(submit(~std::uint64_t{0} - 1, 10, 5)).status == lob_gateway::ack_accepted);
+    const lob_gateway::wire_order cxl{.id = ~std::uint64_t{0} - 1,
                                       .qty = 0,
                                       .px = 0,
                                       .new_px = 0,

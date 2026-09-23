@@ -1,5 +1,5 @@
 ---
-status: "Superseded by ADR-0043"
+status: "Accepted"
 date: "2026-06-20"
 deciders: ["Zac Kienzle"]
 ---

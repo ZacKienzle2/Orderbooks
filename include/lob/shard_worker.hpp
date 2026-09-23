@@ -16,26 +16,23 @@
 namespace lob {
 
 // How far ahead of the command being applied apply_batch runs each of the
-// engine's prefetch stages, in commands. Zero turns a stage off. The first
-// stage, engine::prefetch, starts what the message alone locates, the level a
-// submit rests at and the lines a handle names. The second,
-// engine::prefetch_order, starts what those lead to, the order an id names and
-// the tail order a submit links behind.
+// engine's prefetch stages, in commands. Zero turns a stage off.
 //
 // A command on the resting path costs a short chain of dependent last-level
-// cache hits, and one command has nothing to overlap them with. The lob_profile
-// stream workload drains the deep mix through apply_batch a claim at a time.
-// Over 21 interleaved rounds on one pinned core, the first stage two commands
-// ahead and the second one ahead took a 64-command drain from 156 to 125 cycles
-// per op at the minimum and from 167 to 132 at the median. A batch of one,
-// which has nothing to look ahead to, moved inside the noise, and distances of
-// eight and more gained less, because the latency being hidden is a last-level
-// hit of about fifty cycles (ADR-0038). The same distances still measured best
-// once the id index moved to a library table with no prefetch of its own
-// (ADR-0043).
+// cache hits, the index slot and then the order it names, and one command has
+// nothing to overlap them with. The lob_profile stream workload drains the deep
+// mix through apply_batch a claim at a time. Over 21 interleaved rounds on one
+// pinned core, the index stage two commands ahead and the order stage one ahead
+// took a 64-command drain from 156 to 125 cycles per op at the minimum and from
+// 167 to 132 at the median, and a 16-command drain from 163 to 138 at the
+// median. The index stage alone reached 146. A batch of one, which has nothing
+// to look ahead to, moved from 210 to 214, inside the noise. Distances of eight
+// and more gained less, because the latency being hidden is a last-level hit of
+// about fifty cycles, and a third stage that also prefetched the order's level
+// and FIFO neighbours lost ground. See ADR-0038.
 struct prefetch_plan {
-    unsigned first_ahead{2};
-    unsigned second_ahead{1};
+    unsigned index_ahead{2};
+    unsigned order_ahead{1};
 };
 
 // Host placement, busy-wait and prefetch policy shared by every shard worker.
@@ -72,9 +69,9 @@ struct alignas(64) padded_atomic {
 
 // Apply one decoded command to a shard's engine and return the handle the
 // engine reports, the resting order's for a submit or a modify and an empty
-// one for a cancel. The engine owns the matching semantics; this only fans
-// the tagged union out to the right entry point. An engine whose entry points
-// return nothing yields an empty handle.
+// one for a cancel. The engine owns the matching semantics; this only fans the tagged
+// union out to the right entry point. An engine whose entry points return
+// nothing yields an empty handle.
 template <class Engine>
 inline order_handle apply_command(Engine& eng, const command& c) noexcept {
     const auto handle_from = [](auto&& call) noexcept -> order_handle {
@@ -98,7 +95,7 @@ inline order_handle apply_command(Engine& eng, const command& c) noexcept {
 }
 
 // Apply the n commands at(0) .. at(n - 1) in order, running engine::prefetch
-// plan.first_ahead commands ahead and engine::prefetch_order plan.second_ahead
+// plan.index_ahead commands ahead and engine::prefetch_order plan.order_ahead
 // commands ahead of each, within the batch. The first commands of a batch are
 // prefetched as it opens. Semantics are those of applying each in turn with
 // apply_command; the prefetches read and never write. done(i, handle) receives
@@ -106,15 +103,15 @@ inline order_handle apply_command(Engine& eng, const command& c) noexcept {
 // acking an order with its handle, drains through the same path.
 template <class Engine, class At, class Done>
 inline void apply_batch(Engine& eng, unsigned n, At at, prefetch_plan plan, Done done) noexcept {
-    for (unsigned i = 0; i < plan.first_ahead && i < n; ++i)
+    for (unsigned i = 0; i < plan.index_ahead && i < n; ++i)
         eng.prefetch(at(i));
-    for (unsigned i = 0; i < plan.second_ahead && i < n; ++i)
+    for (unsigned i = 0; i < plan.order_ahead && i < n; ++i)
         eng.prefetch_order(at(i));
     for (unsigned i = 0; i < n; ++i) {
-        if (plan.first_ahead > 0 && i + plan.first_ahead < n)
-            eng.prefetch(at(i + plan.first_ahead));
-        if (plan.second_ahead > 0 && i + plan.second_ahead < n)
-            eng.prefetch_order(at(i + plan.second_ahead));
+        if (plan.index_ahead > 0 && i + plan.index_ahead < n)
+            eng.prefetch(at(i + plan.index_ahead));
+        if (plan.order_ahead > 0 && i + plan.order_ahead < n)
+            eng.prefetch_order(at(i + plan.order_ahead));
         done(i, apply_command(eng, at(i)));
     }
 }
