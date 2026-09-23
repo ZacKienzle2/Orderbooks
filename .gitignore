@@ -1,6 +1,17 @@
-# Assembled by copier from github/gitignore; the source files are in the
-# template repository, not here. A path of this repository's own is the
-# gitignore_own answer in .copier-answers.yml, rendered at the end.
+# Assembled by copier from github/gitignore, the collection behind GitHub's
+# own "add .gitignore" control. The template repository keeps upstream's
+# files unedited, fetched by vendir at the commit its vendir.lock.yml records,
+# and which of them apply follows the answers in .copier-answers.yml. Editor
+# and operating system byproducts are absent on purpose: upstream keeps those
+# under Global/ for a user's own core.excludesFile. A path only this
+# repository produces is the gitignore_own answer, rendered at the end, so
+# nothing in this file is written by hand.
+
+# vale's StylesPath, which .vale.ini sets and the sync hook fills. vale's
+# StylesPath and Packages pages say everything `vale sync` writes is rebuilt
+# from Packages and that ignoring the whole StylesPath is simplest when none
+# of it is the project's own.
+.cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

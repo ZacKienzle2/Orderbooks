@@ -61,16 +61,13 @@ Closes #
 
 - [ ] README updated where relevant
 - [ ] Public API documentation updated
-- [ ] Changelog entry added
 
 ## Checklist
 
-- [ ] PR title follows Conventional Commits
-- [ ] Commits are atomic, signed, and DCO signed-off
+- [ ] Commits are atomic
 - [ ] Branch is rebased on `main`
 - [ ] CI is green
 - [ ] No commented-out code, debug prints, or stray TODOs
-- [ ] ASCII only in committed text
 
 ## Reviewer Notes
 

@@ -20,5 +20,7 @@
     "cheshirekow.cmake-format",
     "vadimcn.vscode-lldb"
   ],
-  "unwantedRecommendations": ["ms-vscode.cpptools"]
+  "unwantedRecommendations": [
+    "ms-vscode.cpptools"
+  ]
 }

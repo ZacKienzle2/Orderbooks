@@ -1,5 +1,8 @@
-# Managed by copier from ZacKienzle2/repo-template. A repository's own words go
-# under [default.extend-words] after this block.
+# Managed by copier from ZacKienzle2/repo-template. typos' defaults already
+# skip lock files and certificates, whatever .gitignore names, and hidden
+# files, so no path list repeats those. A repository's own vocabulary goes
+# after this block under [default.extend-words] or
+# [default.extend-identifiers], which copier update carries forward.
 
 # typos walks past a hidden file but checks any path it is handed, which is how
 # the hook hands it .gitignore. The assembled file is a list of file extensions
@@ -13,6 +16,11 @@ check-file = false
 # way to leave a generated file alone.
 [type.changelog]
 extend-glob = ["CHANGELOG.md"]
+check-file = false
+
+# A Doxyfile is written by `doxygen -g` and its comments are Doxygen's own prose.
+[type.doxyfile]
+extend-glob = ["Doxyfile"]
 check-file = false
 
 [default]
@@ -38,4 +46,4 @@ hte = "hte"               # halt-to-end marker
 countr = "countr"         # std::countr_zero / countr_one (C++20 bit ops)
 countl = "countl"         # std::countl_zero / countl_one (C++20 bit ops)
 popc = "popc"             # std::popcount abbreviation
-browseable = "browseable" # GitHub doc spelling in SUPPORT.md
+browseable = "browseable" # the spelling ADR-0000 uses

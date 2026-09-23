@@ -1,3 +1,6 @@
+# git-cliff's own templates are Tera, whose delimiters are Jinja's defaults
+# and plain text under the template's own, so the body below is written as
+# Tera reads it and the repository URL alone is filled in here.
 # git-cliff configuration. Conventional Commits 1.0.0 grouping. CHANGELOG.md is
 # regenerated from this configuration by the release workflow on every release
 # tag; do not edit it by hand.
@@ -76,7 +79,7 @@ commit_parsers = [
 commit_preprocessors = [
   # Strip Refs / Closes / Fixes footers from the rendered subject; they remain
   # in the git history and would clutter the changelog body.
-  { pattern = "\\s*\\((?:Refs|Closes|Fixes) #\\d+\\)$", replace = "" },
+  { pattern = "\\s*[(](?:Refs|Closes|Fixes) #\\d+[)]$", replace = "" },
 ]
 
 link_parsers = [

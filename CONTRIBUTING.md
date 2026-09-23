@@ -55,6 +55,8 @@ pre-commit install --install-hooks
 
 The hooks run on every commit and refuse one that fails a check; they are also
 what CI runs, so a commit that passes locally passes there.
+[.pre-commit-config.yaml](.pre-commit-config.yaml) pins each one, and
+`pre-commit run --all-files` names each one as it runs.
 
 ## How to Contribute
 
@@ -62,8 +64,7 @@ what CI runs, so a commit that passes locally passes there.
 
 Before submitting:
 
-- Check the [issue tracker](https://github.com/ZacKienzle2/Orderbooks/issues)
-  for duplicates.
+- Check the [issue tracker] for duplicates.
 - Reproduce against the latest `main`.
 - Collect reproduction info.
 
@@ -107,7 +108,7 @@ Issues tagged:
 3. Implement the change in small, atomic commits.
 4. Rebase against `main` to resolve conflicts.
 5. Open a pull request once the hooks pass locally.
-6. Address review feedback with fixup commits, then squash before merge.
+6. Address review feedback, then squash or rebase before merge.
 
 ## Branching Strategy
 
@@ -124,34 +125,18 @@ Never force-push to `main` or any shared branch.
 
 ## Commit Message Convention
 
-This project follows
-[Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
-The commit-msg hooks refuse a message that does not. ASCII only. No emoji, smart
-quotes, or em dashes.
+[Conventional Commits 1.0.0][cc], checked at the commit by the commit-msg hooks:
+commitlint applies `commitlint.config.mjs`, which extends the published
+`@commitlint/config-conventional` set and narrows the header and body lines to
+72 columns; a second hook refuses a byte outside ASCII; and the
+vale styles refuse a co-author trailer or a generated-with line. A rejected
+message prints the rule it broke, so none of them is repeated here.
 
-Format:
+Beyond what the hooks check:
 
-```text
-<type>(<scope>)[!]: <description>
-
-[body]
-
-[footer(s)]
-```
-
-Allowed types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
-`chore`, `style`, `revert`. The scope is mandatory.
-
-Rules:
-
-- Subject: imperative, lowercase, no trailing period, 72 characters or fewer.
-- Blank line between subject, body, and footers.
-- Body: wrap at 72 characters. Explain motivation and contrast with prior
-  behaviour. Do not restate the diff.
 - One logical change per commit. `fix` only for real defects.
-- Breaking changes: append `!` after the type or include a `BREAKING CHANGE:`
-  footer.
-- No tool attribution: no co-author trailer or generated-with line.
+- The body explains motivation and contrasts with prior behaviour. It does not
+  restate the diff.
 
 Example:
 
@@ -223,3 +208,6 @@ in `cliff.toml`); preview the unreleased entries at any time with
 ## License
 
 Contributions licensed under the project's licence.
+
+[cc]: https://www.conventionalcommits.org/en/v1.0.0/
+[issue tracker]: https://github.com/ZacKienzle2/Orderbooks/issues
