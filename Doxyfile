@@ -64,15 +64,20 @@ FULL_SIDEBAR           = NO
 SORT_MEMBER_DOCS       = NO
 SORT_BRIEF_DOCS        = NO
 
-# Warnings are printed and read, but they do not fail the build. The README is
-# written for GitHub, so its links to files outside this input are reported and
-# are not defects; failing on them would mean maintaining the README twice.
+# FAIL_ON_WARNINGS is the documented value that runs the whole generation and
+# then exits non-zero, rather than YES, which stops at the first warning and so
+# surfaces them one run at a time. The job that reads this pins the same
+# Doxygen the working copy runs, because a warning that only one of the two
+# versions raises cannot be reproduced where it has to be fixed.
+#
+# WARN_IF_UNDOCUMENTED and WARN_NO_PARAMDOC are not set here. Doxygen disables
+# both whenever EXTRACT_ALL is YES, which it is above, so setting either one
+# configured nothing. Measured by running the file twice with both flipped to
+# YES and diffing the warnings, which were identical and empty.
 QUIET                  = YES
 WARNINGS               = YES
-WARN_IF_UNDOCUMENTED   = NO
 WARN_IF_DOC_ERROR      = YES
-WARN_NO_PARAMDOC       = NO
-WARN_AS_ERROR          = NO
+WARN_AS_ERROR          = FAIL_ON_WARNINGS
 
 # The engine is C++20; these keep Doxygen's parser from tripping over
 # attributes and concepts it would otherwise try to interpret.

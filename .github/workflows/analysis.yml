@@ -8,14 +8,15 @@ name: Analysis
 # checks, so that job runs it against a database that resolves every include,
 # where a standalone invocation here resolved none.
 
+# No paths filter. One has to name every input of both jobs, and the list here
+# had already fallen behind two of them. README.md is a Doxygen INPUT, so a
+# change to it can raise a documentation warning that the filter would skip,
+# and .clang-format changes what cppcheck parses. actionlint checks that a
+# glob is well formed and cannot check that it is complete, branch protection
+# requires no status check, and these runners are free on a public repository,
+# so the filter bought nothing that its drift did not cost.
 on:
   pull_request:
-    paths:
-      - "include/lob/**"
-      - "apps/**"
-      - "fuzz/**"
-      - "Doxyfile"
-      - ".github/workflows/analysis.yml"
   workflow_dispatch:
 
 permissions:
@@ -70,10 +71,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install doxygen and graphviz
+      # The action installs the release Doxygen publishes, so this job and a
+      # working copy run the same version. apt ships whatever the runner image
+      # froze, which was three minor versions behind and raised warnings that
+      # could not be reproduced locally. graphviz still comes from apt because
+      # its output is stable across the versions in question.
+      - name: Install graphviz
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends doxygen graphviz
+          sudo apt-get install -y --no-install-recommends graphviz
+
+      - name: Install doxygen
+        uses: ssciwr/doxygen-install@fa3e94d34131d3990b6b8ba939ab982964aa3758 # v2.0.3
 
       - name: Build the API documentation
         run: |
