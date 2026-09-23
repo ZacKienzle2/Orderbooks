@@ -12,6 +12,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <ios>
+#include <limits>
 #include <ostream>
 #include <string_view>
 
@@ -119,14 +120,17 @@ class json_recorder {
         return p + s.size();
     }
 
-    // Format an integer into a tight 24-byte local temporary (max digit
-    // count for an unsigned 64-bit value is 20). The bounded local write lets
-    // GCC's -Werror=array-bounds analysis prove that subsequent appends
-    // into the caller's buffer remain in range; without it, GCC tracks
-    // the worst case of to_chars writing all the way to end and concludes
-    // the trailing literal could overflow.
+    // Format an integer into a local temporary just wide enough for the type,
+    // read off the type rather than counted by hand: digits10 is the largest
+    // power of ten that fits, so one more digit covers the rest of the range.
+    // The bounded local write lets GCC's -Werror=array-bounds analysis prove
+    // that subsequent appends into the caller's buffer remain in range;
+    // without it, GCC tracks the worst case of to_chars writing all the way to
+    // end and concludes the trailing literal could overflow.
+    static constexpr std::size_t max_digits = std::numeric_limits<std::uint64_t>::digits10 + 1;
+
     static char* append_num_(char* p, std::uint64_t v) noexcept {
-        std::array<char, 24> digits{};
+        std::array<char, max_digits> digits{};
         const auto r = std::to_chars(digits.data(), digits.data() + digits.size(), v);
         const auto n = static_cast<std::size_t>(r.ptr - digits.data());
         std::memcpy(p, digits.data(), n);

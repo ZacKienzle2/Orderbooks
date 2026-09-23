@@ -48,7 +48,7 @@ concept merge_sink = requires(K k, const event& e, std::uint64_t seq) {
 struct merger_config {
     bool pin_thread{true};
     std::size_t core{0};
-    unsigned spin_budget{1024};
+    unsigned spin_budget{default_spin_budget};
     // Upper bound on events claimed from one shard per round. The bound keeps
     // the merge fair. An unbounded drain holds the round on one deep ring
     // while later shards' events age behind it, so latency on shard n scales

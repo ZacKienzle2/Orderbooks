@@ -56,7 +56,7 @@ struct shard_runtime_config {
     bool pin_threads{true};
     std::size_t first_core{0};
     std::size_t core_stride{1};
-    unsigned spin_budget{1024};
+    unsigned spin_budget{default_spin_budget};
     prefetch_plan prefetch{};
 };
 

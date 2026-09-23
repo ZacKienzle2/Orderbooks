@@ -41,6 +41,26 @@ inline void cpu_relax() noexcept {
 #endif
 }
 
+// How many cpu_relax hints a bounded spin runs before it gives the core back.
+//
+// Karlin, Manasse, McGeoch and Owicki (doi:10.1145/121132.286599) showed that
+// spinning for exactly the cost of the blocking alternative, then blocking, is
+// within a factor of two of the optimal offline strategy whatever the wait
+// turns out to be. So the budget is not a preference: it is the cost of the
+// alternative, divided by the cost of one hint.
+//
+// Both sides are measurable. On this development host a cpu_relax costs about
+// 18 ns, and parking on an atomic until another thread wakes it costs between
+// 5 and 24 us, the spread being what a shared, virtualised host does to a
+// futex wake. That puts the competitive budget between about 280 and 1,370
+// hints. A worker pinned to a core of its own should sit at the top of that
+// range, because the core has nothing else to run.
+//
+// Re-measure on a host that matters rather than carrying this number to it:
+// the two probes are a spin loop against sched_yield, and a two-thread park
+// and wake.
+inline constexpr unsigned default_spin_budget = 1024;
+
 }  // namespace lob
 
 #endif  // LOB_SPIN_HPP

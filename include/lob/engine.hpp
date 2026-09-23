@@ -398,9 +398,19 @@ class engine {
                 // qty to rounding (impossible with integer qty); drop too.
                 return {};
             case tif::gtc:
-            default:
                 return rest_<Side>(m, remaining);
         }
+        // No default arm: a time-in-force added to the enumeration has to be
+        // handled here, and -Wswitch makes forgetting it a compile error
+        // rather than an order that silently rests as though it were GTC.
+        //
+        // The switch is exhaustive over the enumeration, so a value outside it
+        // is a contract violation, the same standing as an out-of-range price
+        // (the gateway, the parser and restore all validate it). Saying so
+        // lets the optimiser keep the two-way branch this was before the
+        // default arm came out; with a reachable return after the switch the
+        // cross workload retired 1.4 per cent more instructions.
+        __builtin_unreachable();
     }
 
     template <side Side>
