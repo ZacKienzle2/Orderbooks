@@ -62,3 +62,18 @@ fuzz target="fix_framed" seconds="60": fuzzers
 
 # Fuzz every harness in turn.
 fuzz-all seconds="60": (fuzz "fix_raw" seconds) (fuzz "fix_framed" seconds) (fuzz "snapshot_restore" seconds) (fuzz "gateway_wire" seconds)
+
+# Train a profile: build instrumented, run every workload the profiler defines,
+# and merge the raw counts. The workloads are the training set, so a hot path
+# that no workload reaches gets no profile.
+pgo-train ops="2000000" depth="40000":
+    cmake -S . -B build/pgo-train -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOB_PGO=generate
+    cmake --build build/pgo-train --target lob_profile --parallel
+    mkdir -p artifacts/pgo/raw
+    for w in deep submit cancel modifyp modifyq cross sweep; do         LLVM_PROFILE_FILE="artifacts/pgo/raw/$w.profraw"             build/pgo-train/apps/profile/lob_profile --workload "$w" --ops {{ ops }} --depth {{ depth }} >/dev/null;     done
+    llvm-profdata merge -output=artifacts/pgo/train.profdata artifacts/pgo/raw/*.profraw
+
+# Release build that reads the trained profile.
+pgo-build:
+    cmake -S . -B build/pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOB_PGO=use
+    cmake --build build/pgo --parallel

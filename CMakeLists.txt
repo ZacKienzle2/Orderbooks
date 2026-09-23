@@ -17,6 +17,12 @@ option(LOB_BUILD_TESTS "Build unit and property tests" ON)
 option(LOB_BUILD_BENCH "Build microbenchmarks" ON)
 option(LOB_BUILD_FUZZ "Build libFuzzer harnesses (clang only)" OFF)
 option(LOB_ENABLE_LTO "Enable Link-Time Optimisation in Release" OFF)
+set(LOB_PGO
+    "off"
+    CACHE STRING "Profile-guided optimisation: off, generate, or use")
+set(LOB_PGO_PROFILE
+    "${CMAKE_SOURCE_DIR}/artifacts/pgo/train.profdata"
+    CACHE FILEPATH "Merged profile read when LOB_PGO=use")
 option(LOB_ENABLE_NATIVE "Enable -march=native (host-specific Release builds)" OFF)
 
 include(StandardProjectSettings)
