@@ -3,12 +3,18 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <random>
+#include <limits>
+#include <optional>
+#include <ostream>
 #include <set>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
+
+#include <rapidcheck.h>
+#include <rapidcheck/catch.h>
+#include <rapidcheck/state.h>
 
 using lob::hier_bitmap;
 
@@ -118,41 +124,92 @@ TEST_CASE("hier_bitmap four-tier capacity round-trip", "[bitmap]") {
     REQUIRE(bm.empty());
 }
 
-TEST_CASE("hier_bitmap differential against std::set on random workloads", "[bitmap][property]") {
-    constexpr std::size_t cap = 4096;
-    constexpr std::size_t draws = 4'000;
+// The bitmap is a set of bit positions, so std::set is its model and
+// RapidCheck generates the operation sequences. A failure shrinks to the
+// shortest sequence of sets and clears that breaks an answer, which a fixed
+// stream of four thousand draws could not report.
+namespace {
 
-    auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL, 0x1234567890ABCDEFULL);
-    std::mt19937_64 rng{seed};
-    std::uniform_int_distribution<std::size_t> bit_dist{0, cap - 1};
-    std::uniform_int_distribution<int> op_dist{0, 2};
+// The ladder where both of the bitmap's levels are exactly full, read off the
+// machine word it indexes with.
+constexpr std::size_t word_bits = std::numeric_limits<std::uint64_t>::digits;
+constexpr std::size_t model_cap = word_bits * word_bits;
 
-    hier_bitmap<cap> bm;
-    std::set<std::size_t> oracle;
+using bit_model = std::set<std::size_t>;
 
-    for (std::size_t step = 0; step < draws; ++step) {
-        const auto bit = bit_dist(rng);
-        switch (op_dist(rng)) {
-            case 0:
-                bm.set(bit);
-                oracle.insert(bit);
-                break;
-            case 1:
-                bm.clear(bit);
-                oracle.erase(bit);
-                break;
-            case 2:
-                REQUIRE(bm.test(bit) == (oracle.count(bit) > 0));
-                break;
-            default:
-                break;
-        }
-        REQUIRE(bm.empty() == oracle.empty());
-        if (!oracle.empty()) {
-            REQUIRE(bm.lowest_set() == *oracle.begin());
-            REQUIRE(bm.highest_set() == *oracle.rbegin());
-        }
+struct bitmap_sut {
+    hier_bitmap<model_cap> bm;
+};
+
+// Everything the bitmap reports, against everything the model says, including
+// the queries at a generated point rather than only at the extremes.
+void check_against_model(const bitmap_sut& sut, const bit_model& m) {
+    const auto q = *rc::gen::inRange<std::size_t>(0, model_cap);
+    RC_ASSERT(sut.bm.empty() == m.empty());
+    RC_ASSERT(sut.bm.test(q) == (m.count(q) > 0));
+    if (!m.empty()) {
+        RC_ASSERT(sut.bm.lowest_set() == *m.begin());
+        RC_ASSERT(sut.bm.highest_set() == *m.rbegin());
     }
+
+    const auto it_next = m.lower_bound(q);
+    const auto next_expected =
+        (it_next == m.end()) ? std::nullopt : std::optional<std::size_t>{*it_next};
+    RC_ASSERT(sut.bm.next_set_at_or_after(q) == next_expected);
+
+    const auto it_prev = m.upper_bound(q);
+    const auto prev_expected =
+        (it_prev == m.begin()) ? std::nullopt : std::optional<std::size_t>{*std::prev(it_prev)};
+    RC_ASSERT(sut.bm.prev_set_at_or_before(q) == prev_expected);
+}
+
+struct set_bit : rc::state::Command<bit_model, bitmap_sut> {
+    std::size_t bit{0};
+
+    explicit set_bit(const bit_model&) : bit{*rc::gen::inRange<std::size_t>(0, model_cap)} {}
+
+    void apply(bit_model& m) const override { m.insert(bit); }
+
+    void run(const bit_model& m, bitmap_sut& sut) const override {
+        sut.bm.set(bit);
+        auto after = m;
+        after.insert(bit);
+        check_against_model(sut, after);
+    }
+
+    void show(std::ostream& os) const override { os << "set(" << bit << ")"; }
+};
+
+// Clearing a bit that is set exercises the tier unwind; clearing one that is
+// not must be harmless. Both are drawn, with no preference between them.
+struct clear_bit : rc::state::Command<bit_model, bitmap_sut> {
+    std::size_t bit{0};
+
+    explicit clear_bit(const bit_model& m)
+        : bit{m.empty() ? *rc::gen::inRange<std::size_t>(0, model_cap)
+                        : *rc::gen::oneOf(rc::gen::elementOf(m),
+                                          rc::gen::inRange<std::size_t>(0, model_cap))} {}
+
+    void apply(bit_model& m) const override { m.erase(bit); }
+
+    void run(const bit_model& m, bitmap_sut& sut) const override {
+        sut.bm.clear(bit);
+        auto after = m;
+        after.erase(bit);
+        check_against_model(sut, after);
+    }
+
+    void show(std::ostream& os) const override { os << "clear(" << bit << ")"; }
+};
+
+}  // namespace
+
+TEST_CASE("hier_bitmap answers as the set it represents", "[bitmap][property][model]") {
+    rc::prop("every query agrees with std::set after every set and clear", [] {
+        bitmap_sut sut;
+        rc::state::check(bit_model{}, sut, rc::state::gen::execOneOfWithArgs<set_bit, clear_bit>());
+        RC_CLASSIFY(!sut.bm.empty(), "left bits set");
+    });
 }
 
 TEST_CASE("hier_bitmap clear_all wipes every tier", "[bitmap]") {
@@ -241,39 +298,5 @@ TEST_CASE("hier_bitmap next / prev walk monotonically across a four-tier configu
     REQUIRE(walked_backward.size() == bits.size());
     for (std::size_t i = 0; i < bits.size(); ++i) {
         REQUIRE(walked_backward[i] == bits[bits.size() - 1 - i]);
-    }
-}
-
-TEST_CASE("hier_bitmap next / prev differential against std::set", "[bitmap][property]") {
-    constexpr std::size_t cap = 4096;
-    constexpr std::size_t draws = 1'000;
-
-    auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
-    std::mt19937_64 rng{seed};
-    std::uniform_int_distribution<std::size_t> bit_dist{0, cap - 1};
-
-    hier_bitmap<cap> bm;
-    std::set<std::size_t> oracle;
-    for (std::size_t i = 0; i < 200; ++i) {
-        const auto b = bit_dist(rng);
-        bm.set(b);
-        oracle.insert(b);
-    }
-
-    for (std::size_t step = 0; step < draws; ++step) {
-        const auto q = bit_dist(rng);
-
-        const auto next_actual = bm.next_set_at_or_after(q);
-        const auto it_next = oracle.lower_bound(q);
-        const auto next_expected =
-            (it_next == oracle.end()) ? std::nullopt : std::optional<std::size_t>{*it_next};
-        REQUIRE(next_actual == next_expected);
-
-        const auto prev_actual = bm.prev_set_at_or_before(q);
-        const auto it_prev = oracle.upper_bound(q);
-        const auto prev_expected = (it_prev == oracle.begin())
-                                       ? std::nullopt
-                                       : std::optional<std::size_t>{*std::prev(it_prev)};
-        REQUIRE(prev_actual == prev_expected);
     }
 }

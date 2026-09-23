@@ -1,24 +1,36 @@
 #include <lob/engine.hpp>
 #include <lob/messages.hpp>
+#include <lob/shard_worker.hpp>
 #include <lob/snapshot.hpp>
 #include <lob/types.hpp>
 
+#include "model_commands.hpp"
 #include "recording_publisher.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <new>
-#include <random>
 #include <span>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 
+#include <rapidcheck.h>
+#include <rapidcheck/catch.h>
+#include <boost/pfr/ops.hpp>
+#include <magic_enum/magic_enum.hpp>
+
 namespace {
 
-constexpr std::size_t ticks = 256;
-constexpr std::size_t max_ord = 256;
+namespace cmds = lob::test::cmds;
+
+// The ladder where both of the hierarchical bitmap's levels are exactly full,
+// read off the machine word it indexes with.
+constexpr std::size_t word_bits = std::numeric_limits<std::uint64_t>::digits;
+constexpr std::size_t ticks = word_bits * word_bits;
+constexpr std::size_t max_ord = ticks;
 
 using pub_t = lob::test::recording_publisher;
 using eng_t = lob::engine<pub_t, ticks, max_ord>;
@@ -32,94 +44,92 @@ lob::submit_msg sub_with_account(lob::order_id_t id,
     return {.id = id, .px = px, .qty = qty, .s = s, .t = t, ._pad = 0, .account_id = acct};
 }
 
-void seed(eng_t& eng, std::uint64_t key) {
-    std::mt19937_64 rng{key};
-    std::uniform_int_distribution<lob::tick_t> px{0, ticks - 1};
-    std::uniform_int_distribution<lob::qty_t> qty{1, 50};
-    std::uniform_int_distribution<int> side_dist{0, 1};
-    std::uniform_int_distribution<int> acct_dist{1, 3};
-    for (lob::order_id_t id = 1; id <= 60; ++id) {
-        eng.on_submit(sub_with_account(id, px(rng), qty(rng),
-                                       (side_dist(rng) == 0) ? lob::side::bid : lob::side::ask,
-                                       static_cast<lob::account_id_t>(acct_dist(rng))));
-    }
-}
-
-void require_books_equal(const eng_t& a, const eng_t& b) {
-    REQUIRE(a.book_view().bids().best() == b.book_view().bids().best());
-    REQUIRE(a.book_view().asks().best() == b.book_view().asks().best());
-    for (lob::tick_t px = 0; px < ticks; ++px) {
-        REQUIRE(a.book_view().bids().aggregate_at(px) == b.book_view().bids().aggregate_at(px));
-        REQUIRE(a.book_view().asks().aggregate_at(px) == b.book_view().asks().aggregate_at(px));
+// Enough resting orders that a snapshot has records to write. The examples
+// below are about the byte stream, not about the book, so what rests only has
+// to be non-empty.
+void rest_a_few(eng_t& eng) {
+    for (lob::order_id_t id = 1; id <= 8; ++id) {
+        eng.on_submit(sub_with_account(id, static_cast<lob::tick_t>(id), 5,
+                                       (id % 2 == 0) ? lob::side::bid : lob::side::ask, 1));
     }
 }
 
 }  // namespace
 
-TEST_CASE("engine snapshot round-trip preserves book state", "[engine][snapshot]") {
-    auto key = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
+// A snapshot is a warm start: restoring one must give back the book that was
+// taken, and the restored engine must then behave as the original would have.
+// Stating it over generated command sequences covers the books a fixed seeded
+// stream never builds, and shrinks a failure to the shortest book that breaks.
+namespace {
 
-    pub_t pub_a;
-    eng_t engine_a{pub_a, lob::engine_config{}};
-    seed(engine_a, key);
+struct snapshot_system {
+    static constexpr std::size_t ticks = ::ticks;
 
-    lob::vector_snapshot_buffer buf;
-    engine_a.snapshot(buf);
-    buf.rewind();
+    pub_t pub{};
+    eng_t eng{pub, lob::engine_config{}};
 
-    pub_t pub_b;
-    eng_t engine_b{pub_b, lob::engine_config{}};
-    REQUIRE(engine_b.restore(buf));
+    void push(const lob::command& c) { lob::apply_command(eng, c); }
 
-    require_books_equal(engine_a, engine_b);
-    REQUIRE(engine_a.last_seq() == engine_b.last_seq());
-}
+    void check(const lob::command&) const noexcept {}
 
-TEST_CASE("engine snapshot continues to produce identical events after warm start",
-          "[engine][snapshot]") {
-    pub_t pub_a;
-    eng_t engine_a{pub_a, lob::engine_config{}};
-    seed(engine_a, 0xC0FFEEULL);
+    // Snapshot, restore into a fresh engine, and require the two to be
+    // indistinguishable: equal books, equal sequence, and equal events from
+    // the same follow-up orders.
+    void finish() {
+        lob::vector_snapshot_buffer buf;
+        eng.snapshot(buf);
+        buf.rewind();
 
-    lob::vector_snapshot_buffer buf;
-    engine_a.snapshot(buf);
-    buf.rewind();
+        pub_t restored_pub;
+        eng_t restored{restored_pub, lob::engine_config{}};
+        RC_ASSERT(restored.restore(buf));
 
-    pub_t pub_b;
-    eng_t engine_b{pub_b, lob::engine_config{}};
-    REQUIRE(engine_b.restore(buf));
+        RC_ASSERT(eng.book_view().bids().best() == restored.book_view().bids().best());
+        RC_ASSERT(eng.book_view().asks().best() == restored.book_view().asks().best());
+        for (lob::tick_t px = 0; px < ticks; ++px) {
+            RC_ASSERT(eng.book_view().bids().aggregate_at(px) ==
+                      restored.book_view().bids().aggregate_at(px));
+            RC_ASSERT(eng.book_view().asks().aggregate_at(px) ==
+                      restored.book_view().asks().aggregate_at(px));
+        }
+        RC_ASSERT(eng.last_seq() == restored.last_seq());
 
-    // Drive an identical follow-up stream through both engines; the published
-    // events should be byte-identical from this point onward.
-    pub_a.clear();
-    pub_b.clear();
-
-    std::mt19937_64 rng_a{0xFEEDFACE};
-    std::mt19937_64 rng_b{0xFEEDFACE};
-    std::uniform_int_distribution<lob::tick_t> px{0, ticks - 1};
-    std::uniform_int_distribution<lob::qty_t> qty{1, 30};
-    std::uniform_int_distribution<int> side_dist{0, 1};
-    for (lob::order_id_t id = 1'000; id < 1'050; ++id) {
-        auto m_a = sub_with_account(id, px(rng_a), qty(rng_a),
-                                    (side_dist(rng_a) == 0) ? lob::side::bid : lob::side::ask,
-                                    /*acct=*/1);
-        auto m_b = sub_with_account(id, px(rng_b), qty(rng_b),
-                                    (side_dist(rng_b) == 0) ? lob::side::bid : lob::side::ask,
-                                    /*acct=*/1);
-        REQUIRE(m_a.px == m_b.px);
-        engine_a.on_submit(m_a);
-        engine_b.on_submit(m_b);
+        // From here the two engines are driven identically, so every event
+        // either publishes must match. This is what a warm start is for.
+        pub.clear();
+        restored_pub.clear();
+        const auto follow_ups = *rc::gen::inRange<std::size_t>(0, ticks);
+        lob::order_id_t next = eng.last_seq() + ticks;
+        for (std::size_t i = 0; i < follow_ups; ++i) {
+            const lob::submit_msg m{
+                .id = next++,
+                .px = cmds::gen_price(ticks),
+                .qty = cmds::gen_qty(),
+                .s = cmds::gen_enum<lob::side>(),
+                .t = cmds::gen_enum<lob::tif>(),
+                ._pad = 0,
+                .account_id = 0,
+            };
+            eng.on_submit(m);
+            restored.on_submit(m);
+        }
+        RC_ASSERT(pub.fills.size() == restored_pub.fills.size());
+        for (std::size_t i = 0; i < pub.fills.size(); ++i)
+            RC_ASSERT(boost::pfr::eq(pub.fills[i], restored_pub.fills[i]));
+        RC_ASSERT(pub.tops.size() == restored_pub.tops.size());
+        for (std::size_t i = 0; i < pub.tops.size(); ++i)
+            RC_ASSERT(boost::pfr::eq(pub.tops[i], restored_pub.tops[i]));
+        RC_CLASSIFY(!pub.fills.empty(), "matched after the warm start");
     }
+};
 
-    REQUIRE(pub_a.fills.size() == pub_b.fills.size());
-    for (std::size_t i = 0; i < pub_a.fills.size(); ++i) {
-        REQUIRE(pub_a.fills[i].maker == pub_b.fills[i].maker);
-        REQUIRE(pub_a.fills[i].taker == pub_b.fills[i].taker);
-        REQUIRE(pub_a.fills[i].px == pub_b.fills[i].px);
-        REQUIRE(pub_a.fills[i].qty == pub_b.fills[i].qty);
-        REQUIRE(pub_a.fills[i].seq == pub_b.fills[i].seq);
-    }
-    require_books_equal(engine_a, engine_b);
+}  // namespace
+
+TEST_CASE("engine snapshot restores a book that carries on identically",
+          "[engine][snapshot][model]") {
+    rc::prop("restore reproduces the book and the events that follow it", [] {
+        cmds::check_sequence<snapshot_system, cmds::rest, cmds::cancel, cmds::modify>();
+    });
 }
 
 TEST_CASE("engine restore rejects header from an incompatible engine shape", "[engine][snapshot]") {
@@ -168,7 +178,7 @@ class fixed_capacity_sink {
 TEST_CASE("engine snapshot propagates sink throw with engine state intact", "[engine][snapshot]") {
     pub_t pub;
     eng_t eng{pub, lob::engine_config{}};
-    seed(eng, 0xC0FFEEULL);
+    rest_a_few(eng);
     const auto best_bid = eng.book_view().bids().best();
     const auto best_ask = eng.book_view().asks().best();
     const auto seq_before = eng.last_seq();
@@ -187,7 +197,7 @@ TEST_CASE("engine snapshot propagates sink throw with engine state intact", "[en
 TEST_CASE("engine restore rejects a truncated snapshot", "[engine][snapshot]") {
     pub_t pub_a;
     eng_t engine_a{pub_a, lob::engine_config{}};
-    seed(engine_a, 0xC0FFEEULL);
+    rest_a_few(engine_a);
 
     lob::vector_snapshot_buffer buf;
     engine_a.snapshot(buf);
@@ -252,7 +262,8 @@ TEST_CASE("engine restore rejects out-of-range header and record fields", "[engi
 
     SECTION("self_cross byte beyond the enumerators") {
         auto hdr = valid_header(0);
-        hdr.self_cross = 3;
+        hdr.self_cross =
+            static_cast<std::uint8_t>(magic_enum::enum_count<lob::self_cross_policy>());
         lob::vector_snapshot_buffer buf;
         put_bytes(buf, hdr);
         REQUIRE_FALSE(eng.restore(buf));
@@ -271,7 +282,7 @@ TEST_CASE("engine restore rejects out-of-range header and record fields", "[engi
 
     SECTION("record side byte beyond the enumerators") {
         auto rec = valid_record();
-        rec.s = 2;
+        rec.s = static_cast<std::uint8_t>(magic_enum::enum_count<lob::side>());
         lob::vector_snapshot_buffer buf;
         put_bytes(buf, valid_header(1));
         put_bytes(buf, rec);
@@ -281,7 +292,7 @@ TEST_CASE("engine restore rejects out-of-range header and record fields", "[engi
 
     SECTION("record tif byte beyond the enumerators") {
         auto rec = valid_record();
-        rec.t = 3;
+        rec.t = static_cast<std::uint8_t>(magic_enum::enum_count<lob::tif>());
         lob::vector_snapshot_buffer buf;
         put_bytes(buf, valid_header(1));
         put_bytes(buf, rec);

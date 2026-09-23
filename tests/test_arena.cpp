@@ -3,11 +3,15 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <random>
+#include <ostream>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
+
+#include <rapidcheck.h>
+#include <rapidcheck/catch.h>
+#include <rapidcheck/state.h>
 
 namespace {
 
@@ -115,36 +119,87 @@ TEST_CASE("slab_arena preserves writes across alloc / dealloc / realloc", "[aren
     REQUIRE(q->b == 0x2222222222222222ULL);
 }
 
-TEST_CASE("slab_arena differential against std::vector<bool> on random workloads",
-          "[arena][property]") {
-    constexpr std::size_t cap = 256;
-    constexpr std::size_t draws = 2'000;
+// The arena is a pool of slots: what it reports about its own occupancy must
+// agree with the count of pointers the caller is holding, and a slot handed
+// out twice without an intervening free is the defect this catches. RapidCheck
+// generates the allocate and deallocate sequences and shrinks a failure.
+namespace {
 
-    auto seed = GENERATE(0xC0FFEEULL, 0xBADC0DEULL, 0xDEADBEEFULL);
-    std::mt19937_64 rng{seed};
-    std::uniform_int_distribution<int> op_dist{0, 1};
+constexpr std::size_t model_cap = 256;
 
-    lob::slab_arena<cell, cap> arena;
-    std::vector<cell*> live;
-    live.reserve(cap);
+// The model is what the caller holds: how many slots are out. The pointers
+// themselves live in the system, because the model is copied as the sequence
+// is generated and a pointer means nothing to a copy.
+struct pool_model {
+    std::size_t live{0};
+};
 
-    for (std::size_t step = 0; step < draws; ++step) {
-        const bool wants_alloc = (live.size() < cap) && (live.empty() || op_dist(rng) == 0);
-        if (wants_alloc) {
-            auto* p = arena.allocate();
-            REQUIRE(p != nullptr);
-            live.push_back(p);
-        } else {
-            std::uniform_int_distribution<std::size_t> pick{0, live.size() - 1};
-            const auto k = pick(rng);
-            arena.deallocate(live[k]);
-            live[k] = live.back();
-            live.pop_back();
-        }
-        REQUIRE(arena.in_use() == live.size());
-        REQUIRE(arena.empty() == live.empty());
-        REQUIRE(arena.full() == (live.size() == cap));
+struct arena_sut {
+    lob::slab_arena<cell, model_cap> arena{};
+    std::vector<cell*> live{};
+
+    void check(const pool_model& m) const {
+        RC_ASSERT(arena.in_use() == m.live);
+        RC_ASSERT(arena.empty() == (m.live == 0));
+        RC_ASSERT(arena.full() == (m.live == model_cap));
+        RC_ASSERT(live.size() == m.live);
     }
+};
+
+struct take : rc::state::Command<pool_model, arena_sut> {
+    void checkPreconditions(const pool_model& m) const override { RC_PRE(m.live < model_cap); }
+
+    void apply(pool_model& m) const override { ++m.live; }
+
+    void run(const pool_model& m, arena_sut& sut) const override {
+        auto* p = sut.arena.allocate();
+        RC_ASSERT(p != nullptr);
+        RC_ASSERT(sut.arena.owns(p));
+        // A slot handed out while already held is the failure this sequence
+        // exists to find.
+        RC_ASSERT(std::find(sut.live.begin(), sut.live.end(), p) == sut.live.end());
+        sut.live.push_back(p);
+        auto after = m;
+        ++after.live;
+        sut.check(after);
+    }
+
+    void show(std::ostream& os) const override { os << "allocate()"; }
+};
+
+struct give_back : rc::state::Command<pool_model, arena_sut> {
+    std::size_t k{0};
+
+    explicit give_back(const pool_model& m) {
+        RC_PRE(m.live > 0);
+        k = *rc::gen::inRange<std::size_t>(0, m.live);
+    }
+
+    void checkPreconditions(const pool_model& m) const override { RC_PRE(k < m.live); }
+
+    void apply(pool_model& m) const override { --m.live; }
+
+    void run(const pool_model& m, arena_sut& sut) const override {
+        sut.arena.deallocate(sut.live[k]);
+        sut.live[k] = sut.live.back();
+        sut.live.pop_back();
+        auto after = m;
+        --after.live;
+        sut.check(after);
+    }
+
+    void show(std::ostream& os) const override { os << "deallocate(slot=" << k << ")"; }
+};
+
+}  // namespace
+
+TEST_CASE("slab_arena hands out each slot to one holder at a time", "[arena][property][model]") {
+    rc::prop("occupancy agrees with what the caller holds", [] {
+        arena_sut sut;
+        rc::state::check(pool_model{}, sut, rc::state::gen::execOneOfWithArgs<take, give_back>());
+        RC_CLASSIFY(sut.arena.full(), "filled the arena");
+        RC_CLASSIFY(!sut.live.empty(), "left slots out");
+    });
 }
 
 TEST_CASE("slab_arena is movable", "[arena]") {
