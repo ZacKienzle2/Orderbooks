@@ -8,8 +8,8 @@
   "dependencies": ["boost-intrusive", "hdr-histogram"],
   "features": {
     "tests": {
-      "description": "Catch2 v3 unit, property and differential tests against the reference engine.",
-      "dependencies": ["catch2"]
+      "description": "Catch2 v3 unit tests and RapidCheck model-based differential properties against the reference engine.",
+      "dependencies": ["boost-pfr", "catch2", "magic-enum", "rapidcheck"]
     },
     "bench": {
       "description": "Google Benchmark microbenches with HDR latency counters.",
