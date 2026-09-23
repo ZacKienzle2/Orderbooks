@@ -50,7 +50,7 @@ ctest --preset linux-clang-rel --output-on-failure
 | Target      | Description                                            |
 | ----------- | ------------------------------------------------------ |
 | `lob_core`  | Engine + book + arena + bitmap + id index + SPSC ring. |
-| `lob_tests` | Catch2 + RapidCheck.                                   |
+| `lob_tests` | Catch2 v3.                                             |
 | `lob_bench` | Google Benchmark.                                      |
 
 ## Options

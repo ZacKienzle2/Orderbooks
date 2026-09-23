@@ -17,9 +17,6 @@ cmake --build --preset linux-clang-rel --target lob_bench --parallel
 
 ## Tail latencies
 
-`bench/bench_*_tail.cpp` use [nanobench](https://nanobench.ankerl.com/) for p50
-/ p99 / p99.9.
-
 `bench/bench_engine_latency.cpp` times each `engine::on_submit` with the x86
 time-stamp counter, records the per-operation samples into the in-process HDR
 histogram (`lob::latency_histogram`, ADR-0024), and reports `p50`, `p99`,

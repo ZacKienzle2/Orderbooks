@@ -77,9 +77,9 @@ TEST_CASE("latency_histogram reset clears all state", "[histogram]") {
 }
 
 TEST_CASE("latency_histogram honours a cap below the resolution floor", "[histogram]") {
-    // A cap smaller than the sub-bucket count used to be silently raised to
-    // the bucket layout's floor, so max() exceeded the configured maximum
-    // and overflow never counted in that band.
+    // A cap smaller than the histogram's first band still clamps, so max()
+    // stays at the configured maximum and overflow counts every sample the
+    // band could have held above it.
     lob::latency_histogram h{100, 3};
     h.record(50);
     h.record(150);

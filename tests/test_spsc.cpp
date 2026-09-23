@@ -102,6 +102,40 @@ TEST_CASE("spsc_ring producer / consumer thread pair preserves order and count",
     }
 }
 
+TEST_CASE("spsc_ring batch claims under a concurrent producer preserve order and count",
+          "[spsc][threading]") {
+    // consume_batch counts the published slots from the consumer cursor while
+    // the producer is still publishing behind it, across many laps of a small
+    // ring, so a claim must stop at the first slot not yet published and never
+    // mistake a slot from an earlier lap for a new one.
+    constexpr std::size_t cap = 64;
+    constexpr std::size_t items = 250'000;
+    spsc_ring<std::uint64_t, cap> ring;
+
+    std::thread producer{[&] {
+        for (std::uint64_t i = 0; i < items; ++i) {
+            while (!ring.try_push(i)) {
+                std::this_thread::yield();
+            }
+        }
+    }};
+
+    std::vector<std::uint64_t> consumed(items);
+    std::size_t k = 0;
+    while (k < items) {
+        const unsigned n =
+            ring.consume_batch(16, [&](const std::uint64_t& v) noexcept { consumed[k++] = v; });
+        if (n == 0)
+            std::this_thread::yield();
+    }
+    producer.join();
+
+    REQUIRE(ring.empty());
+    for (std::size_t i = 0; i < items; ++i) {
+        REQUIRE(consumed[i] == i);
+    }
+}
+
 TEST_CASE("spsc_ring with non-trivial-sized POD preserves bytes", "[spsc]") {
     struct payload {
         std::uint64_t a;

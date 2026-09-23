@@ -13,37 +13,25 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in"
 add_library(lob_core STATIC "${CMAKE_BINARY_DIR}/generated/src/lob/version.cpp")
 add_library(lob::core ALIAS lob_core)
 
-target_sources(
-  lob_core
-  PUBLIC FILE_SET
-         HEADERS
-         BASE_DIRS
-         "${CMAKE_SOURCE_DIR}/include"
-         FILES
-         "${CMAKE_SOURCE_DIR}/include/lob/types.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/version.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/bitmap.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/hugepage.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/arena.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/spsc_ring.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/spin.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/hash.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/latency_histogram.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/json_recorder.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/snapshot.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/shard_router.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/shard_worker.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/ring_publisher.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/shard_runtime.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/shard_egress_runtime.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/egress_merger.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/publisher_sink.hpp"
-         "${CMAKE_SOURCE_DIR}/include/lob/affinity.hpp")
+# Every public header, found rather than listed. The hand-kept list had drifted to 19 of the 29
+# headers, missing the engine, the book and the parser. CONFIGURE_DEPENDS re-runs the glob when a
+# header is added or removed.
+file(GLOB _lob_public_headers CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/lob/*.hpp")
+target_sources(lob_core PUBLIC FILE_SET HEADERS BASE_DIRS "${CMAKE_SOURCE_DIR}/include" FILES
+                               ${_lob_public_headers})
 
 target_include_directories(lob_core PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
                                            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
+# vcpkg builds HdrHistogram_c as the shared target on a dynamic triplet and the static one
+# otherwise, so link whichever the package defined.
+if(TARGET hdr_histogram::hdr_histogram)
+  set(_lob_hdr_histogram hdr_histogram::hdr_histogram)
+else()
+  set(_lob_hdr_histogram hdr_histogram::hdr_histogram_static)
+endif()
+
 target_link_libraries(
   lob_core
-  PUBLIC Boost::headers
-  PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening fmt::fmt)
+  PUBLIC Boost::headers ${_lob_hdr_histogram}
+  PRIVATE lob::compiler_flags lob::warnings lob::sanitizers lob::hardening)

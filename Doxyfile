@@ -1,0 +1,81 @@
+# Doxygen configuration for the engine's public headers.
+#
+# Only the settings that differ from Doxygen's own defaults are listed, so this
+# file says what was decided rather than repeating a generated dump of every
+# option. `doxygen -x` prints the same difference from an existing file, and
+# `doxygen -g` writes the full default set if the whole list is ever wanted.
+#
+# The headers document themselves in plain `//` blocks above each entity, which
+# is the house style and which Doxygen does not read as documentation. Rather
+# than restyle every comment in the repository, INPUT_FILTER promotes a `//`
+# block to a `///` block on the way in, so the prose that already exists
+# becomes the generated documentation. Comments inside function bodies are
+# promoted too and then ignored, because local declarations are not extracted.
+
+PROJECT_NAME           = "Orderbooks"
+PROJECT_BRIEF          = "Low-latency limit order book and matching engine"
+PROJECT_NUMBER         = 0.1.0
+OUTPUT_DIRECTORY       = artifacts/doxygen
+
+# The headers, and the README as the front page. Nothing else: the governance
+# and changelog Markdown is written for GitHub's renderer, with in-page anchors
+# and angle-bracket text that Doxygen reads as broken references and unknown
+# tags, and the decision records would fight the README over the main page.
+INPUT                  = include/lob README.md
+FILE_PATTERNS          = *.hpp *.md
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+
+# Promote the house comment style to documentation comments. The expression
+# leaves `///`, `//!` and commented-out code beginning with a slash alone.
+INPUT_FILTER           = "sed -E 's|^([[:space:]]*)//([^/!])|\\1///\\2|'"
+
+# The engine is templates and constexpr throughout, so the members that matter
+# are mostly not public class members in the conventional sense.
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+EXTRACT_PRIV_VIRTUAL   = YES
+HIDE_UNDOC_MEMBERS     = NO
+
+# The source is the reference. Browsing it with the declarations cross-linked
+# is more useful here than a synopsis of a header that is itself the interface.
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = YES
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+STRIP_CODE_COMMENTS    = NO
+
+# Graphs need graphviz, which is not everywhere. Doxygen expands environment
+# variables in this file, so the recipe sets DOXYGEN_HAVE_DOT=YES when dot is
+# on PATH and leaves it empty otherwise, which Doxygen reads as NO.
+HAVE_DOT               = $(DOXYGEN_HAVE_DOT)
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = NO
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+TEMPLATE_RELATIONS     = YES
+
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+SORT_MEMBER_DOCS       = NO
+SORT_BRIEF_DOCS        = NO
+
+# Warnings are printed and read, but they do not fail the build. The README is
+# written for GitHub, so its links to files outside this input are reported and
+# are not defects; failing on them would mean maintaining the README twice.
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO
+WARN_AS_ERROR          = NO
+
+# The engine is C++20; these keep Doxygen's parser from tripping over
+# attributes and concepts it would otherwise try to interpret.
+PREDEFINED             = __cplusplus=202002L
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES

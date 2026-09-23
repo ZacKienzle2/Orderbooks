@@ -17,6 +17,8 @@
 #include <lob/latency_histogram.hpp>
 #include <lob/messages.hpp>
 #include <lob/shard_egress_runtime.hpp>
+#include <lob/spin.hpp>
+#include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
 #include <atomic>
@@ -25,6 +27,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -47,19 +50,8 @@ constexpr std::size_t slot_mask = slots - 1;
 
 using runtime_t = lob::shard_egress_runtime<ticks, max_orders, num_shards, ingress_cap, egress_cap>;
 
-[[nodiscard]] std::uint64_t now_tsc() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    return __builtin_ia32_rdtsc();
-#else
-    return static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-#endif
-}
-
-inline void cpu_relax() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    __builtin_ia32_pause();
-#endif
-}
+using lob::cpu_relax;
+using lob::read_tsc;
 
 // Forwards every merged event and, for a taker fill whose submit stamp is
 // parked, records the end-to-end latency. The latency phase stamps only the
@@ -70,13 +62,17 @@ struct latency_sink {
     lob::latency_histogram& hist;
     std::uint64_t events{0};
     std::atomic<std::uint64_t> samples{0};
+    // Set once the latency phase begins. The throughput phase stamps nothing,
+    // so until then a fill skips the stamp table, a random load into 8 MiB
+    // that would otherwise slow the merger it is measuring.
+    std::atomic<bool> stamping{false};
 
     void on_event(const lob::event& e, std::uint64_t /*merge_seq*/) noexcept {
         ++events;
-        if (e.k == lob::event::kind::fill) {
+        if (e.k == lob::event::kind::fill && stamping.load(std::memory_order_relaxed)) {
             const auto t0 = send_tsc[e.body.fill.taker & slot_mask].load(std::memory_order_relaxed);
             if (t0 != 0) {
-                hist.record(now_tsc() - t0);
+                hist.record(read_tsc() - t0);
                 samples.fetch_add(1, std::memory_order_release);
             }
         }
@@ -86,12 +82,14 @@ struct latency_sink {
 struct args {
     std::uint64_t orders{20'000'000};
     bool pin{false};
+    bool direct{false};
 };
 
 [[noreturn]] void usage(int code) {
     std::cerr << "usage: lob_loadgen [options]\n"
                  "  --orders N   total orders to submit (default 20000000)\n"
                  "  --pin        pin shard workers to cores\n"
+                 "  --direct     no merger thread: the client drains the shard rings itself\n"
                  "  --help       show this help\n";
     // std::exit is flagged mt-unsafe, but arg parsing runs single-threaded
     // before any worker is spawned.
@@ -106,6 +104,8 @@ args parse_args(int argc, char** argv) {
             a.orders = std::strtoull(argv[++i], nullptr, 10);
         } else if (s == "--pin") {
             a.pin = true;
+        } else if (s == "--direct") {
+            a.direct = true;
         } else if (s == "--help") {
             usage(0);
         } else {
@@ -115,6 +115,14 @@ args parse_args(int argc, char** argv) {
     }
     return a;
 }
+
+// What the direct client claims from one shard per visit, and how often it
+// visits while producing. The batch is the merger's own bound, so both paths
+// claim the same way and the comparison is of the hop rather than of the claim
+// size. The interval is that bound shared among the shards, so a producer
+// running flat out still drains each ring before it can overflow.
+constexpr unsigned poll_batch_max = lob::merger_config{}.batch_max;
+constexpr std::uint64_t poll_interval = poll_batch_max / runtime_t::shard_count();
 
 lob::submit_msg ask(lob::order_id_t id) noexcept {
     return {.id = id,
@@ -136,11 +144,7 @@ lob::submit_msg bid(lob::order_id_t id) noexcept {
             .account_id = 0};
 }
 
-}  // namespace
-
-int main(int argc, char** argv) {
-    const args a = parse_args(argc, argv);
-
+int run(const args& a) {
     std::vector<std::atomic<std::uint64_t>> send_tsc(slots);
     lob::latency_histogram hist{10'000'000, 3};
 
@@ -154,8 +158,24 @@ int main(int argc, char** argv) {
     lob::egress_merger<runtime_t, latency_sink> merger{rt, sink,
                                                        lob::merger_config{.pin_thread = false}};
 
+    // The merged stream is one consumer of the per-shard rings, not the only
+    // one there could be (ADR-0021). With --direct the client drains them
+    // itself, which takes the merger thread out of the reply path: an event
+    // then crosses one core boundary, from the shard that produced it to the
+    // client, where the merged path crosses two. The client remains a single
+    // consumer per ring, which is the contract spsc_ring states.
+    const auto poll_all = [&rt, &sink]() noexcept {
+        unsigned n = 0;
+        for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
+            n += rt.poll_batch(s, poll_batch_max,
+                               [&sink](const lob::event& e) noexcept { sink.on_event(e, 0); });
+        }
+        return n;
+    };
+
     rt.start();
-    merger.start();
+    if (!a.direct)
+        merger.start();
 
     lob::order_id_t next = 1;
 
@@ -171,10 +191,27 @@ int main(int argc, char** argv) {
         while (!rt.try_submit(sym, bid(next++))) {
         }
         submitted += 2;
+        // Nobody else is draining in direct mode, so the producer has to, or
+        // the rings fill and the publisher starts dropping events.
+        if (a.direct && (i % poll_interval) == 0)
+            (void)poll_all();
     }
     rt.drain();
     const auto wall1 = std::chrono::steady_clock::now();
     const double secs = std::chrono::duration<double>(wall1 - wall0).count();
+
+    // The saturated phase can leave the egress rings full behind a merger that
+    // trails the workers, and a full ring drops an event rather than block. A
+    // dropped fill would leave the closed loop below waiting on a sample that
+    // never comes, so let the merger take the whole backlog first.
+    for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
+        while (rt.egress_backlog(s) != 0) {
+            if (a.direct)
+                (void)poll_all();
+            cpu_relax();
+        }
+    }
+    sink.stamping.store(true, std::memory_order_relaxed);
 
     // Phase 2: latency. Closed loop with one pair in flight, so the pipeline
     // stays unsaturated and the stamp-to-echo difference is processing latency,
@@ -187,24 +224,38 @@ int main(int argc, char** argv) {
         while (!rt.try_submit(sym, ask(next++))) {
         }
         const lob::order_id_t bid_id = next++;
-        send_tsc[bid_id & slot_mask].store(now_tsc(), std::memory_order_relaxed);
+        send_tsc[bid_id & slot_mask].store(read_tsc(), std::memory_order_relaxed);
         while (!rt.try_submit(sym, bid(bid_id))) {
         }
         while (sink.samples.load(std::memory_order_acquire) == prev) {
+            if (a.direct)
+                (void)poll_all();
             cpu_relax();
         }
     }
 
     rt.drain();
-    merger.stop();
+    if (a.direct) {
+        // Whatever the workers published after the last poll still has to be
+        // taken before the run reports, or the event count understates.
+        while (poll_all() != 0) {
+        }
+    } else {
+        merger.stop();
+    }
     rt.stop();
 
     std::printf("throughput: orders=%llu  wall=%.3fs  %.2f Morders/s\n",
                 static_cast<unsigned long long>(submitted), secs,
                 static_cast<double>(submitted) / secs / 1e6);
-    std::printf("latency: unloaded round-trip samples=%llu  events=%llu\n",
+    std::uint64_t dropped = 0;
+    for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
+        dropped += rt.publisher(s).dropped();
+    }
+    std::printf("latency: unloaded round-trip samples=%llu  events=%llu  dropped=%llu\n",
                 static_cast<unsigned long long>(sink.samples.load(std::memory_order_relaxed)),
-                static_cast<unsigned long long>(sink.events));
+                static_cast<unsigned long long>(sink.events),
+                static_cast<unsigned long long>(dropped));
     std::printf("end-to-end latency (reference cycles): p50=%llu p99=%llu p99.9=%llu max=%llu\n",
                 static_cast<unsigned long long>(hist.value_at_percentile(50.0)),
                 static_cast<unsigned long long>(hist.value_at_percentile(99.0)),
@@ -217,4 +268,15 @@ int main(int argc, char** argv) {
             static_cast<unsigned long long>(hist.overflow_count()));
     }
     return 0;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    try {
+        return run(parse_args(argc, argv));
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "lob_loadgen: %s\n", e.what());
+        return 1;
+    }
 }

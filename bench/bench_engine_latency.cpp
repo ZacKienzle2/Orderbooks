@@ -1,6 +1,7 @@
 #include <lob/engine.hpp>
 #include <lob/latency_histogram.hpp>
 #include <lob/messages.hpp>
+#include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
 #include <cstddef>
@@ -8,10 +9,6 @@
 #include <random>
 
 #include <benchmark/benchmark.h>
-
-#if !defined(__x86_64__) && !defined(__i386__)
-#include <chrono>
-#endif
 
 namespace {
 
@@ -30,18 +27,6 @@ struct null_publisher {
 
 constexpr std::size_t ticks = 4096;
 constexpr std::size_t max_orders = std::size_t{1} << 16;
-
-// A coarse, low-overhead timestamp. On x86 it is the time-stamp counter, read
-// with a handful of cycles of overhead so it does not swamp a sub-microsecond
-// operation; the unit is reference cycles. Elsewhere it is the monotonic clock
-// in nanoseconds.
-[[nodiscard]] std::uint64_t timestamp() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    return __builtin_ia32_rdtsc();
-#else
-    return static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-#endif
-}
 
 lob::submit_msg make_bid(lob::order_id_t id, lob::tick_t px, lob::qty_t qty) {
     return {.id = id,
@@ -74,9 +59,9 @@ void bench_submit_latency(benchmark::State& state) {
 
     for (auto _ : state) {
         const auto m = make_bid(next_id++, px(rng), qty(rng));
-        const auto start = timestamp();
+        const auto start = lob::read_tsc();
         eng.on_submit(m);
-        const auto stop = timestamp();
+        const auto stop = lob::read_tsc();
         hist.record(stop - start);
         benchmark::ClobberMemory();
         eng.on_cancel(lob::cancel_msg{.id = m.id});

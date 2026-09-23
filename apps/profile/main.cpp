@@ -10,11 +10,16 @@
 // The dispatch within a workload is deterministic, so its branch profile
 // belongs to the engine, not to the driver picking the next op. Pre-population
 // runs outside the timed region. Run the binary under perf stat or a sanitizer
-// build to attach counters or fault detection; scripts/profile.sh drives that.
+// build to attach counters or fault detection; the justfile's profile-* recipes
+// drive that.
 //
 // Workloads:
 //   deep      depth-maintaining mix (replace, price-move modify, qty modify) on
 //             a deep two-sided book; the realistic resting-path profile.
+//   stream    the deep mix drained a batch at a time, as the shard worker drains
+//             its ingress ring, prefetching --ahead commands ahead. --handles
+//             runs it with no id index, every cancel and modify carrying the
+//             handle its order rested with.
 //   submit    resting submits with a paired cancel to bound the book.
 //   cancel    cancels of a pre-built book.
 //   modifyp   non-crossing price-move modifies on a one-sided book.
@@ -24,9 +29,13 @@
 
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
+#include <lob/hash.hpp>
 #include <lob/messages.hpp>
+#include <lob/shard_worker.hpp>
+#include <lob/tsc.hpp>
 #include <lob/types.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -34,6 +43,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -54,26 +64,26 @@ constexpr std::size_t ticks = 4096;
 constexpr std::size_t max_orders = std::size_t{1} << 17;
 constexpr lob::tick_t mid = ticks / 2;
 using eng_t = lob::engine<null_pub, ticks, max_orders>;
+using handle_eng_t = lob::engine<null_pub, ticks, max_orders, lob::order_lookup::by_handle>;
 
-[[nodiscard]] std::uint64_t now_tsc() noexcept {
-#if defined(__x86_64__) || defined(__i386__)
-    return __builtin_ia32_rdtsc();
-#else
-    return 0;
-#endif
-}
+using lob::read_tsc;
 
+// SplitMix64 generator step: a Weyl increment finalised by lob::splitmix64.
 std::uint64_t splitmix(std::uint64_t& s) noexcept {
-    std::uint64_t z = (s += 0x9E3779B97F4A7C15ULL);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    return z ^ (z >> 31);
+    return lob::splitmix64(s += 0x9E3779B97F4A7C15ULL);
 }
 
 struct result {
     double cyc_per_op{0.0};
-    std::uint64_t fills{0};
 };
+
+// Map a uniform 64-bit draw onto [0, n) with a multiply and a shift rather
+// than a division, which costs tens of cycles inside the timed loop and was
+// charged to the engine (Lemire, doi:10.1145/3230636). The high half of the
+// draw times n stays below 2^64 for n below 2^32, which every size here is.
+[[nodiscard]] std::uint64_t below(std::uint64_t x, std::uint64_t n) noexcept {
+    return ((x >> 32U) * n) >> 32U;
+}
 
 struct rec {
     lob::order_id_t id;
@@ -109,10 +119,10 @@ result run_deep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t 
         eng.on_submit(m);
         live.push_back({m.id, m.px, m.s == lob::side::bid});
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const auto sel = i % 20;  // 10 replace, 6 modify-px, 4 modify-qty
-        const std::size_t k = splitmix(rng) % live.size();
+        const std::size_t k = below(splitmix(rng), live.size());
         if (sel < 10) {
             eng.on_cancel(lob::cancel_msg{.id = live[k].id});
             const auto m = rest(rng, next++);
@@ -130,7 +140,7 @@ result run_deep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t 
                 .id = live[k].id, .new_px = live[k].px, .new_qty = 1 + splitmix(rng) % 100});
         }
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_submit(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -143,13 +153,13 @@ result run_submit(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_
         eng.on_submit(rest(rng, next++));
     }
     lob::order_id_t id = 1;
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         eng.on_cancel(lob::cancel_msg{.id = id});
         eng.on_submit(rest(rng, id));
-        id = id % depth + 1;
+        id = id == depth ? 1 : id + 1;
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_cancel(eng_t& eng, std::uint64_t ops, std::size_t /*depth*/, std::uint64_t seed) {
@@ -162,11 +172,11 @@ result run_cancel(eng_t& eng, std::uint64_t ops, std::size_t /*depth*/, std::uin
         eng.on_submit(m);
         ids.push_back(m.id);
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (const auto id : ids) {
         eng.on_cancel(lob::cancel_msg{.id = id});
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_modifyp(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -185,15 +195,15 @@ result run_modifyp(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
                        ._pad = 0,
                        .account_id = 0});
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
-        const lob::order_id_t id = 1 + splitmix(rng) % depth;
+        const lob::order_id_t id = 1 + below(splitmix(rng), depth);
         eng.on_modify(
             lob::modify_msg{.id = id,
                             .new_px = static_cast<lob::tick_t>(lo + splitmix(rng) % (hi - lo)),
                             .new_qty = 1 + splitmix(rng) % 50});
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_modifyq(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -209,13 +219,13 @@ result run_modifyq(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64
         eng.on_submit(m);
         live.push_back({m.id, m.px, m.s == lob::side::bid});
     }
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
-        const auto& e = live[splitmix(rng) % live.size()];
+        const auto& e = live[below(splitmix(rng), live.size())];
         eng.on_modify(
             lob::modify_msg{.id = e.id, .new_px = e.px, .new_qty = 1 + splitmix(rng) % 100});
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
 result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t seed) {
@@ -225,7 +235,7 @@ result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
         eng.on_submit(rest(rng, next++));
     }
     lob::order_id_t taker = 1'000'000'000;
-    const auto t0 = now_tsc();
+    const auto t0 = read_tsc();
     for (std::uint64_t i = 0; i < ops; ++i) {
         const bool bid = (i & 1U) != 0;
         eng.on_submit({.id = taker++,
@@ -241,9 +251,10 @@ result run_cross(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
             }
         }
     }
-    return {static_cast<double>(now_tsc() - t0) / static_cast<double>(ops), 0};
+    return {static_cast<double>(read_tsc() - t0) / static_cast<double>(ops)};
 }
 
+// cppcheck-suppress constParameterCallback  // one signature for the workload table
 result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t /*seed*/) {
     constexpr lob::tick_t px = mid;
     const lob::qty_t qd = depth;
@@ -266,7 +277,7 @@ result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
     const std::uint64_t iters = depth > 0 ? ops / depth : 0;
     std::uint64_t cyc = 0;
     for (std::uint64_t i = 0; i < iters; ++i) {
-        const auto t0 = now_tsc();
+        const auto t0 = read_tsc();
         eng.on_submit({.id = taker++,
                        .px = px,
                        .qty = qd,
@@ -274,35 +285,143 @@ result run_sweep(eng_t& eng, std::uint64_t ops, std::size_t depth, std::uint64_t
                        .t = lob::tif::ioc,
                        ._pad = 0,
                        .account_id = 0});
-        cyc += now_tsc() - t0;
+        cyc += read_tsc() - t0;
         refill();
     }
     const auto fills = iters * depth;
-    return {fills > 0 ? static_cast<double>(cyc) / static_cast<double>(fills) : 0.0, 0};
+    return {fills > 0 ? static_cast<double>(cyc) / static_cast<double>(fills) : 0.0};
 }
-
-struct workload {
-    const char* name;
-    result (*fn)(eng_t&, std::uint64_t, std::size_t, std::uint64_t);
-    const char* note;
-};
-
-constexpr workload workloads[] = {
-    {"deep", run_deep, "depth-maintaining replace + modify mix"},
-    {"submit", run_submit, "resting submit (paired cancel)"},
-    {"cancel", run_cancel, "cancel of a pre-built book"},
-    {"modifyp", run_modifyp, "non-crossing price-move modify"},
-    {"modifyq", run_modifyq, "quantity-only modify"},
-    {"cross", run_cross, "marketable cross with replenish"},
-    {"sweep", run_sweep, "deep single-price FIFO sweep (cyc per fill)"},
-};
 
 struct args {
     std::string workload{"deep"};
     std::uint64_t ops{20'000'000};
     std::size_t depth{40'000};
     std::uint64_t seed{0xC0FFEEULL};
+    unsigned ahead{lob::prefetch_plan{}.index_ahead};
+    unsigned ahead2{lob::prefetch_plan{}.order_ahead};
+    unsigned batch{64};
+    bool rename{false};
+    bool handles{false};
     bool list{false};
+};
+
+// The deep mix as the shard worker sees it. Commands arrive a batch at a time,
+// as consume_claim claims them from the ingress ring, and the timed region is
+// the drain of each batch through apply_batch with nothing else in it, which
+// is what drive_shard does. --ahead and --ahead2 set the index and order
+// prefetch distances, and zero turns a stage off. --rename gives every modify
+// a fresh id, as a FIX cancel-replace assigns the next ClOrdID. Reported per
+// deep-mix op, where a replace is a cancel and a submit, so the figure
+// compares with the deep workload's.
+//
+// With --handles each cancel and modify carries the handle its order last
+// returned, recorded from the drain as a gateway records the handle it acks,
+// and the engine keeps no id index. A client learns a handle only from the
+// ack, so a batch never names an order resting from within the same batch,
+// and an order still waiting on its handle is not drawn.
+template <class Engine>
+result run_stream(Engine& eng, const args& a) {
+    if (a.depth == 0 || a.batch == 0) {
+        return {};
+    }
+    std::uint64_t rng = a.seed;
+    constexpr bool handles = !std::is_same_v<Engine, eng_t>;
+    struct entry {
+        rec r;
+        lob::order_handle h;
+        bool awaiting;
+    };
+    std::vector<entry> live;
+    live.reserve(a.depth);
+    lob::order_id_t next = 1;
+    for (std::size_t i = 0; i < a.depth; ++i) {
+        const auto m = rest(rng, next++);
+        const auto h = eng.on_submit(m);
+        live.push_back({.r = {m.id, m.px, m.s == lob::side::bid}, .h = h, .awaiting = false});
+    }
+    constexpr std::size_t no_owner = ~std::size_t{0};
+    std::vector<lob::command> cmds;
+    std::vector<std::size_t> owner;
+    cmds.reserve(a.batch + 1);
+    owner.reserve(a.batch + 1);
+    const lob::prefetch_plan plan{.index_ahead = a.ahead, .order_ahead = a.ahead2};
+    std::uint64_t cyc = 0;
+    std::uint64_t op = 0;
+    while (op < a.ops) {
+        cmds.clear();
+        owner.clear();
+        while (cmds.size() < a.batch && op < a.ops) {
+            const auto sel = op++ % 20;  // 10 replace, 6 modify-px, 4 modify-qty
+            std::size_t k = below(splitmix(rng), live.size());
+            while (live[k].awaiting)
+                k = below(splitmix(rng), live.size());
+            auto& e = live[k];
+            const auto h = e.h;
+            if (sel < 10) {
+                cmds.push_back(lob::command::make_cancel({.id = e.r.id, .handle = h}));
+                owner.push_back(no_owner);
+                const auto m = rest(rng, next++);
+                cmds.push_back(lob::command::make_submit(m));
+                owner.push_back(k);
+                e.r = {m.id, m.px, m.s == lob::side::bid};
+            } else {
+                if (sel < 16) {
+                    const auto off = static_cast<lob::tick_t>(1 + splitmix(rng) % (mid - 2));
+                    e.r.px = e.r.bid ? (mid - off) : (mid + off);
+                }
+                const lob::order_id_t renamed = a.rename ? next++ : 0;
+                cmds.push_back(lob::command::make_modify({.id = e.r.id,
+                                                          .new_px = e.r.px,
+                                                          .new_qty = 1 + splitmix(rng) % 100,
+                                                          .new_id = renamed,
+                                                          .handle = h}));
+                owner.push_back(k);
+                if (renamed != 0)
+                    e.r.id = renamed;
+            }
+            e.awaiting = handles;
+        }
+        const auto n = static_cast<unsigned>(cmds.size());
+        const auto at = [&cmds](unsigned i) noexcept -> const lob::command& { return cmds[i]; };
+        const auto t0 = read_tsc();
+        if constexpr (handles) {
+            lob::apply_batch(eng, n, at, plan,
+                             [&live, &owner](unsigned i, lob::order_handle h) noexcept {
+                                 if (owner[i] != no_owner) {
+                                     live[owner[i]].h = h;
+                                     live[owner[i]].awaiting = false;
+                                 }
+                             });
+        } else {
+            lob::apply_batch(eng, n, at, plan);
+        }
+        cyc += read_tsc() - t0;
+    }
+    return {static_cast<double>(cyc) / static_cast<double>(a.ops)};
+}
+
+// Adapts a workload that takes the op count, depth and seed to the table's
+// signature, so each of them keeps its own parameter list.
+template <result (*F)(eng_t&, std::uint64_t, std::size_t, std::uint64_t)>
+result plain(eng_t& eng, const args& a) {
+    return F(eng, a.ops, a.depth, a.seed);
+}
+
+struct workload {
+    const char* name;
+    result (*fn)(eng_t&, const args&);
+    const char* note;
+};
+
+constexpr workload workloads[] = {
+    {"deep", plain<run_deep>, "depth-maintaining replace + modify mix"},
+    {"stream", run_stream<eng_t>, "deep mix drained a batch at a time, prefetching --ahead"},
+    {"submit", plain<run_submit>, "resting submit (paired cancel)"},
+    {"cancel", plain<run_cancel>, "cancel of a pre-built book"},
+    {"modifyp", plain<run_modifyp>, "non-crossing price-move modify"},
+    {"modifyq", plain<run_modifyq>, "quantity-only modify"},
+    {"cross", plain<run_cross>, "marketable cross with replenish"},
+    {"sweep", plain<run_sweep>, "deep single-price FIFO sweep (cyc per fill)"},
 };
 
 args parse_args(int argc, char** argv) {
@@ -323,6 +442,21 @@ args parse_args(int argc, char** argv) {
         } else if (s == "--seed" && has_val) {
             a.seed = std::strtoull(argv[i + 1], nullptr, 10);
             i += 2;
+        } else if (s == "--ahead" && has_val) {
+            a.ahead = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
+            i += 2;
+        } else if (s == "--ahead2" && has_val) {
+            a.ahead2 = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
+            i += 2;
+        } else if (s == "--batch" && has_val) {
+            a.batch = static_cast<unsigned>(std::strtoul(argv[i + 1], nullptr, 10));
+            i += 2;
+        } else if (s == "--rename") {
+            a.rename = true;
+            ++i;
+        } else if (s == "--handles") {
+            a.handles = true;
+            ++i;
         } else if (s == "--list") {
             a.list = true;
             ++i;
@@ -343,21 +477,20 @@ int main(int argc, char** argv) {
         }
         return 0;
     }
-    const workload* chosen = nullptr;
-    for (const auto& w : workloads) {
-        if (a.workload == w.name) {
-            chosen = &w;
-            break;
-        }
-    }
-    if (chosen == nullptr) {
+    const auto* chosen = std::ranges::find(workloads, a.workload, &workload::name);
+    if (chosen == std::ranges::end(workloads)) {
         std::fprintf(stderr, "unknown workload %s; --list to see options\n", a.workload.c_str());
+        return 2;
+    }
+    if (a.handles && chosen->fn != run_stream<eng_t>) {
+        std::fprintf(stderr, "--handles applies to the stream workload only\n");
         return 2;
     }
     null_pub pub;
     // The engine embeds a multi-megabyte arena, so it lives on the heap.
-    const auto eng = std::make_unique<eng_t>(pub, lob::engine_config{});
-    const result r = chosen->fn(*eng, a.ops, a.depth, a.seed);
+    const result r = a.handles
+                         ? run_stream(*std::make_unique<handle_eng_t>(pub, lob::engine_config{}), a)
+                         : chosen->fn(*std::make_unique<eng_t>(pub, lob::engine_config{}), a);
     std::printf("workload=%-8s ops=%llu depth=%zu  %.1f cyc/op\n", chosen->name,
                 static_cast<unsigned long long>(a.ops), a.depth, r.cyc_per_op);
     return 0;

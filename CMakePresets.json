@@ -139,7 +139,9 @@
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_BUILD_FUZZ": "ON",
-        "LOB_SANITIZER": "fuzzer,address,undefined"
+        "LOB_BUILD_TESTS": "OFF",
+        "LOB_BUILD_BENCH": "OFF",
+        "LOB_SANITIZER": "address,undefined"
       }
     },
     {

@@ -32,11 +32,16 @@ struct prng {
 };
 
 // Values are never dereferenced; the index stores pointers into one dummy.
-lob::order dummy_order{};
+// It lives inside a function so it is not a mutable global, while still being
+// one object whose address every entry shares.
+lob::order* dummy_order() {
+    static lob::order order{};
+    return &order;
+}
 
 void fill_index(lob::id_index& idx) {
     for (lob::order_id_t id = 1; id <= live; ++id)
-        idx.insert(id, &dummy_order);
+        idx.insert(id, dummy_order());
 }
 
 void bench_id_index_lookup_hit(benchmark::State& state) {
@@ -73,7 +78,7 @@ void bench_id_index_churn(benchmark::State& state) {
     std::vector<lob::order_id_t> ids;
     ids.reserve(live);
     for (lob::order_id_t id = 1; id <= live; ++id) {
-        idx.insert(id, &dummy_order);
+        idx.insert(id, dummy_order());
         ids.push_back(id);
     }
     prng g{0xFEEDFACEULL};
@@ -82,7 +87,7 @@ void bench_id_index_churn(benchmark::State& state) {
         const auto k = g.next() % live;
         idx.erase(ids[k]);
         ids[k] = next_id++;
-        idx.insert(ids[k], &dummy_order);
+        idx.insert(ids[k], dummy_order());
         benchmark::ClobberMemory();
     }
     state.SetItemsProcessed(state.iterations());

@@ -1,0 +1,80 @@
+name: Fuzz
+
+# Coverage-guided fuzzing of the three places this process reads bytes it did
+# not write: the FIX parser, snapshot restore, and the gateway's wire decode.
+# Nothing here says which inputs to try. libFuzzer derives them from the
+# coverage each harness reaches, and the sanitizers decide what counts as a
+# failure, so the run finds the cases nobody thought to write down.
+#
+# A pull request gets a short budget per harness, enough to replay the corpus
+# and explore around it. The scheduled run is the long one.
+
+on:
+  pull_request:
+    paths:
+      - "include/lob/**"
+      - "apps/gateway/**"
+      - "fuzz/**"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    # Sunday, early. The long run is where new coverage actually comes from.
+    - cron: "17 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Budget per harness, in seconds"
+        required: false
+        default: "300"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: libFuzzer harnesses
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Configure and build the fuzz preset
+        uses: ./.github/actions/cmake-preset
+        with:
+          preset: linux-clang-fuzz
+
+      # A crash leaves its input in the working directory, so the step fails
+      # and the artifact upload below carries the reproducer.
+      - name: Fuzz each harness
+        env:
+          SECONDS_PER_HARNESS: ${{ inputs.seconds || '60' }}
+        run: |
+          mkdir -p artifacts/fuzz
+          cd artifacts/fuzz
+          for target in fix_raw fix_framed snapshot_restore gateway_wire; do
+            mkdir -p "corpus/$target"
+            echo "::group::$target"
+            "../../build/linux-clang-fuzz/fuzz/lob_fuzz_$target" "corpus/$target" \
+              -max_total_time="$SECONDS_PER_HARNESS" -print_final_stats=1 -rss_limit_mb=4096
+            echo "::endgroup::"
+          done
+
+      - name: Upload corpora and any reproducers
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-artifacts
+          path: |
+            artifacts/fuzz/
+          retention-days: 30

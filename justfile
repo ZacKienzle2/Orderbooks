@@ -49,3 +49,65 @@ profile-cachegrind workload="deep" ops="200000" depth="40000": (profiler "linux-
 
 # Cachegrind over the memory-bound workloads.
 profile-cachegrind-all ops="200000" depth="40000": (profile-cachegrind "deep" ops depth) (profile-cachegrind "submit" ops depth) (profile-cachegrind "modifyp" ops depth)
+
+# Build the libFuzzer harnesses. The preset carries the sanitizer set.
+fuzzers:
+    cmake --build --preset linux-clang-fuzz --target lob_fuzz_fix_raw lob_fuzz_fix_framed lob_fuzz_snapshot_restore lob_fuzz_gateway_wire --parallel
+
+# Fuzz one harness for a budget, keeping its corpus between runs so later runs
+# start from the coverage earlier ones found.
+fuzz target="fix_framed" seconds="60": fuzzers
+    mkdir -p artifacts/fuzz/corpus/{{ target }}
+    build/linux-clang-fuzz/fuzz/lob_fuzz_{{ target }} artifacts/fuzz/corpus/{{ target }} -max_total_time={{ seconds }} -print_final_stats=1
+
+# Fuzz every harness in turn.
+fuzz-all seconds="60": (fuzz "fix_raw" seconds) (fuzz "fix_framed" seconds) (fuzz "snapshot_restore" seconds) (fuzz "gateway_wire" seconds)
+
+# Train a profile: build instrumented, run every workload the profiler defines,
+# and merge the raw counts. The workloads are the training set, so a hot path
+# that no workload reaches gets no profile.
+pgo-train ops="2000000" depth="40000":
+    cmake -S . -B build/pgo-train -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOB_PGO=generate
+    cmake --build build/pgo-train --target lob_profile --parallel
+    mkdir -p artifacts/pgo/raw
+    for w in deep submit cancel modifyp modifyq cross sweep; do         LLVM_PROFILE_FILE="artifacts/pgo/raw/$w.profraw"             build/pgo-train/apps/profile/lob_profile --workload "$w" --ops {{ ops }} --depth {{ depth }} >/dev/null;     done
+    llvm-profdata merge -output=artifacts/pgo/train.profdata artifacts/pgo/raw/*.profraw
+
+# Release build that reads the trained profile.
+pgo-build:
+    cmake -S . -B build/pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOB_PGO=use
+    cmake --build build/pgo --parallel
+
+# Region, line and branch coverage of the library under the test suite.
+coverage:
+    cmake -S . -B build/coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLOB_COVERAGE=ON
+    cmake --build build/coverage --target lob_tests --parallel
+    mkdir -p artifacts/coverage
+    LLVM_PROFILE_FILE=artifacts/coverage/tests.profraw build/coverage/tests/lob_tests
+    llvm-profdata merge -sparse artifacts/coverage/tests.profraw -o artifacts/coverage/tests.profdata
+    llvm-cov report build/coverage/tests/lob_tests -instr-profile=artifacts/coverage/tests.profdata -ignore-filename-regex='(vcpkg|catch2|rapidcheck|/usr/|/tests/)'
+
+# What the fuzz corpora reach, replayed under the same instrumentation. A
+# corpus grown over minutes covers the parser further than the suite does, so
+# this is the honest figure for the code behind the harnesses.
+coverage-fuzz:
+    cmake -S . -B build/coverage-fuzz -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLOB_COVERAGE=ON -DLOB_BUILD_FUZZ=ON -DLOB_BUILD_TESTS=OFF -DLOB_BUILD_BENCH=OFF -DLOB_SANITIZER=""
+    cmake --build build/coverage-fuzz --parallel
+    mkdir -p artifacts/coverage
+    for t in fix_raw fix_framed snapshot_restore gateway_wire; do         LLVM_PROFILE_FILE="artifacts/coverage/$t.profraw"             build/coverage-fuzz/fuzz/lob_fuzz_$t "artifacts/fuzz/corpus/$t" -runs=0 >/dev/null 2>&1;     done
+    llvm-profdata merge -sparse artifacts/coverage/*.profraw -o artifacts/coverage/fuzz.profdata
+    llvm-cov report build/coverage-fuzz/fuzz/lob_fuzz_fix_raw -object build/coverage-fuzz/fuzz/lob_fuzz_fix_framed -object build/coverage-fuzz/fuzz/lob_fuzz_snapshot_restore -object build/coverage-fuzz/fuzz/lob_fuzz_gateway_wire -instr-profile=artifacts/coverage/fuzz.profdata -ignore-filename-regex='(vcpkg|/usr/|fuzz_)'
+
+# cppcheck, which needs no compilation database. Clang's path-sensitive
+# analyser is not run here: .clang-tidy already selects the clang-analyzer
+# checks, so `just lint` runs it against the preset's database, which resolves
+# the dependencies' headers where a standalone invocation does not.
+static:
+    cppcheck --enable=warning,performance,portability,style --inline-suppr --std=c++20 --language=c++ --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=unmatchedSuppression --error-exitcode=1 -q -I include -I . include/lob apps
+
+# API documentation from the headers. Graphs are drawn when graphviz is
+# installed and skipped when it is not, so the build works either way.
+docs:
+    mkdir -p artifacts/doxygen
+    DOXYGEN_HAVE_DOT=$(command -v dot >/dev/null && echo YES || echo NO) doxygen Doxyfile
+    @echo "artifacts/doxygen/html/index.html"
