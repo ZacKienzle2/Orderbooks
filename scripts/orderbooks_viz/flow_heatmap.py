@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .event_log import EventLog
+from .event_log import NoFillEventsError
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from matplotlib.figure import Figure
+
+    from .event_log import EventLog
 
 
 def render(
     log: EventLog, *, px_bins: int = 80, time_bins: int = 120, output: str | Path | None = None
-) -> plt.Figure:
+) -> Figure:
     """Render fill density across (price, sequence) bins.
 
     The matching engine's fill stream is the directly observable trade tape;
@@ -21,7 +28,7 @@ def render(
     number of fills.
     """
     if log.fills.empty:
-        raise ValueError("event log has no fill events")
+        raise NoFillEventsError
 
     fills = log.fills
     px_edges = np.linspace(fills["px"].min() - 0.5, fills["px"].max() + 0.5, px_bins + 1)

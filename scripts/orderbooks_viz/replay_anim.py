@@ -7,13 +7,20 @@ formats: MP4 (requires ffmpeg on PATH) or GIF (requires Pillow).
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.animation as anim
 import matplotlib.pyplot as plt
 
-from .event_log import EventLog
+from .event_log import NoTopEventsError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from matplotlib.artist import Artist
+
+    from .event_log import EventLog
 
 
 def render(
@@ -32,21 +39,23 @@ def render(
     extension chooses the codec; .mp4 uses ffmpeg, .gif uses Pillow.
     """
     if log.tops.empty:
-        raise ValueError("event log has no top events")
+        raise NoTopEventsError
 
     tops = log.tops.sort_values("seq").reset_index(drop=True)
     frames = list(range(0, len(tops), max(stride, 1)))
 
-    px_min = int(min(tops["bid_px"].min(), tops["ask_px"].min()))
-    px_max = int(max(tops["bid_px"].max(), tops["ask_px"].max()))
-    qty_max = int(max(tops["bid_qty"].max(), tops["ask_qty"].max()))
+    bid_px, ask_px = tops["bid_px"].to_numpy(), tops["ask_px"].to_numpy()
+    bid_qty, ask_qty = tops["bid_qty"].to_numpy(), tops["ask_qty"].to_numpy()
+    px_min = int(min(bid_px.min(), ask_px.min()))
+    px_max = int(max(bid_px.max(), ask_px.max()))
+    qty_max = int(max(bid_qty.max(), ask_qty.max()))
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_xlabel("quantity (negative = bid, positive = ask)")
     ax.set_ylabel("price (ticks)")
     ax.grid(True, alpha=0.3)
 
-    def draw_frame(i: int) -> Iterable[plt.Artist]:
+    def draw_frame(i: int) -> Iterable[Artist]:
         ax.clear()
         ax.set_xlim(-qty_max, qty_max)
         ax.set_ylim(px_min - 1, px_max + 1)

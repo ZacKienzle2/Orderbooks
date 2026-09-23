@@ -1,3 +1,5 @@
+# Rendered by copier: the reviewer is the owner half of github_repository in
+# .copier-answers.yml, the same account CODEOWNERS names.
 addReviewers: true
 addAssignees: author
 

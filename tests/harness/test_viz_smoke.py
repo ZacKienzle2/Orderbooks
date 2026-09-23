@@ -8,9 +8,9 @@ correctness is by human inspection; these tests guard the renderer's plumbing
 
 from __future__ import annotations
 
-import matplotlib
+import matplotlib as mpl
 
-matplotlib.use("Agg")
+mpl.use("Agg")
 
 import pytest
 from orderbooks_viz import (

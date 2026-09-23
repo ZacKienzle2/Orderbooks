@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
 from dataclasses import dataclass
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TYPE_CHECKING, Any, TextIO
 
 import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 try:
     import orjson as _orjson
 except ImportError:
     _orjson = None
+
+
+class NoTopEventsError(ValueError):
+    """The log holds no top-of-book events to read."""
+
+    def __init__(self) -> None:
+        """State which kind of event is missing."""
+        super().__init__("event log has no top events")
+
+
+class NoFillEventsError(ValueError):
+    """The log holds no fill events to read."""
+
+    def __init__(self) -> None:
+        """State which kind of event is missing."""
+        super().__init__("event log has no fill events")
 
 
 @dataclass(slots=True, frozen=True)
@@ -88,7 +106,8 @@ def _split(records: Iterable[dict]) -> EventLog:
         "reject": rejects.append,
     }
     for r in records:
-        handler = dispatch.get(r.get("kind"))
+        kind = r.get("kind")
+        handler = dispatch.get(kind) if isinstance(kind, str) else None
         if handler is not None:
             handler(r)
     return EventLog(
