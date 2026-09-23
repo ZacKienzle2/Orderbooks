@@ -166,8 +166,10 @@ struct consistency_system : engine_system {
         // The bitmap is the index over the ladder: an empty level is never the
         // best price, and a level with quantity is never past the best one.
         const auto best = book.best();
+        // Comparing the optional against the price says empty-or-different
+        // without dereferencing it.
         if (sum == 0)
-            RC_ASSERT(!best.has_value() || *best != px);
+            RC_ASSERT(best != px);
         else
             RC_ASSERT(best.has_value());
     }

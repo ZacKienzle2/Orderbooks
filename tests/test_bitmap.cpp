@@ -146,7 +146,7 @@ struct bitmap_sut {
 void check_against_model(const bitmap_sut& sut, const bit_model& m) {
     const auto q = *rc::gen::inRange<std::size_t>(0, model_cap);
     RC_ASSERT(sut.bm.empty() == m.empty());
-    RC_ASSERT(sut.bm.test(q) == (m.count(q) > 0));
+    RC_ASSERT(sut.bm.test(q) == m.contains(q));
     if (!m.empty()) {
         RC_ASSERT(sut.bm.lowest_set() == *m.begin());
         RC_ASSERT(sut.bm.highest_set() == *m.rbegin());
