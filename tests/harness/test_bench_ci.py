@@ -13,9 +13,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from bench_ci import collect, interval, ratio_interval, t_quantile
 
 
-def test_t_quantile_matches_the_table() -> None:
+def test_t_quantile_matches_published_values() -> None:
+    # Two-sided 95 per cent quantiles as printed in any statistical table.
     assert t_quantile(10) == pytest.approx(2.228, abs=1e-3)
-    assert t_quantile(60) == pytest.approx(2.000, abs=0.01)
+    assert t_quantile(60) == pytest.approx(2.000, abs=1e-3)
+    # Past thirty degrees of freedom the old table stopped and approximated;
+    # these come out exactly now, and so does a confidence it never carried.
+    assert t_quantile(200) == pytest.approx(1.972, abs=1e-3)
+    assert t_quantile(10, confidence=0.99) == pytest.approx(3.169, abs=1e-3)
 
 
 def test_interval_widens_with_spread() -> None:

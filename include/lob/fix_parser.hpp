@@ -74,7 +74,11 @@ struct result {
 // belong in one named set rather than as integer literals with the name in a
 // comment beside each: a comment cannot be misspelled into a different field,
 // and a switch over named values says what it matches.
-enum class tag : int {
+//
+// The base type covers this set, not the whole tag space. A tag above 255
+// added here will not fit, which is a compile error at the point of the
+// change rather than an enumeration silently widened for one member.
+enum class tag : std::uint8_t {
     account = 1,
     begin_string = 8,
     body_length = 9,
@@ -88,7 +92,7 @@ enum class tag : int {
     time_in_force = 59,
 };
 
-[[nodiscard]] inline constexpr int tag_number(tag t) noexcept {
+[[nodiscard]] constexpr int tag_number(tag t) noexcept {
     return static_cast<int>(t);
 }
 

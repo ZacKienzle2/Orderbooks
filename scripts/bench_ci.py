@@ -26,51 +26,21 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-# Two-sided 95 percent quantiles of Student's t, indexed by degrees of freedom.
-# Beyond the table the Cornish-Fisher expansion is within 0.2 percent.
-_T95: dict[int, float] = {
-    1: 12.706,
-    2: 4.303,
-    3: 3.182,
-    4: 2.776,
-    5: 2.571,
-    6: 2.447,
-    7: 2.365,
-    8: 2.306,
-    9: 2.262,
-    10: 2.228,
-    11: 2.201,
-    12: 2.179,
-    13: 2.160,
-    14: 2.145,
-    15: 2.131,
-    16: 2.120,
-    17: 2.110,
-    18: 2.101,
-    19: 2.093,
-    20: 2.086,
-    21: 2.080,
-    22: 2.074,
-    23: 2.069,
-    24: 2.064,
-    25: 2.060,
-    26: 2.056,
-    27: 2.052,
-    28: 2.048,
-    29: 2.045,
-    30: 2.042,
-}
+from scipy import stats
 
 
 def t_quantile(nu: int, confidence: float = 0.95) -> float:
-    """The two-sided t quantile for nu degrees of freedom."""
+    """The two-sided t quantile for nu degrees of freedom.
+
+    SciPy computes this exactly for any degrees of freedom and any confidence.
+    It replaces a table of thirty values at one confidence level, with a series
+    expansion past the end of it: the table could not answer for a confidence
+    it did not list, and silently lost accuracy where it ran out.
+    """
     if nu < 1:
         msg = "t_quantile needs at least one degree of freedom"
         raise ValueError(msg)
-    z = statistics.NormalDist().inv_cdf(1.0 - (1.0 - confidence) / 2.0)
-    if confidence == 0.95 and nu in _T95:
-        return _T95[nu]
-    return z + (z**3 + z) / (4 * nu)
+    return float(stats.t.ppf(1.0 - (1.0 - confidence) / 2.0, nu))
 
 
 def interval(values: list[float], confidence: float = 0.95) -> tuple[float, float]:

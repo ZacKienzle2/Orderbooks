@@ -35,29 +35,38 @@ std::string make_fix(std::string_view body) {
     return m;
 }
 
-const std::string g_new_order_single = make_fix(
-    "35=D\x01"
-    "11=1001\x01"
-    "55=AAPL\x01"
-    "54=1\x01"
-    "38=50\x01"
-    "40=2\x01"
-    "44=8192\x01"
-    "59=1\x01");
+// Built on first use rather than at namespace scope: a string built before
+// main cannot report a failure to anything that could catch it.
+const std::string& new_order_single() {
+    static const std::string wire = make_fix(
+        "35=D\x01"
+        "11=1001\x01"
+        "55=AAPL\x01"
+        "54=1\x01"
+        "38=50\x01"
+        "40=2\x01"
+        "44=8192\x01"
+        "59=1\x01");
 
-const std::string g_cancel = make_fix(
-    "35=F\x01"
-    "11=1002\x01"
-    "41=1001\x01"
-    "55=AAPL\x01"
-    "54=1\x01");
+    return wire;
+}
+
+const std::string& cancel_request() {
+    static const std::string wire = make_fix(
+        "35=F\x01"
+        "11=1002\x01"
+        "41=1001\x01"
+        "55=AAPL\x01"
+        "54=1\x01");
+    return wire;
+}
 
 std::span<const std::byte> bytes_of(const std::string& s) noexcept {
     return {reinterpret_cast<const std::byte*>(s.data()), s.size()};
 }
 
 void bench_parse_new_order_single(benchmark::State& state) {
-    const auto buf = bytes_of(g_new_order_single);
+    const auto buf = bytes_of(new_order_single());
     for (auto _ : state) {
         auto r = lob::fix::parse(buf);
         benchmark::DoNotOptimize(r);
@@ -65,13 +74,13 @@ void bench_parse_new_order_single(benchmark::State& state) {
     }
     state.SetItemsProcessed(state.iterations());
     state.SetBytesProcessed(state.iterations() *
-                            static_cast<std::int64_t>(g_new_order_single.size()));
+                            static_cast<std::int64_t>(new_order_single().size()));
 }
 
 BENCHMARK(bench_parse_new_order_single);
 
 void bench_parse_cancel(benchmark::State& state) {
-    const auto buf = bytes_of(g_cancel);
+    const auto buf = bytes_of(cancel_request());
     for (auto _ : state) {
         auto r = lob::fix::parse(buf);
         benchmark::DoNotOptimize(r);

@@ -33,21 +33,21 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         // The command is one of the three the parser produces, with the
         // identity fields it promises. An id of zero or all ones would alias
         // the sentinels the id index reserves.
-        switch (r.cmd.k) {
-            case lob::command::kind::submit:
-                assert(r.cmd.body.submit.id != 0);
-                assert(r.cmd.body.submit.id != ~lob::order_id_t{0});
-                assert(r.cmd.body.submit.qty > 0);
-                break;
-            case lob::command::kind::cancel:
-                assert(r.cmd.body.cancel.id != 0);
-                assert(r.cmd.body.cancel.id != ~lob::order_id_t{0});
-                break;
-            case lob::command::kind::modify:
-                assert(r.cmd.body.modify.id != 0);
-                assert(r.cmd.body.modify.id != ~lob::order_id_t{0});
-                break;
-        }
+        const lob::order_id_t id = [&r]() noexcept -> lob::order_id_t {
+            switch (r.cmd.k) {
+                case lob::command::kind::submit:
+                    return r.cmd.body.submit.id;
+                case lob::command::kind::cancel:
+                    return r.cmd.body.cancel.id;
+                case lob::command::kind::modify:
+                    return r.cmd.body.modify.id;
+            }
+            return 0;
+        }();
+        assert(id != 0);
+        assert(id != ~lob::order_id_t{0});
+        if (r.cmd.k == lob::command::kind::submit)
+            assert(r.cmd.body.submit.qty > 0);
     } else {
         assert(r.consumed == 0);
     }
