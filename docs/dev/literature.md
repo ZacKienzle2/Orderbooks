@@ -4,8 +4,9 @@ Each open item against the paper that settles or informs it, what the paper
 actually says, and what it would change here. A paper is listed only after its
 abstract was read, because a title that matches is not a paper that applies.
 
-Two of the six read below do not apply, and they are listed with the reason.
-That is the point of reading the abstract rather than the title.
+Of the nine papers read below, two do not apply and eight roadmap items have no
+literature at all. Both are recorded, because that is the point of reading an
+abstract rather than a title, and of writing down a search that found nothing.
 
 ## How these were found
 
@@ -38,6 +39,12 @@ cursor. Ask for relevance or ask for a sort, never both.
 | Whether TCP order entry is worth replacing further | Barbette, Soldani and Mathy, "Fast userspace packet processing", ANCS 2015, doi:10.1109/ancs.2015.7110116                                      | Netmap and DPDK against kernel forwarding on commodity multi-queue, multi-core, NUMA hardware, with a 2.3x speed-up as an IP router and general design principles for software packet processors.                                                               | The shared-memory channel already removes the network stack for a local client, at 376 cycles against 475k. This is the reference for a remote client, and the number to beat before any kernel-bypass work is justified. |
 | Arena placement and NUMA first touch               | Majo and Gross, "Memory system performance in a NUMA multicore multiprocessor", SYSTOR 2011, doi:10.1145/1987816.1987832                       | Local and remote bandwidth are shared unevenly by the memory controller, and the conclusion is stated directly. Maximising data locality does not always minimise execution time, and allocating on a remote processor can be faster.                           | This explains the allocation-affinity experiment that measured worse and was rejected. The negative result was correct and now has a citation, rather than reading as a failed guess.                                     |
 
+## Applies, from the second pass over Next and Later
+
+| Open item                                         | Paper                                                                                                                                                   | What it says                                                                                                                                                                                                                                                              | What it would change here                                                                                                                                                                                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Differential property tests over the shard router | Zhang, Chattopadhyay and Wang, "Round-up: Runtime checking quasi linearizability of concurrent data structures", ASE 2013, doi:10.1109/ase.2013.6693061 | Automated runtime checking of quasi-linearizability in unmodified C and C++, built on LLVM and the Inspect concurrency testing tool, reporting no false violations. Quasi-linearizability is the relaxed condition that admits deliberate nondeterminism for performance. | The router and the rings are exactly that shape, a concurrent structure whose correctness is an ordering property rather than a value. This is the condition to state the property against, and the tool to measure a hand-written check against. |
+
 ## Read, and does not apply
 
 | Paper                                                                                                                                       | Why not                                                                                                                                                                                                                                                                          |
@@ -56,6 +63,27 @@ here so a search does not find them twice.
 | Bershad et al., User-level interprocess communication, doi:10.1145/103720.114701          | ADR-0048, the same                                   |
 | Claessen and Hughes, QuickCheck, doi:10.1145/351240.351266                                | ADR-0049, the generated property tests               |
 | Langdale and Lemire, Parsing gigabytes of JSON per second, doi:10.1007/s00778-019-00578-5 | ADR-0047, the structural index measured and rejected |
+
+## Searched, and the literature prescribes nothing
+
+Ten queries over the roadmap's Next and Later sections returned nothing on point
+for these. Recorded with what the searches actually surfaced, so the next
+session does not run them again.
+
+The pattern is that each of these is a specification or a product decision
+rather than a research question. An exchange publishes the protocol, a regulator
+publishes the control, and there is no structure for a paper to prescribe.
+
+| Item                                   | What the searches returned instead                                                                                                                                                                                         |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ITCH 5.0 feed handler                  | High-throughput sequencing protocols from Protocol Exchange. The words carry no systems meaning to Crossref, and ITCH is a published specification to implement rather than a design to derive.                            |
+| L3 egress with delta compression       | Generic delta encoding from the Data Compression Conference, on LZSS files and virtual-machine memory. Nothing addresses a book's update structure, which is where the compression would come from.                        |
+| Risk gateway, pre-trade limits         | Market microstructure economics, including Hasbrouck and Saar's "Low-Latency Trading" at 72 citations. These study what latency does to a market, not how to build a gateway that checks a limit.                          |
+| Fat-finger guards                      | Price-limit studies from the Istanbul and Korean exchanges. The same split: effects on volatility rather than implementation.                                                                                              |
+| Order-routing simulator, venue latency | Execution-quality and routing-cost economics. The one systems-shaped hit was an unpublished 2026 SSRN preprint with no citations.                                                                                          |
+| Post-only and pegged time in force     | Hidden-liquidity estimation and liquidity-imbalance studies. Order-type semantics come from the venue's rulebook.                                                                                                          |
+| Python bindings for backtests          | pybind11 used to embed an interpreter in OpenFOAM, and HPC optimisation solvers. Nothing measures binding overhead on a hot path, which is the only question worth asking here.                                            |
+| Deterministic replay                   | BugNet and QEMU-based record and replay, which reconstruct an execution that was not designed to be reproducible. This engine already replays from any prefix by sequence number, so the problem is solved upstream of it. |
 
 ## What has no paper yet
 
