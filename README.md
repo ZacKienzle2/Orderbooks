@@ -129,8 +129,9 @@ See [CODEOWNERS](.github/CODEOWNERS).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Conventional Commits 1.0.0 and DCO
-sign-off required.
+See
+[CONTRIBUTING.md](https://github.com/ZacKienzle2/Orderbooks/blob/main/CONTRIBUTING.md).
+Conventional Commits 1.0.0 and DCO sign-off required.
 
 ## License
 
@@ -138,5 +139,8 @@ sign-off required.
 
 ## Related
 
-[SECURITY](SECURITY.md) | [SUPPORT](SUPPORT.md) | [CHANGELOG](CHANGELOG.md) |
-[ROADMAP](ROADMAP.md) | [CITATION](CITATION.cff)
+[SECURITY](https://github.com/ZacKienzle2/Orderbooks/blob/main/SECURITY.md) |
+[SUPPORT](https://github.com/ZacKienzle2/Orderbooks/blob/main/SUPPORT.md) |
+[CHANGELOG](https://github.com/ZacKienzle2/Orderbooks/blob/main/CHANGELOG.md) |
+[ROADMAP](https://github.com/ZacKienzle2/Orderbooks/blob/main/ROADMAP.md) |
+[CITATION](CITATION.cff)

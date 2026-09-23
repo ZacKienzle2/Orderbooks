@@ -17,18 +17,13 @@ PROJECT_BRIEF          = "Low-latency limit order book and matching engine"
 PROJECT_NUMBER         = 0.1.0
 OUTPUT_DIRECTORY       = artifacts/doxygen
 
-# The headers, and every Markdown document at the repository root. The README
-# is the front page and links to its neighbours, and Doxygen resolves a
-# relative Markdown link against its own input, so a root document left out is
-# an unresolved reference rather than a plain link. Naming the root rather than
-# the seven files means a new one needs no edit here.
-#
-# RECURSIVE is NO so that the root entry takes the root alone. The decision
-# records under docs are deliberately outside this, because each is a page in
-# its own right and they would compete with the README for the main page.
-INPUT                  = include/lob .
+# The headers, and the README as the front page. Nothing else: the governance
+# and changelog Markdown is written for GitHub's renderer, with in-page anchors
+# and angle-bracket text that Doxygen reads as broken references and unknown
+# tags, and the decision records would fight the README over the main page.
+INPUT                  = include/lob README.md
 FILE_PATTERNS          = *.hpp *.md
-RECURSIVE              = NO
+RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = README.md
 
 # Promote the house comment style to documentation comments. The expression
