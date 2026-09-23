@@ -32,7 +32,14 @@ HeaderFilterRegex: '(include|src)/lob/.*\.(hpp|h)$'
 
 FormatStyle: file
 
+# Read back with `clang-tidy --dump-config`, which prints the options this
+# version recognises against what this file sets. An option whose check is off,
+# or that the version does not know, is accepted in silence and changes
+# nothing.
+#
+# hicpp-move-const-arg is an alias of performance-move-const-arg and the
+# families enable both, so the option is set twice. Setting it once left the
+# alias reporting at its default, which is the diagnostic this turns off.
 CheckOptions:
-  - { key: cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage, value: true }
   - { key: performance-move-const-arg.CheckTriviallyCopyableMove, value: false }
-  - { key: misc-include-cleaner.IgnoreHeaders, value: "lob/.*" }
+  - { key: hicpp-move-const-arg.CheckTriviallyCopyableMove, value: false }
