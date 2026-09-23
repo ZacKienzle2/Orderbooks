@@ -10,6 +10,7 @@ add_executable(
   test_latency_histogram.cpp
   test_arena.cpp
   test_spsc.cpp
+  test_shm_channel.cpp
   test_messages.cpp
   test_fix_parser.cpp
   test_order.cpp

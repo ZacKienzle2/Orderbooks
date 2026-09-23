@@ -93,6 +93,7 @@ update the index below. The template is the scaffold.
 | [0045](0045-hdrhistogram-c-for-latency.md)                    | Accepted               | HdrHistogram_c for latency measurement                          |
 | [0046](0046-library-hash-tables-measured-and-rejected.md)     | Accepted               | Library hash tables measured and rejected for the id index      |
 | [0047](0047-structural-index-parse-measured-and-rejected.md)  | Rejected               | Structural-index FIX parse measured and rejected                |
+| [0048](0048-shared-memory-client-channel.md)                  | Accepted               | Shared-memory channel for local order entry                     |
 
 ## References
 
