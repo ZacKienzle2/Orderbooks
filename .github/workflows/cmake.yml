@@ -154,9 +154,15 @@ jobs:
       # cpp-linter runs clang-tidy over the files the pull request changed, with
       # the compilation database this job configured and the checks and header
       # filter .clang-tidy names. It replaces a shell block that computed the
-      # changed files with git and carried the header filter a second time,
-      # the apt install of a clang the action brings itself, and the separate
-      # clang-format job, since style: file checks formatting as well.
+      # changed files with git, carried the header filter a second time, and
+      # apt-installed a clang the action brings itself.
+      #
+      # style is empty, which turns the action's clang-format off. Formatting is
+      # the pre-commit hook's job, which pins one version in one file and runs
+      # over the whole tree rather than over one pull request's files. Letting
+      # this action format as well pinned a second version here, and the two
+      # disagreed about where a brace goes, so a file could satisfy the hook
+      # that rewrote it and fail the job that read it.
       - name: Run clang-tidy on changed files
         id: linter
         uses: cpp-linter/cpp-linter-action@cab1143a2c149bc41e85b070a9de81716974c18f # v2.21.0
@@ -166,7 +172,7 @@ jobs:
           version: 18
           database: build/linux-clang-rel
           tidy-checks: ""
-          style: file
+          style: ""
           files-changed-only: true
           step-summary: true
           thread-comments: false
