@@ -51,5 +51,9 @@ if(LOB_BUILD_BENCH)
   add_subdirectory(bench)
 endif()
 
+if(LOB_BUILD_FUZZ)
+  add_subdirectory(fuzz)
+endif()
+
 # Install rules deferred until the engine ABI is settled; consumers should currently embed the
 # project via add_subdirectory or FetchContent.

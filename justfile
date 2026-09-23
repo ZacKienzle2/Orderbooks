@@ -49,3 +49,16 @@ profile-cachegrind workload="deep" ops="200000" depth="40000": (profiler "linux-
 
 # Cachegrind over the memory-bound workloads.
 profile-cachegrind-all ops="200000" depth="40000": (profile-cachegrind "deep" ops depth) (profile-cachegrind "submit" ops depth) (profile-cachegrind "modifyp" ops depth)
+
+# Build the libFuzzer harnesses. The preset carries the sanitizer set.
+fuzzers:
+    cmake --build --preset linux-clang-fuzz --target lob_fuzz_fix_raw lob_fuzz_fix_framed lob_fuzz_snapshot_restore lob_fuzz_gateway_wire --parallel
+
+# Fuzz one harness for a budget, keeping its corpus between runs so later runs
+# start from the coverage earlier ones found.
+fuzz target="fix_framed" seconds="60": fuzzers
+    mkdir -p artifacts/fuzz/corpus/{{ target }}
+    build/linux-clang-fuzz/fuzz/lob_fuzz_{{ target }} artifacts/fuzz/corpus/{{ target }} -max_total_time={{ seconds }} -print_final_stats=1
+
+# Fuzz every harness in turn.
+fuzz-all seconds="60": (fuzz "fix_raw" seconds) (fuzz "fix_framed" seconds) (fuzz "snapshot_restore" seconds) (fuzz "gateway_wire" seconds)
