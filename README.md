@@ -1,6 +1,8 @@
 # Orderbooks
 
-Low-latency limit order book and matching engine. C++20 over Boost.Intrusive,
+<!-- SPHINX-START -->
+
+Low-latency limit order book and matching engine. C++20 over `Boost.Intrusive`,
 designed for sub-microsecond order processing on Linux x86_64.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -10,8 +12,6 @@ designed for sub-microsecond order processing on Linux x86_64.
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196.svg)](https://www.conventionalcommits.org/en/v1.0.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue.svg)](https://semver.org/spec/v2.0.0.html)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
-
-<!-- CI, CodeQL, Scorecard and last-commit badges return on public visibility. -->
 
 ## Scope
 
@@ -38,14 +38,14 @@ designed for sub-microsecond order processing on Linux x86_64.
 ### Concurrency
 
 - Single-threaded engine pinned to an isolated core.
-- Vyukov-style bounded SPSC ring at the ingress and egress boundaries,
-  cache-line padded heads and tails, no false sharing.
-- Multi-symbol scalability via per-symbol shard router over independent
-  per-symbol engines.
+- Vyukov-style bounded SPSC ring at the ingress and egress boundaries, with
+  heads and tails padded onto separate cache lines.
+- Multi-symbol support through a shard router over independent per-symbol
+  engines.
 - Threaded shard runtime that drives each shard on its own worker thread, pinned
   to its own core, draining a dedicated SPSC ingress ring.
-- Optional per-shard egress rings so each shard publishes events into its own
-  SPSC ring, keeping the publish path lock-free and contention-free.
+- Optional per-shard egress rings. Each shard publishes events into its own SPSC
+  ring without locks or contention.
 - Single-threaded merging consumer that fans the per-shard egress rings into one
   sequenced event stream for a downstream recorder or publisher.
 - Publisher-concept seam bridging the merged stream onto any publisher, so the
@@ -102,13 +102,13 @@ cmake --build --preset linux-clang-rel --target lob_bench
 
 ## Tooling harness
 
-A `.venv` exists for repo tooling only: `pre-commit`, `clang-format`,
-`cmake-format`, `ruff`, `pytest` for harness scripts, `pandas` and `matplotlib`
-for latency analysis. It is not a runtime dependency.
+The Python package under `src/orderbooks` holds the analysis harness, which the
+engine does not depend on. `orderbooks.viz` reads event logs and draws plots and
+a Streamlit dashboard, and `orderbooks.bench_ci` computes benchmark statistics.
 
 ```bash
-uv sync --frozen
-uv run pre-commit install --install-hooks
+uv sync
+uv run pytest
 ```
 
 ## Repository layout
@@ -116,22 +116,17 @@ uv run pre-commit install --install-hooks
 ```text
 include/lob/    public headers (header-only domain types + engine ABI)
 src/lob/        translation units (build-only internals)
+src/orderbooks/ Python analysis harness (plots, dashboard, benchmark statistics)
 tests/          Catch2 v3 unit + property tests, reference engine, replay fixtures
 bench/          Google Benchmark microbenches with HDR latency counters
 cmake/          warnings, sanitisers, hardening, dependencies modules
-scripts/        perfstat, formatting, lint, replay helpers
 docs/           design specs, dev guides, ADRs
 ```
-
-## Maintainers
-
-See [CODEOWNERS](.github/CODEOWNERS).
 
 ## Contributing
 
 See
-[CONTRIBUTING.md](https://github.com/ZacKienzle2/Orderbooks/blob/main/CONTRIBUTING.md).
-Conventional Commits 1.0.0 and DCO sign-off required.
+[CONTRIBUTING](https://github.com/ZacKienzle2/Orderbooks/blob/main/.github/CONTRIBUTING.md).
 
 ## License
 
@@ -139,8 +134,6 @@ Conventional Commits 1.0.0 and DCO sign-off required.
 
 ## Related
 
-[SECURITY](https://github.com/ZacKienzle2/Orderbooks/blob/main/SECURITY.md) |
-[SUPPORT](https://github.com/ZacKienzle2/Orderbooks/blob/main/SUPPORT.md) |
-[CHANGELOG](https://github.com/ZacKienzle2/Orderbooks/blob/main/CHANGELOG.md) |
+[Releases](https://github.com/ZacKienzle2/Orderbooks/releases) |
 [ROADMAP](https://github.com/ZacKienzle2/Orderbooks/blob/main/ROADMAP.md) |
 [CITATION](CITATION.cff)

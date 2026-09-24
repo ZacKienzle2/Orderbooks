@@ -4,7 +4,7 @@
 
 CMake 3.28+, a C++20 compiler (Clang 17+, GCC 13+, Apple Clang 15+), Ninja,
 vcpkg (with `VCPKG_ROOT` exported), `uv`, `just`. The `Brewfile` names them for
-macOS; `brew bundle` installs it.
+macOS, and `brew bundle` installs them.
 
 ## First-time setup
 
@@ -12,16 +12,16 @@ macOS; `brew bundle` installs it.
 git clone https://github.com/ZacKienzle2/Orderbooks
 cd Orderbooks
 
-brew bundle                          # the Brewfile: cmake, ninja, llvm, ccache, uv, pre-commit, just
-uv sync --frozen
-pre-commit install --install-hooks   # every formatter and linter, into pre-commit's cache
+brew bundle                          # the Brewfile: cmake, ninja, llvm, ccache, uv, prek, just
+uv sync
+prek prepare-hooks                   # every formatter and linter, into prek's cache
 
 export VCPKG_ROOT="$HOME/code/vcpkg"
 "$VCPKG_ROOT/bootstrap-vcpkg.sh"
 ```
 
 Linux contributors: the same packages from `apt-get` or `dnf`, then the same
-`uv` and `pre-commit` commands.
+`uv` and `prek` commands.
 
 ## Presets
 
@@ -49,7 +49,7 @@ ctest --preset linux-clang-rel --output-on-failure
 
 | Target      | Description                                            |
 | ----------- | ------------------------------------------------------ |
-| `lob_core`  | Engine + book + arena + bitmap + id index + SPSC ring. |
+| `lob_core`  | Engine + book + arena + bitmap + ID index + SPSC ring. |
 | `lob_tests` | Catch2 v3.                                             |
 | `lob_bench` | Google Benchmark.                                      |
 
@@ -70,7 +70,7 @@ ctest --preset linux-clang-rel --output-on-failure
 ```bash
 just format            # clang-format and cmake-format, through the hooks
 just lint              # run-clang-tidy over build/<preset>/compile_commands.json
-pre-commit run --all-files
+prek run --all-files
 ```
 
 `just lint` reads `LOB_PRESET` for the preset, `linux-clang-rel` by default, and

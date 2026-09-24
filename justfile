@@ -6,7 +6,7 @@ preset := env("LOB_PRESET", "linux-clang-rel")
 
 # Format C++ and CMake sources through the hooks that gate a commit.
 format:
-    pre-commit run clang-format cmake-format --all-files
+    prek run clang-format cmake-format --all-files
 
 # clang-tidy over the preset's compilation database, with LLVM's own runner.
 lint preset=preset:

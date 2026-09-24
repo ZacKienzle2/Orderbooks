@@ -1,4 +1,4 @@
-"""Smoke tests for the orderbooks_viz renderers.
+"""Smoke tests for the orderbooks.viz renderers.
 
 Each test feeds a small synthetic event log into a renderer and asserts the
 renderer produces a non-empty figure (size > 1 KiB when saved). Visualisation
@@ -13,7 +13,8 @@ import matplotlib as mpl
 mpl.use("Agg")
 
 import pytest
-from orderbooks_viz import (
+
+from orderbooks.viz import (
     bitmap_occupancy,
     depth,
     event_log,
