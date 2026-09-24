@@ -9,17 +9,17 @@ deciders: ["Zac Kienzle"]
 ## Context and Problem Statement
 
 Architectural decisions accrete silently as a codebase grows. Reviewers and
-future contributors need the _why_ behind each load-bearing choice without
-trawling commit history or asking the original author.
+future contributors need the reasoning behind each choice the design depends on
+without trawling commit history or asking the original author.
 
 ## Decision Drivers
 
 - Decisions must be discoverable in seconds.
-- Reasoning must outlive the engineer who made the call.
-- Reviewers must be able to challenge a single decision without rewriting an
-  entire design document.
-- Conventions should be paradigmatic so external reviewers recognise the format
-  on sight.
+- Reasoning must remain readable after the engineer who made the call leaves.
+- Reviewers must be able to challenge one decision without rewriting an entire
+  design document.
+- Conventions should follow a published standard, so external reviewers
+  recognise the format on sight.
 
 ## Considered Options
 
@@ -36,45 +36,46 @@ number.
 
 ### Consequences
 
-- Positive: Every architectural decision has a permanent home with a stable URL.
-- Positive: MADR v3 is the format used by ThoughtWorks, Spotify, Azure
-  open-source repos; reviewers recognise it immediately.
-- Positive: Superseding a decision is a first-class operation
+- Positive: a recorded decision has a permanent home with a stable URL.
+- Positive: MADR v3 is the format used by ThoughtWorks, Spotify and Azure
+  open-source repos. Reviewers recognise it immediately.
+- Positive: superseding a decision is a first-class operation
   (`Status: Superseded by [ADR-NNNN]`).
-- Negative: Discipline cost. Every meaningful decision needs an ADR; trivial
-  ones do not, so authors must judge.
-- Negative: Slight prose duplication between ADR consequences and README
+- Negative: discipline cost. A decision that later work builds on needs an ADR
+  and a trivial one does not, so authors must judge.
+- Negative: slight prose duplication between ADR consequences and README
   sections.
 
 ## Pros and Cons of the Options
 
 ### MADR v3
 
-- Pro: Structured sections (Context, Decision Drivers, Considered Options,
-  Decision Outcome, Pros and Cons) prompt complete thinking.
-- Pro: Front-matter (`status`, `date`, `deciders`) machine-readable for index
+- Pro: its sections for context, drivers, options, outcome and trade-offs prompt
+  complete thinking.
+- Pro: front matter (`status`, `date`, `deciders`) is machine-readable for index
   generation.
-- Pro: Industry standard.
-- Con: Slightly more ceremony than Nygard format.
+- Pro: industry standard.
+- Con: slightly more ceremony than Nygard format.
 
 ### Nygard original
 
-- Pro: Minimal: Title, Status, Context, Decision, Consequences.
-- Con: No place for considered alternatives; reviewers must reconstruct.
-- Con: Less recognisable to modern reviewers than MADR.
+- Pro: minimal, with a title, status, context, decision and consequences.
+- Con: the format has no place for considered alternatives. Reviewers must
+  reconstruct them.
+- Con: less recognisable to modern reviewers than MADR.
 
 ### Monolithic design docs
 
-- Pro: One file to read for a feature.
-- Con: Hides controversial decisions inside walls of supporting prose.
-- Con: Cannot supersede individual decisions without rewriting the doc.
-- Con: Diff review becomes harder as the doc grows.
+- Pro: one file to read for a feature.
+- Con: hides controversial decisions inside walls of supporting prose.
+- Con: cannot supersede individual decisions without rewriting the doc.
+- Con: diff review becomes harder as the doc grows.
 
 ### Commit messages only
 
-- Pro: Zero process overhead.
-- Con: Not discoverable without grep; not browseable by reviewers.
-- Con: Loses the _considered options_ context that ADRs preserve.
+- Pro: zero process overhead.
+- Con: finding a decision takes grep, and reviewers cannot browse them.
+- Con: loses the _considered options_ context that ADRs preserve.
 
 ## More Information
 

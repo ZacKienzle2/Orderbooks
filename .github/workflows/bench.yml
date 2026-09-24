@@ -51,7 +51,7 @@ jobs:
           persist-credentials: false
 
       - name: Build the benchmark
-        uses: ./.github/actions/cmake-preset
+        uses: $/.github/actions/cmake-preset
         with:
           preset: linux-clang-rel
           target: lob_bench

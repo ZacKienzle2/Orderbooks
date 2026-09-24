@@ -10,7 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       ops:
-        description: "Op count per workload under the simulator, which runs about a hundred times slower than native"
+        description:
+          "Op count per workload under the simulator, which runs about a hundred
+          times slower than native"
         required: false
         default: "200000"
       depth:
@@ -41,7 +43,7 @@ jobs:
       # the RelWithDebInfo preset rather than a compile of its own; the just
       # recipe builds the profiler target.
       - name: Configure the RelWithDebInfo preset
-        uses: ./.github/actions/cmake-preset
+        uses: $/.github/actions/cmake-preset
         with:
           preset: linux-clang-relwithdebinfo
           build: "false"
@@ -55,7 +57,9 @@ jobs:
         env:
           OPS: ${{ inputs.ops }}
           DEPTH: ${{ inputs.depth }}
-        run: just profile-cachegrind-all "$OPS" "$DEPTH" | tee cachegrind-report.txt
+        run:
+          just profile-cachegrind-all "$OPS" "$DEPTH" | tee
+          cachegrind-report.txt
 
       - name: Upload report and raw profiles
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -38,12 +38,14 @@ jobs:
           persist-credentials: false
 
       - name: Build the release preset
-        uses: ./.github/actions/cmake-preset
+        uses: $/.github/actions/cmake-preset
         with:
           preset: linux-clang-rel
 
       - name: Install clang-tidy
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-tidy-18
+        run:
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          clang-tidy-18
 
       # run-clang-tidy applies the fixes and then exits non-zero for any
       # diagnostic left, which .clang-tidy's WarningsAsErrors makes every one;

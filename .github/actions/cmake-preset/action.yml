@@ -1,7 +1,8 @@
 name: Build a CMake preset
 description: >-
-  Ninja, vcpkg with the Actions binary cache, then configure and build one CMake preset. The four workflows that build
-  this repository each carried these steps; a composite action is GitHub's form for steps shared between workflows.
+  Ninja, vcpkg with the Actions binary cache, then configure and build one CMake
+  preset. The four workflows that build this repository each carried these
+  steps; a composite action is GitHub's form for steps shared between workflows.
 
 inputs:
   preset:
@@ -69,4 +70,6 @@ runs:
       env:
         PRESET: ${{ inputs.preset }}
         TARGET: ${{ inputs.target }}
-      run: cmake --build --preset "$PRESET" --parallel ${TARGET:+--target "$TARGET"}
+      run:
+        cmake --build --preset "$PRESET" --parallel ${TARGET:+--target
+        "$TARGET"}

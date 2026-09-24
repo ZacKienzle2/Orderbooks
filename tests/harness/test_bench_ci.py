@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
-from bench_ci import collect, interval, ratio_interval, t_quantile
+from orderbooks.bench_ci import collect, interval, ratio_interval, t_quantile
 
 
 def test_t_quantile_matches_published_values() -> None:
@@ -51,7 +51,8 @@ def test_collect_reads_google_benchmark_reports(tmp_path: Path) -> None:
         report = {"benchmarks": [{"name": "bench_x/manual_time", "real_time": value}]}
         (tmp_path / f"v0-{i}.json").write_text(json.dumps(report), encoding="utf-8")
     (tmp_path / "v1-0.json").write_text(
-        json.dumps({"system": "v1", "benchmark": "bench_x", "values": [8.0]}), encoding="utf-8"
+        json.dumps({"system": "v1", "benchmark": "bench_x", "values": [8.0]}),
+        encoding="utf-8",
     )
     table = collect(tmp_path, "real_time")
     assert table["bench_x"]["v0"] == [10.0, 11.0]
