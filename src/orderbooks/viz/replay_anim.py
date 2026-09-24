@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import matplotlib.animation as anim
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
@@ -50,7 +50,8 @@ def render(
     px_max = int(max(bid_px.max(), ask_px.max()))
     qty_max = int(max(bid_qty.max(), ask_qty.max()))
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig = Figure(figsize=figsize)
+    ax = fig.subplots()
     ax.set_xlabel("quantity (negative = bid, positive = ask)")
     ax.set_ylabel("price (ticks)")
     ax.grid(True, alpha=0.3)

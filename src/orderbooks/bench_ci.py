@@ -46,7 +46,7 @@ def t_quantile(nu: int, confidence: float = 0.95) -> float:
 def interval(values: list[float], confidence: float = 0.95) -> tuple[float, float]:
     """Mean and half-width of the confidence interval for these run means."""
     n = len(values)
-    mean = statistics.fmean(values)
+    mean = statistics.mean(values)
     if n < 2:
         return mean, math.inf
     half = t_quantile(n - 1, confidence) * statistics.stdev(values) / math.sqrt(n)
@@ -62,12 +62,13 @@ def ratio_interval(
     denominator = y * y - h * h
     if denominator <= 0:
         return y_new / y, -math.inf, math.inf
-    root = (y * y_new) ** 2 - denominator * (y_new * y_new - h_new * h_new)
+    product = y * y_new
+    root = product * product - denominator * (y_new * y_new - h_new * h_new)
     if root < 0:
         return y_new / y, -math.inf, math.inf
     spread = math.sqrt(root)
-    lo = (y * y_new - spread) / denominator
-    hi = (y * y_new + spread) / denominator
+    lo = (product - spread) / denominator
+    hi = (product + spread) / denominator
     return y_new / y, lo, hi
 
 

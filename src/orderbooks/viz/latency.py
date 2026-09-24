@@ -4,13 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import pandas as pd
-
-if TYPE_CHECKING:
-    from matplotlib.figure import Figure
+from matplotlib.figure import Figure
 
 
 def load(path: str | Path) -> pd.DataFrame:
@@ -38,7 +34,8 @@ def render(df: pd.DataFrame, *, output: str | Path | None = None) -> Figure:
         means = df.copy()
     means = means.sort_values("real_time")
 
-    fig, ax = plt.subplots(figsize=(10, max(3, 0.3 * len(means))))
+    fig = Figure(figsize=(10, max(3, 0.3 * len(means))))
+    ax = fig.subplots()
     ax.barh(means["name"], means["real_time"], color="#37474F")
     # DataFrame.get returns None for a column the report does not carry, which
     # is the older Google Benchmark output, so the fallback is read here rather

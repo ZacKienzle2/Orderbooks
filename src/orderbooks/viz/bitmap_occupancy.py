@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from matplotlib.figure import Figure
 
     from .event_log import EventLog
 
@@ -53,7 +51,8 @@ def render(
     bid_h, bid_lo, bid_hi = panel("bid_px", "bid_qty")
     ask_h, ask_lo, ask_hi = panel("ask_px", "ask_qty")
 
-    fig, (ax_bid, ax_ask) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    fig = Figure(figsize=(10, 6))
+    ax_bid, ax_ask = fig.subplots(2, 1, sharex=True)
     if bid_h.size:
         ax_bid.imshow(
             bid_h,

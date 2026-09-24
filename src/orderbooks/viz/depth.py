@@ -5,15 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from matplotlib.figure import Figure
 
     from .event_log import EventLog
 
@@ -67,7 +65,8 @@ def render(snapshot: BookSnapshot, output: str | Path | None = None) -> Figure:
     dashboard as a single-frame view; for animated reconstruction across
     sequence ranges, see `replay_anim`.
     """
-    fig, ax = plt.subplots(figsize=(8, 3))
+    fig = Figure(figsize=(8, 3))
+    ax = fig.subplots()
     if snapshot.bid_qty:
         ax.barh(
             snapshot.bid_px, -snapshot.bid_qty, color="#2E7D32", height=0.8, label="bid"
