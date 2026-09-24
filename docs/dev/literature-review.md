@@ -51,17 +51,21 @@ OpenAlex returns 429 after roughly two hundred queries on the polite pool.
 Most rows below are marked unread, and the reason is a credential rather than an
 oversight. Each of the three sources was tried against the same 110 works.
 
-| Source   | Abstracts returned | What happened                                                                                                                                                                                        |
-| -------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Crossref | 24 of 110          | Unmetered, and it holds an abstract only where the publisher deposited one.                                                                                                                          |
-| OpenAlex | 0 of 110           | Refused every request with 429, through five retries backing off to 100 seconds. It holds the largest share of the three, which makes this the gap to close first.                                   |
-| Scopus   | 0 of 86            | The abstract retrieval endpoint accepts `SCOPUS_API_KEY` and answers 200, but the payload contains only `affiliation` and `coredata`, and `coredata` omits `dc:description`. Nine DOIs returned 404. |
+| Source   | Abstracts returned | What happened                                                                                                                                                                                          |
+| -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Crossref | 24 of 110          | Unmetered, and it holds an abstract only where the publisher deposited one.                                                                                                                            |
+| OpenAlex | 2 of 110           | It refused every request with 429 for about half an hour after the sweeps, then answered. Even once answering it added only two abstracts beyond Crossref, because ACM and IEEE withhold them from it. |
+| Scopus   | 0 of 86            | The abstract retrieval endpoint accepts `SCOPUS_API_KEY` and answers 200, but the payload contains only `affiliation` and `coredata`, and `coredata` omits `dc:description`. Nine DOIs returned 404.   |
 
-The Scopus result is the useful one. A 200 with the abstract missing, rather
-than a 401, says the key authenticates, and that Elsevier withholds the text
-without an entitlement. `SCOPUS_INST_TOKEN` grants that entitlement, and it is
-unset here. Setting it, or waiting out the OpenAlex limit, upgrades most of the
-unread rows without any further searching.
+The union across the three is 26 of 110. Waiting out the OpenAlex limit was
+tried and recovered two, so the remaining 84 rest on one credential. A 200 with
+the abstract missing, rather than a 401, says the key authenticates, and that
+Elsevier withholds the text without an entitlement. `SCOPUS_INST_TOKEN` grants
+that entitlement, and it is unset here.
+
+A fourth source was tried and found nothing. Abstracts sit in the bib files of
+the Thesis checkout, but no entry there shares a DOI with this corpus. One
+covers finance and the other covers systems, and they overlap nowhere.
 
 The package also has a defect here. `bibliography.abstracts` asks Crossref first
 and OpenAlex for the rest, in one call. When the OpenAlex half raises, the whole
@@ -80,7 +84,7 @@ fine.
 | Producing wrong data without doing anything obviously wrong, 2009  | 10.1145/1508284.1508275   | yes  | The abstract states that changing an innocuous part of an experimental setup can make a systems researcher draw the wrong conclusion, and that this bias is both large and commonplace. Nothing in the bench setup controls for link order or environment size.                                                                  |
 | Statistically rigorous Java performance evaluation, 2007           | 10.1145/1297027.1297033   | no   | What a benchmark has to report beyond a mean. `bench.yml` passes `--benchmark_repetitions=5` and reports what Google Benchmark aggregates.                                                                                                                                                                                       |
 | Rigorous benchmarking in reasonable time, 2013                     | 10.1145/2464157.2464160   | no   | How many repetitions at which level. The nested structure here is repetitions inside a run inside a commit, and `bench.yml` sets the innermost one.                                                                                                                                                                              |
-| Performance changes reported as intervals rather than points, 2020 | 10.48550/arxiv.2007.10899 | no   | Reporting a change as an interval rather than a point. The alert threshold in the benchmark workflow is a point comparison.                                                                                                                                                                                                      |
+| Performance changes reported as intervals rather than points, 2020 | 10.48550/arxiv.2007.10899 | yes  | The abstract surveys 122 papers and finds 65 quantifying a performance change as a ratio of execution times, with the uncertainty of that ratio scarcely ever mentioned. The alert threshold in the benchmark workflow is exactly such a point comparison.                                                                       |
 | Virtual machine warmup blows hot and cold, 2017                    | 10.1145/3133876           | yes  | The abstract reports a changepoint method applied to the assumption that a program settles into a steady state of peak performance, which measurement methodology normally takes for granted. The engine has no virtual machine, and the same assumption is made here about cache and branch predictor state across repetitions. |
 | Stabilizer, statistically sound performance evaluation, 2013       | 10.1145/2451116.2451141   | no   | Randomising layout so that a measured difference is attributable to the change rather than to where the linker put things.                                                                                                                                                                                                       |
 | Coz, finding code that counts with causal profiling, 2015          | 10.1145/2815400.2815409   | no   | Which line actually limits the critical path. A sampling profile attributes time, not causality, and the two differ on a pipeline.                                                                                                                                                                                               |
@@ -94,12 +98,12 @@ fine.
 Percentiles here come from a histogram in the bench harness. These describe what
 a histogram costs in accuracy and what a streaming structure guarantees.
 
-| Work                                                              | DOI                       | Read | Decision it bears on                                                             |
-| ----------------------------------------------------------------- | ------------------------- | ---- | -------------------------------------------------------------------------------- |
-| Space-efficient online computation of quantile summaries, 2001    | 10.1145/375663.375670     | no   | The classical bound for an epsilon-approximate quantile in sublinear space.      |
-| Effective computation of biased quantiles over data streams, 2005 | 10.1109/icde.2005.55      | no   | Relative error at the tail rather than uniform error, which is what a p99 needs. |
-| Optimal quantile approximation in streams, 2016                   | 10.1109/focs.2016.17      | no   | The optimal space bound, and whether the current histogram is close to it.       |
-| Computing extremely accurate quantiles using t-digests, 2019      | 10.48550/arxiv.1902.04023 | no   | A mergeable structure, which matters if per-shard histograms are ever combined.  |
+| Work                                                              | DOI                       | Read | Decision it bears on                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Space-efficient online computation of quantile summaries, 2001    | 10.1145/375663.375670     | no   | The classical bound for an epsilon-approximate quantile in sublinear space.                                                                                                                                                                                                                                           |
+| Effective computation of biased quantiles over data streams, 2005 | 10.1109/icde.2005.55      | no   | Relative error at the tail rather than uniform error, which is what a p99 needs.                                                                                                                                                                                                                                      |
+| Optimal quantile approximation in streams, 2016                   | 10.1109/focs.2016.17      | no   | The optimal space bound, and whether the current histogram is close to it.                                                                                                                                                                                                                                            |
+| Computing extremely accurate quantiles using t-digests, 2019      | 10.48550/arxiv.1902.04023 | yes  | The abstract gives accuracy relative to the smaller of q and one minus q, in place of the absolute accuracy most methods offer. Separately computed summaries also combine without loss. Relative accuracy at the tail is what a p99 needs, and the merge property matters if per-shard histograms are ever combined. |
 
 ## Noticing a regression without a human reading a chart
 
@@ -186,12 +190,12 @@ Relevant to the gateway and to any decision about replacing the transport.
 
 ## Numerics and randomness
 
-| Work                                              | DOI                     | Read | Decision it bears on                                                                                                                                           |
-| ------------------------------------------------- | ----------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mersenne Twister, 1998                            | 10.1145/272991.272995   | no   | The generator most simulations default to, and the baseline for any replacement.                                                                               |
-| Parallel random numbers, as easy as 1, 2, 3, 2011 | 10.1145/2063384.2063405 | no   | Counter-based generation, which gives an addressable stream per path. The profiler uses a splitmix step and the property tests need reproducibility per shard. |
-| Fast reproducible floating-point summation, 2013  | 10.1109/arith.2013.9    | no   | Whether a parallel reduction can be made bitwise reproducible, and what that costs.                                                                            |
-| The accuracy of floating point summation, 1993    | 10.1137/0914050         | no   | The error analysis underneath that question.                                                                                                                   |
+| Work                                              | DOI                     | Read | Decision it bears on                                                                                                                                                                                                               |
+| ------------------------------------------------- | ----------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mersenne Twister, 1998                            | 10.1145/272991.272995   | yes  | The abstract reports a period of 2^19937 minus 1 and 623-dimensional equidistribution to 32-bit accuracy, in a working area of 624 words. The baseline any replacement is measured against.                                        |
+| Parallel random numbers, as easy as 1, 2, 3, 2011 | 10.1145/2063384.2063405 | no   | Counter-based generation, which gives an addressable stream per path. The profiler uses a splitmix step and the property tests need reproducibility per shard.                                                                     |
+| Fast reproducible floating-point summation, 2013  | 10.1109/arith.2013.9    | no   | Whether a parallel reduction can be made bitwise reproducible, and what that costs.                                                                                                                                                |
+| The accuracy of floating point summation, 1993    | 10.1137/0914050         | yes  | The abstract analyses five summation methods and concludes that no one method is uniformly more accurate, giving guidance per case instead. The reduction order is a decision with an error consequence rather than a free choice. |
 
 ## Named, and not resolvable to a DOI here
 
