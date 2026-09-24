@@ -1,0 +1,128 @@
+"""Parse the JSON-Lines event stream into pandas DataFrames per event kind."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from operator import itemgetter
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, TextIO
+
+import numpy as np
+import orjson
+import pandas as pd
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+
+class NoTopEventsError(ValueError):
+    """The log holds no top-of-book events to read."""
+
+    def __init__(self) -> None:
+        """State which kind of event is missing."""
+        super().__init__("event log has no top events")
+
+
+class NoFillEventsError(ValueError):
+    """The log holds no fill events to read."""
+
+    def __init__(self) -> None:
+        """State which kind of event is missing."""
+        super().__init__("event log has no fill events")
+
+
+@dataclass(slots=True, frozen=True)
+class EventLog:
+    """Partitioned view of an event stream by event kind.
+
+    Attributes:
+        fills: maker, taker, px, qty, seq.
+        tops: bid_px, ask_px, bid_qty, ask_qty, seq.
+        trades: px, qty, seq.
+        self_trades: aggressor, resting, account, px, qty, seq.
+        rejects: id, account, px, qty, reason, seq.
+    """
+
+    fills: pd.DataFrame
+    tops: pd.DataFrame
+    trades: pd.DataFrame
+    self_trades: pd.DataFrame
+    rejects: pd.DataFrame
+
+
+_FILL_COLS = ("seq", "maker", "taker", "px", "qty")
+_TOP_COLS = ("seq", "bid_px", "ask_px", "bid_qty", "ask_qty")
+_TRADE_COLS = ("seq", "px", "qty")
+_SELF_TRADE_COLS = ("seq", "aggressor", "resting", "account", "px", "qty")
+_REJECT_COLS = ("seq", "id", "account", "px", "qty", "reason")
+
+
+def _columnar(
+    rows: list[dict[str, Any]], cols: tuple[str, ...]
+) -> dict[str, np.ndarray]:
+    """Project a list of homogeneous dicts into a column-major dict of int64 arrays.
+
+    Uses np.fromiter to fill each column inside the numpy core loop instead
+    of a Python-level per-row, per-column assignment; on large logs the
+    Python loop dominated the build phase. Missing keys raise KeyError so
+    malformed events fail loudly rather than being silently zero-coerced.
+    """
+    if not rows:
+        return {c: np.empty(0, dtype=np.int64) for c in cols}
+    n = len(rows)
+    return {
+        c: np.fromiter(map(itemgetter(c), rows), dtype=np.int64, count=n) for c in cols
+    }
+
+
+def _stream(records: Iterable[str | bytes]) -> Iterable[dict[str, Any]]:
+    for raw in records:
+        if isinstance(raw, bytes):
+            if not raw.strip():
+                continue
+        elif not raw.strip():
+            continue
+        yield orjson.loads(raw)
+
+
+def _split(records: Iterable[dict[str, Any]]) -> EventLog:
+    fills: list[dict[str, Any]] = []
+    tops: list[dict[str, Any]] = []
+    trades: list[dict[str, Any]] = []
+    self_trades: list[dict[str, Any]] = []
+    rejects: list[dict[str, Any]] = []
+    dispatch = {
+        "fill": fills.append,
+        "top": tops.append,
+        "trade": trades.append,
+        "self_trade": self_trades.append,
+        "reject": rejects.append,
+    }
+    for r in records:
+        kind = r.get("kind")
+        handler = dispatch.get(kind) if isinstance(kind, str) else None
+        if handler is not None:
+            handler(r)
+    return EventLog(
+        fills=pd.DataFrame(_columnar(fills, _FILL_COLS)),
+        tops=pd.DataFrame(_columnar(tops, _TOP_COLS)),
+        trades=pd.DataFrame(_columnar(trades, _TRADE_COLS)),
+        self_trades=pd.DataFrame(_columnar(self_trades, _SELF_TRADE_COLS)),
+        rejects=pd.DataFrame(_columnar(rejects, _REJECT_COLS)),
+    )
+
+
+def read_file(path: str | Path) -> EventLog:
+    """Read a JSON-Lines event file and return partitioned DataFrames."""
+    with Path(path).open("rb") as handle:
+        return _split(_stream(handle))
+
+
+def read_text(text: str) -> EventLog:
+    """Read a JSON-Lines event blob (e.g. captured from stdout) into DataFrames."""
+    return _split(_stream(text.splitlines()))
+
+
+def read_stream(handle: TextIO) -> EventLog:
+    """Read from an open text stream (use for stdin or pipes)."""
+    return _split(_stream(handle))

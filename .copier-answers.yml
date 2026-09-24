@@ -1,36 +1,15 @@
-# Written by copier. Do not edit by hand: `copier update` rewrites it, and a
-# hand-edited answer is the drift this template exists to remove.
-_commit: v1.2.0
-_src_path: https://github.com/ZacKienzle2/repo-template.git
-cpp_sanitizer_presets: {}
-cpp_source_dir: .
-gitattributes_own: []
-github_repository: ZacKienzle2/Orderbooks
-gitignore_own:
-- /out/
-- /install/
-- /cmake-build-*/
-- /artifacts/
-- /coverage/
-- perf.data
-- perf.data.old
-- '*.profraw'
-- '*.profdata'
-has_adrs: false
-has_ast_grep: false
-has_chezmoi: false
-has_cog: false
-has_cpp: true
-has_discussions: true
-has_generated_changelog: true
-has_import_linter: false
-has_latex: false
-has_node: false
-has_notebooks: false
-has_python: true
-has_snakemake: false
-is_public: true
-is_template: false
-mypy_overrides: {}
-precommit_exclude_own: []
-track_benchmarks: false
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 2026.08.14-8-g72fb90f
+_src_path: gh:scientific-python/cookie
+backend: hatch
+docs: sphinx
+email: zac.kienzle@gmail.com
+full_name: Zac Kienzle
+license: MIT
+org: ZacKienzle2
+project_name: orderbooks
+project_short_description: Header-only C++20 matching engine with strict price-time
+    priority, an O(1) hierarchical-bitmap book, and allocation-free hot paths at a
+    10 ns median and 30 ns p99 submit latency.
+url: https://github.com/ZacKienzle2/Orderbooks
+vcs: true

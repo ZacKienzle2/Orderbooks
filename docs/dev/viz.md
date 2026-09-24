@@ -1,6 +1,6 @@
 # Visualisation guide
 
-`scripts/orderbooks_viz/` reads the JSON-Lines event stream emitted by the
+`src/orderbooks/viz/` reads the JSON-Lines event stream emitted by the
 `lob_replay` binary (and any other publisher built against `lob::json_recorder`)
 and produces static plots plus an interactive dashboard.
 
@@ -10,7 +10,7 @@ and produces static plots plus an interactive dashboard.
 lob_replay --seed 42 --commands 50000 --output artifacts/sim.jsonl
                                        │
                                        ▼
-                            orderbooks_viz (Python)
+                            orderbooks.viz (Python)
                                        │
         ┌───────────────┬──────────────┴──────────────┬───────────────┐
         ▼               ▼                             ▼               ▼
@@ -20,13 +20,13 @@ lob_replay --seed 42 --commands 50000 --output artifacts/sim.jsonl
 ## Static plots
 
 ```bash
-uv run python -m scripts.orderbooks_viz.top_series  # not yet a CLI; use the Python API
+uv run python -m orderbooks.viz.top_series  # not yet a CLI; use the Python API
 ```
 
 Programmatic use:
 
 ```python
-from orderbooks_viz import event_log, top_series, depth, bitmap_occupancy, flow_heatmap
+from orderbooks.viz import event_log, top_series, depth, bitmap_occupancy, flow_heatmap
 
 log = event_log.read_file("artifacts/sim.jsonl")
 top_series.render(log, output="artifacts/figures/top.png")
@@ -41,7 +41,7 @@ at 150 dpi.
 ## Latency
 
 ```python
-from orderbooks_viz import latency
+from orderbooks.viz import latency
 
 df = latency.load("artifacts/bench.json")  # Google Benchmark JSON output
 latency.render(df, output="artifacts/figures/latency.png")
@@ -50,7 +50,7 @@ latency.render(df, output="artifacts/figures/latency.png")
 ## Dashboard
 
 ```bash
-uv run streamlit run scripts/orderbooks_viz/dashboard.py -- --log artifacts/sim.jsonl
+uv run streamlit run src/orderbooks/viz/dashboard.py -- --log artifacts/sim.jsonl
 ```
 
 Tabs: top-of-book series, scrubbable depth snapshot, fill density heatmap,

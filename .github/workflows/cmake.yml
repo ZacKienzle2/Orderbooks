@@ -77,7 +77,7 @@ jobs:
           persist-credentials: false
 
       - name: Build
-        uses: ./.github/actions/cmake-preset
+        uses: $/.github/actions/cmake-preset
         with:
           preset: ${{ matrix.preset }}
           cc: ${{ matrix.cc }}
@@ -107,7 +107,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y iwyu
 
       - name: Build to surface IWYU advice
-        uses: ./.github/actions/cmake-preset
+        uses: $/.github/actions/cmake-preset
         with:
           preset: linux-clang-rel
           configure-args: -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=iwyu
@@ -141,7 +141,7 @@ jobs:
       # type's NDEBUG, which deletes the assertions the harnesses are written
       # around and reports every variable they check as unused.
       - name: Configure the compilation database
-        uses: ./.github/actions/cmake-preset
+        uses: $/.github/actions/cmake-preset
         with:
           preset: linux-clang-rel
           configure-args: -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DLOB_BUILD_FUZZ=ON

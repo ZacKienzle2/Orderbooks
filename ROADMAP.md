@@ -1,6 +1,6 @@
 # Roadmap
 
-This document tracks high-level direction. For granular work see the
+This document tracks high-level direction. For individual work items see the
 [issue tracker](https://github.com/ZacKienzle2/Orderbooks/issues) and
 [project boards](https://github.com/users/ZacKienzle2/projects).
 
@@ -33,7 +33,7 @@ Active polish and observability work.
   thread-safe shared-publisher requirement.
 - Merging egress consumer (see
   [ADR-0021](docs/adr/0021-merging-egress-consumer.md)) that fans the per-shard
-  event rings into one sequenced stream for a single downstream sink.
+  event rings into one sequenced stream for one downstream sink.
 - Publisher-concept seam (see
   [ADR-0022](docs/adr/0022-publisher-seam-for-merged-egress.md)) bridging the
   merged stream onto any publisher, wiring the runtime through the merger into
@@ -54,10 +54,11 @@ Active polish and observability work.
   [ADR-0030](docs/adr/0030-end-to-end-load-harness.md), `apps/loadgen`) driving
   the assembled multi-shard runtime under synthetic flow, reporting sustained
   throughput and a closed-loop unloaded end-to-end latency over the full
-  ingress, worker, match, egress, and merge path. No market data required.
+  ingress, worker, match, egress, and merge path. It generates its own flow and
+  doesn't read market data.
 - Binary order-entry gateway (see
   [ADR-0031](docs/adr/0031-binary-order-entry-gateway.md), `apps/gateway`)
-  terminating a fixed-size order protocol over TCP, decoding each record into an
+  serving a fixed-size order protocol over TCP, decoding each record into an
   engine command and acknowledging it, busy-polled with a built-in correctness
   self-test. Makes the engine a connectable endpoint.
 - Batched shard-worker quiescence counter (see
@@ -70,7 +71,7 @@ Active polish and observability work.
   policy and throttle setting. The audit checks that the bitmap's populated set
   equals the non-empty levels, each level's aggregate equals the sum of its
   FIFO, no resting order has zero remaining or a stray price, and best-of-book
-  is the extreme populated level. Runs under the sanitizer presets; a heavier
+  is the outermost populated level. Runs under the sanitizer presets. A heavier
   offline run cleared 48 million ops per configuration.
 - Guarded top-of-book recompute (see
   [ADR-0029](docs/adr/0029-guard-top-recompute.md)). A submit, cancel, or modify
@@ -88,21 +89,21 @@ Active polish and observability work.
   [ADR-0027](docs/adr/0027-match-sweep-prefetch-reverted.md)). An A/B benchmark
   showed the prefetch proposed in ADR-0025 regressed the common contiguous sweep
   and gained nothing on the scattered case it targeted, so the engine change was
-  reverted; the deep-sweep benchmark that exposed it stays.
+  reverted. The deep-sweep benchmark that exposed it stays.
 - Replay animation in the Python visualisation harness via
   `matplotlib.animation.FuncAnimation`.
 - Matching engine with strict price-time priority, dense tick-ladder book,
-  hierarchical bitmap (best-price queries and successor / predecessor walks),
-  slab arena, intrusive FIFOs, robin-hood id index, SPSC ingress and egress
-  rings, GTC / IOC / FOK time-in-force, account-aware self-cross policy with
-  three behaviours.
+  hierarchical bitmap (best-price queries and walks to the next or previous
+  occupied level), slab arena, intrusive FIFOs, robin-hood ID index, SPSC
+  ingress and egress rings, GTC / IOC / FOK time-in-force, account-aware
+  self-cross policy with three behaviours.
 - Snapshot and warm-start wire format (see
   [ADR-0014](docs/adr/0014-snapshot-wire-format.md)) with round-trip,
   warm-start-equivalence, and rejection-path tests.
 - Multi-symbol shard router (see
   [ADR-0015](docs/adr/0015-multi-symbol-shard-router.md)) over per-symbol
   engines, dispatched via SplitMix64 truncated to log2(NumShards) bits.
-- JSON Lines event recorder and `lob_replay` CLI; Python `orderbooks_viz`
+- JSON Lines event recorder and `lob_replay` CLI; Python `orderbooks.viz`
   harness with six matplotlib renderers and a Streamlit dashboard.
 
 ## Next
@@ -133,8 +134,8 @@ Under consideration. Open issues to discuss.
   count-trailing-zeros and count-leading-zeros over single words, so there is no
   linear scan for a SIMD path to beat, and a wide compare would add broadcast
   and movemask setup without removing a loop. Hot-path effort went instead to
-  the match-sweep software prefetch (ADR-0025). Worth revisiting only if a
-  future structure introduces an actual linear bitmap walk.
+  the match-sweep software prefetch (ADR-0025). A SIMD path becomes relevant
+  only if a future structure introduces an actual linear bitmap walk.
 
 ## Out of Scope
 
@@ -142,8 +143,8 @@ Explicitly not on the roadmap. Open an issue to challenge if you disagree.
 
 - Persistent storage of orders or fills as a primary use case (snapshots are for
   warm-start, not durability).
-- Cross-venue arbitrage logic; this is a single-venue book and matcher.
-- Decimal price representation; prices are integer ticks by design.
+- Cross-venue arbitrage logic. This is a single-venue book and matcher.
+- Decimal price representation. Prices are integer ticks by design.
 - Windows runtime support (development on Windows is unsupported; the engine is
   Linux-first with macOS as a development target).
 

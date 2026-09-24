@@ -1,1 +1,1 @@
-"""Tests for the Python harness under scripts/."""
+"""Tests for the Python harness."""

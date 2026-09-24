@@ -1,8 +1,7 @@
 # Authors
 
-Substantive contributors. Canonical attribution: Git history
-(`git shortlog -sne --all`). Code review routing:
-[CODEOWNERS](.github/CODEOWNERS).
+Substantive contributors. Git history is the canonical attribution
+(`git shortlog -sne --all`).
 
 ## Maintainers
 
