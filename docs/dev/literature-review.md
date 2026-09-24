@@ -46,6 +46,28 @@ rather than a missing one.
 OpenAlex returns 429 after roughly two hundred queries on the polite pool.
 `OPENALEX_API_KEY` and `SCOPUS_INST_TOKEN` are both unset here.
 
+## Abstract coverage by source
+
+Most rows below are marked unread, and the reason is a credential rather than an
+oversight. Each of the three sources was tried against the same 110 works.
+
+| Source   | Abstracts returned | What happened                                                                                                                                                                                        |
+| -------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Crossref | 24 of 110          | Unmetered, and it holds an abstract only where the publisher deposited one.                                                                                                                          |
+| OpenAlex | 0 of 110           | Refused every request with 429, through five retries backing off to 100 seconds. It holds the largest share of the three, which makes this the gap to close first.                                   |
+| Scopus   | 0 of 86            | The abstract retrieval endpoint accepts `SCOPUS_API_KEY` and answers 200, but the payload contains only `affiliation` and `coredata`, and `coredata` omits `dc:description`. Nine DOIs returned 404. |
+
+The Scopus result is the useful one. A 200 with the abstract missing, rather
+than a 401, says the key authenticates, and that Elsevier withholds the text
+without an entitlement. `SCOPUS_INST_TOKEN` grants that entitlement, and it is
+unset here. Setting it, or waiting out the OpenAlex limit, upgrades most of the
+unread rows without any further searching.
+
+The package also has a defect here. `bibliography.abstracts` asks Crossref first
+and OpenAlex for the rest, in one call. When the OpenAlex half raises, the whole
+call raises, and the Crossref half is lost with it. Going through `works_by_doi`
+directly recovered the 24 that the wrapper had discarded.
+
 ## What invalidates a measurement
 
 This repository reports cycles per operation, instructions per parse and
