@@ -125,7 +125,8 @@ docs/           design specs, dev guides, ADRs
 
 ## Contributing
 
-See [CONTRIBUTING](.github/CONTRIBUTING.md).
+See
+[CONTRIBUTING](https://github.com/ZacKienzle2/Orderbooks/blob/main/.github/CONTRIBUTING.md).
 
 ## License
 
@@ -134,4 +135,5 @@ See [CONTRIBUTING](.github/CONTRIBUTING.md).
 ## Related
 
 [Releases](https://github.com/ZacKienzle2/Orderbooks/releases) |
-[ROADMAP](ROADMAP.md) | [CITATION](CITATION.cff)
+[ROADMAP](https://github.com/ZacKienzle2/Orderbooks/blob/main/ROADMAP.md) |
+[CITATION](CITATION.cff)
