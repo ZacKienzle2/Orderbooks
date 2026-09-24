@@ -38,15 +38,6 @@ flow_heatmap.render(log, output="artifacts/figures/flow.png")
 Each renderer returns the `matplotlib.figure.Figure`; passing `output=` saves it
 at 150 dpi.
 
-## Latency
-
-```python
-from orderbooks.viz import latency
-
-df = latency.load("artifacts/bench.json")  # Google Benchmark JSON output
-latency.render(df, output="artifacts/figures/latency.png")
-```
-
 ## Dashboard
 
 ```bash
@@ -56,11 +47,12 @@ uv run streamlit run src/orderbooks/viz/dashboard.py -- --log artifacts/sim.json
 Tabs: top-of-book series, scrubbable depth snapshot, fill density heatmap,
 occupancy heatmap.
 
-## Running the smoke tests
+## Running the tests
 
 ```bash
-uv run pytest -q tests/harness/test_viz_smoke.py
+uv run pytest -q
 ```
 
-Tests assert the renderers produce a non-empty figure; visual correctness is by
-human inspection.
+The Hypothesis ghostwriter writes the tests, which draw event logs over the
+engine's field widths and assert each renderer runs without an exception or a
+warning. Visual correctness is by human inspection.

@@ -6,7 +6,6 @@ renders publication-quality plots plus an interactive Streamlit dashboard.
 
 Modules:
     event_log: parse and partition a JSON-Lines event stream.
-    latency:   render Google Benchmark latency histograms.
     top_series: plot best bid, best ask, and spread over time.
     depth:     reconstruct the level-2 book at a chosen sequence.
     bitmap_occupancy: heatmap of populated price ticks over time.
