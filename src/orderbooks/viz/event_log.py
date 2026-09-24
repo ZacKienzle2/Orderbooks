@@ -35,6 +35,11 @@ class NoFillEventsError(ValueError):
 class EventLog:
     """Partitioned view of an event stream by event kind.
 
+    Sequence numbers, order ids and quantities are uint64 columns, the
+    std::uint64_t the engine writes them as. Prices, accounts and reject
+    reasons are narrower unsigned types in the engine and int64 columns here,
+    which hold them whole and subtract without wrapping.
+
     Attributes:
         fills: maker, taker, px, qty, seq.
         tops: bid_px, ask_px, bid_qty, ask_qty, seq.
@@ -55,23 +60,30 @@ _TOP_COLS = ("seq", "bid_px", "ask_px", "bid_qty", "ask_qty")
 _TRADE_COLS = ("seq", "px", "qty")
 _SELF_TRADE_COLS = ("seq", "aggressor", "resting", "account", "px", "qty")
 _REJECT_COLS = ("seq", "id", "account", "px", "qty", "reason")
+_UINT64_COLS = frozenset(
+    {"seq", "maker", "taker", "aggressor", "resting", "id", "qty", "bid_qty", "ask_qty"}
+)
 
 
 def _columnar(
     rows: list[dict[str, Any]], cols: tuple[str, ...]
 ) -> dict[str, np.ndarray]:
-    """Project a list of homogeneous dicts into a column-major dict of int64 arrays.
+    """Project a list of homogeneous dicts into a column-major dict of arrays.
 
-    Uses np.fromiter to fill each column inside the numpy core loop instead
-    of a Python-level per-row, per-column assignment; on large logs the
-    Python loop dominated the build phase. Missing keys raise KeyError so
-    malformed events fail loudly rather than being silently zero-coerced.
+    Each column takes the dtype EventLog documents for it. Uses np.fromiter
+    to fill each column inside the numpy core loop instead of a Python-level
+    per-row, per-column assignment; on large logs the Python loop dominated
+    the build phase. Missing keys raise KeyError so malformed events fail
+    loudly rather than being silently zero-coerced.
     """
-    if not rows:
-        return {c: np.empty(0, dtype=np.int64) for c in cols}
     n = len(rows)
     return {
-        c: np.fromiter(map(itemgetter(c), rows), dtype=np.int64, count=n) for c in cols
+        c: np.fromiter(
+            map(itemgetter(c), rows),
+            dtype=np.uint64 if c in _UINT64_COLS else np.int64,
+            count=n,
+        )
+        for c in cols
     }
 
 

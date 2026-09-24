@@ -1,9 +1,8 @@
 """Register the harness types so ``st.from_type`` resolves them.
 
 The event stream draws each field over the width the engine declares for it in
-``include/lob/types.hpp``, capped at the int64 columns ``event_log`` documents,
-under the keys ``json_recorder`` writes. Sequence numbers are assigned in
-order, since the engine emits them strictly increasing.
+``include/lob/types.hpp``, under the keys ``json_recorder`` writes. Sequence
+numbers are assigned in order, since the engine emits them strictly increasing.
 """
 
 from io import StringIO
@@ -16,12 +15,12 @@ from hypothesis import strategies as st
 from orderbooks.viz.depth import BookSnapshot
 from orderbooks.viz.event_log import EventLog, read_text
 
-_INT64 = int(np.iinfo(np.int64).max)
+_UINT64 = int(np.iinfo(np.uint64).max)
 _TICK = st.integers(min_value=0, max_value=int(np.iinfo(np.uint32).max))
-_QTY = st.integers(min_value=0, max_value=_INT64)
-_ORDER_ID = st.integers(min_value=0, max_value=_INT64)
+_QTY = st.integers(min_value=0, max_value=_UINT64)
+_ORDER_ID = st.integers(min_value=0, max_value=_UINT64)
 _ACCOUNT = st.integers(min_value=0, max_value=int(np.iinfo(np.uint32).max))
-_SEQ = st.integers(min_value=0, max_value=_INT64)
+_SEQ = st.integers(min_value=0, max_value=_UINT64)
 _REASON = st.integers(min_value=0, max_value=int(np.iinfo(np.uint8).max))
 
 _EVENTS = st.one_of(
