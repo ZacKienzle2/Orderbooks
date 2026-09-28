@@ -195,10 +195,11 @@
       "name": "conda-clang-rel",
       "inherits": "linux-clang-rel",
       "displayName": "Linux Clang Release in the conda toolchain of the workflow",
-      "description": "linux-clang-rel built inside workflow/envs/toolchain.yaml, whose clang activation packages set CXX to the conda-forge compiler and its sysroot (conda-forge FAQ). That clang lacks the LLVMgold.so plugin the default linker would load for ThinLTO, and lld is a linker of the Clang ThinLTO documentation, so the preset selects it through CMAKE_LINKER_TYPE, which try_compile also reads.",
+      "description": "linux-clang-rel built inside workflow/envs/toolchain.yaml, whose clang activation packages set CXX to the conda-forge compiler and its sysroot (conda-forge FAQ). That clang lacks the LLVMgold.so plugin the default linker would load for ThinLTO, and lld is a linker of the Clang ThinLTO documentation, so the preset selects it through CMAKE_LINKER_TYPE, which try_compile also reads. The activation also exports CXXFLAGS with flags of its own, such as -O2, -march=nocona and -fno-plt, which CMake would take into CMAKE_CXX_FLAGS on the first configure, so the preset sets that variable empty and the build takes the project flags alone, as linux-clang-rel does. LDFLAGS stays, since its rpath binds the environment's libstdc++.",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "$env{CXX}",
-        "CMAKE_LINKER_TYPE": "LLD"
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_CXX_FLAGS": ""
       }
     }
   ],
