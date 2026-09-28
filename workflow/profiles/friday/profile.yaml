@@ -34,3 +34,5 @@ set-resources:
   # bandwidth. set-resources replaces slurm_extra whole, so the other settings are repeated.
   topdown:
     slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  latency:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive

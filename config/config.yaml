@@ -20,3 +20,11 @@ repeats: 30
 metrics:
   - tma_frontend_bound
   - tma_retiring
+
+# Offered loads of the latency phase of the load generator, as fractions of the rate its
+# throughput phase reached. Load 0 keeps the phase closed with one pair in flight, which times
+# service alone. At 0.8 a closed generator understated the p99 by more than two times (Treadmill,
+# ISCA 2016, section II.A).
+loads:
+  - 0
+  - 0.8

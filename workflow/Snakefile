@@ -16,6 +16,12 @@ rule all:
             preset=config["preset"],
             workload=workloads(config["preset"]),
             metric=config["metrics"],
+        )
+        + expand(
+            "results/latency/{preset}/{load}/{rep}.txt",
+            preset=config["preset"],
+            load=config["loads"],
+            rep=range(config["repeats"]),
         ),
 
 
@@ -33,6 +39,7 @@ rule build:
         + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"],
     output:
         profile="build/{preset}/apps/profile/lob_profile",
+        loadgen="build/{preset}/apps/loadgen/lob_loadgen",
     log:
         "logs/build/{preset}.log",
     conda:
@@ -82,3 +89,30 @@ rule topdown:
     shell:
         'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats} -M {wildcards.metric}'
         " -o {output} -- {input} --workload {wildcards.workload} > {log} 2>&1"
+
+
+# End-to-end latency of the load generator, closed with one pair in flight at load 0 and open at the
+# other loads (Schroeder, Wierman and Harchol-Balter, NSDI 2006, section 5.1). numactl binds the
+# process and its memory to node 0, because threads and memory spread over two nodes inflated the
+# tail (Tales of the tail, SoCC 2014, section 4.5), and the pinned workers take the first CPUs of
+# that node. Each repetition draws its arrivals from a seed of its own. cpupower records the
+# frequency governor and the idle states, which a job cannot change and which moved the tail too
+# (section 4.6).
+rule latency:
+    input:
+        rules.build.output.loadgen,
+    output:
+        latency="results/latency/{preset}/{load}/{rep}.txt",
+        host="results/latency/{preset}/{load}/{rep}.host.txt",
+    log:
+        "logs/latency/{preset}/{load}/{rep}.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    params:
+        load=lambda wildcards: f"--load {wildcards.load}" if float(wildcards.load) > 0 else "",
+    shell:
+        "cpupower frequency-info > {output.host} 2> {log}"
+        " && cpupower idle-info >> {output.host} 2>> {log}"
+        ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
+        " {input} --pin {params.load} --seed {wildcards.rep} > {output.latency} 2>> {log}"
