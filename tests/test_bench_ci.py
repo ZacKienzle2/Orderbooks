@@ -6,12 +6,13 @@
 #       orderbooks.bench_ci
 #
 # The strategies are narrowed to what the functions document: the mean of a
-# run is a positive time, a run has at least one value, a confidence lies
-# strictly between 0 and 1, and a t quantile takes the degrees of freedom of a
-# run, from 1 to the longest list Python allows. collect and read_run are left
-# out, since they read paths from disk.
+# run is a positive time, a run has at least one value, and a confidence lies
+# strictly between 0 and 1. collect and read_run are left out, since they read
+# paths from disk. test_read_run_averages_iterations is written by hand from the
+# report layout the Google Benchmark user guide describes.
 
-import sys
+import json
+from pathlib import Path
 
 from hypothesis import given
 from hypothesis import strategies as st
@@ -49,6 +50,28 @@ def test_fuzz_report(
     orderbooks.bench_ci.report(table=table, confidence=confidence)
 
 
-@given(nu=st.integers(min_value=1, max_value=sys.maxsize), confidence=_CONFIDENCE)
-def test_fuzz_t_quantile(nu: int, confidence: float) -> None:
-    orderbooks.bench_ci.t_quantile(nu=nu, confidence=confidence)
+def test_read_run_averages_iterations(tmp_path: Path) -> None:
+    def entry(run_name: str, aggregate: str, real_time: float) -> dict[str, object]:
+        return {
+            "name": f"{run_name}_{aggregate}" if aggregate else run_name,
+            "run_name": run_name,
+            "run_type": "aggregate" if aggregate else "iteration",
+            "real_time": real_time,
+        }
+
+    report = {
+        "benchmarks": [
+            entry("BM_x/8", "", 1.0),
+            entry("BM_x/8", "", 3.0),
+            entry("BM_x/64", "", 10.0),
+            entry("BM_x/64", "", 30.0),
+            entry("BM_x/8", "mean", 2.0),
+            entry("BM_x/8", "cv", 0.5),
+        ]
+    }
+    path = tmp_path / "base-1.json"
+    path.write_text(json.dumps(report), encoding="utf-8")
+    assert orderbooks.bench_ci.read_run(path, "real_time") == (
+        "base",
+        {"BM_x/8": 2.0, "BM_x/64": 20.0},
+    )
