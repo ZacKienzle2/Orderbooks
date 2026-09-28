@@ -203,6 +203,17 @@
         "CMAKE_CXX_COMPILER_AR": "$env{CONDA_PREFIX}/bin/llvm-ar",
         "CMAKE_CXX_COMPILER_RANLIB": "$env{CONDA_PREFIX}/bin/llvm-ranlib"
       }
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "inherits": "conda-clang-rel",
+      "displayName": "conda-clang-rel without the front end flags",
+      "description": "conda-clang-rel with -fno-plt, -falign-functions=64 and -falign-loops=32 of cmake/CompilerFlags.cmake left out, the other side of the comparison that decides whether they stay. check_compiler_flag checks once and keeps its result in the cache variable it names (CheckCompilerFlag module), so a false result set here leaves the flag out without a change to the project.",
+      "cacheVariables": {
+        "LOB_HAVE_CXX__fno_plt": "OFF",
+        "LOB_HAVE_CXX__falign_functions_64": "OFF",
+        "LOB_HAVE_CXX__falign_loops_32": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -273,6 +284,10 @@
     {
       "name": "conda-clang-rel",
       "configurePreset": "conda-clang-rel"
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "configurePreset": "conda-clang-rel-no-frontend-flags"
     }
   ],
   "testPresets": [
@@ -360,6 +375,11 @@
     {
       "name": "conda-clang-rel",
       "configurePreset": "conda-clang-rel",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "configurePreset": "conda-clang-rel-no-frontend-flags",
       "inherits": "_test_base"
     }
   ],
@@ -459,6 +479,23 @@
         {
           "type": "test",
           "name": "conda-clang-rel"
+        }
+      ]
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "conda-clang-rel-no-frontend-flags"
+        },
+        {
+          "type": "build",
+          "name": "conda-clang-rel-no-frontend-flags"
+        },
+        {
+          "type": "test",
+          "name": "conda-clang-rel-no-frontend-flags"
         }
       ]
     }

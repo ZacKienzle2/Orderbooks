@@ -1,4 +1,4 @@
-# The measurement workflow of Orderbooks. It builds a preset in the toolchain environment of
+# The measurement workflow of Orderbooks. It builds each preset in the toolchain environment of
 # workflow/envs and classifies each profiler workload with the top-down method (Yasin, ISPASS 2014)
 # before any remedy is measured, since the method drills only into the categories it flags (section
 # 3). Every setting comes from config/config.yaml.
@@ -11,15 +11,19 @@ configfile: "config/config.yaml"
 
 rule all:
     input:
-        lambda wildcards: expand(
-            "results/topdown/{preset}/{workload}/{metric}.json",
-            preset=config["preset"],
-            workload=workloads(config["preset"]),
-            metric=config["metrics"],
-        )
+        lambda wildcards: [
+            path
+            for preset in config["presets"]
+            for path in expand(
+                "results/topdown/{preset}/{workload}/{metric}.json",
+                preset=preset,
+                workload=workloads(preset),
+                metric=config["metrics"],
+            )
+        ]
         + expand(
             "results/latency/{preset}/{load}/{rep}.txt",
-            preset=config["preset"],
+            preset=config["presets"],
             load=config["loads"],
             rep=range(config["repeats"]),
         ),
