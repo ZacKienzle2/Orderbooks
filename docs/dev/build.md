@@ -42,7 +42,7 @@ Linux contributors: the same packages from `apt-get` or `dnf`, then the same
 ```bash
 cmake --preset linux-clang-rel
 cmake --build --preset linux-clang-rel --parallel
-ctest --preset linux-clang-rel --output-on-failure
+ctest --preset linux-clang-rel
 ```
 
 ## Targets

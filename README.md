@@ -82,7 +82,7 @@ git clone https://github.com/ZacKienzle2/Orderbooks
 cd Orderbooks
 cmake --preset linux-clang-rel
 cmake --build --preset linux-clang-rel
-ctest --preset linux-clang-rel --output-on-failure
+ctest --preset linux-clang-rel
 ```
 
 macOS dev:
@@ -90,7 +90,7 @@ macOS dev:
 ```bash
 cmake --preset macos-clang-dev
 cmake --build --preset macos-clang-dev
-ctest --preset macos-clang-dev --output-on-failure
+ctest --preset macos-clang-dev
 ```
 
 Benchmarks:
