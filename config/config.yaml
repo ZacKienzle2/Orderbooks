@@ -10,3 +10,13 @@ preset: conda-clang-rel
 # initial experiment of 30 repetitions at each level, from which the variances dimension the real
 # experiment.
 repeats: 30
+
+# Top-down level 1 metrics of perf, each measured by a process of its own. The fc430 nodes run
+# without hyper-threading, so the kernel schedules eight general counters a core, and four of them
+# count while the other four read zero. The NMI watchdog holds the fixed cycle counter. The
+# TopdownL1 group asks for seven general events and three of them read zero, and a metric of four
+# or fewer general events reads true. Front end bound and retiring fit. Bad speculation takes six,
+# and back end bound is the remainder of all three.
+metrics:
+  - tma_frontend_bound
+  - tma_retiring

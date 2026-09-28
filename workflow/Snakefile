@@ -12,9 +12,10 @@ configfile: "config/config.yaml"
 rule all:
     input:
         lambda wildcards: expand(
-            "results/topdown/{preset}/{workload}.json",
+            "results/topdown/{preset}/{workload}/{metric}.json",
             preset=config["preset"],
             workload=workloads(config["preset"]),
+            metric=config["metrics"],
         ),
 
 
@@ -62,7 +63,7 @@ def workloads(preset):
         return [line.split()[0] for line in listing if line.strip()]
 
 
-# Top-level slots of each workload: retiring, bad speculation, front end bound and back end bound.
+# Top-level slots of each workload, one metric of config/config.yaml a process.
 # setarch -R turns off address space randomisation for the process and env -i fixes its environment,
 # which brought retired instruction counts from a variation of 1.07 per cent to below 0.002 per cent
 # (Weaver and McKee, IISWC 2008, sections 4.2.1 and 5). perf stat -r repeats the process and -j writes
@@ -71,13 +72,13 @@ rule topdown:
     input:
         rules.build.output.profile,
     output:
-        "results/topdown/{preset}/{workload}.json",
+        "results/topdown/{preset}/{workload}/{metric}.json",
     log:
-        "logs/topdown/{preset}/{workload}.log",
+        "logs/topdown/{preset}/{workload}/{metric}.log",
     conda:
         "envs/toolchain.yaml"
     params:
         repeats=config["repeats"],
     shell:
-        'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats} -M TopdownL1'
+        'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats} -M {wildcards.metric}'
         " -o {output} -- {input} --workload {wildcards.workload} > {log} 2>&1"
