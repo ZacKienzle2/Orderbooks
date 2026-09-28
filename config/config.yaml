@@ -4,11 +4,10 @@
 
 # The configure, build and test presets of CMakePresets.json whose binaries are measured, each
 # with every rule. The conda presets take their compilers from the toolchain environment the rules
-# deploy. The second leaves out the front end flags of cmake/CompilerFlags.cmake, and comparing
-# the two decides whether those flags stay.
+# deploy. ADR-0055 compared conda-clang-rel with conda-clang-rel-no-frontend-flags, and listing
+# both here repeats that comparison.
 presets:
   - conda-clang-rel
-  - conda-clang-rel-no-frontend-flags
 
 # Executions of each measured process. Kalibera and Jones (ISMM 2013, section 9.1) open with an
 # initial experiment of 30 repetitions at each level, from which the variances dimension the real
