@@ -30,7 +30,6 @@ jobs:
   static:
     name: cppcheck
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -59,7 +58,6 @@ jobs:
   docs:
     name: Doxygen
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -94,4 +92,3 @@ jobs:
         with:
           name: doxygen-html
           path: artifacts/doxygen/html/
-          retention-days: 14
