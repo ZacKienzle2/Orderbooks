@@ -43,8 +43,11 @@ The proposal is the Snakemake workflow.
   ports stay at the `vcpkg-configuration.json` baseline, which the shared vcpkg
   clone on Friday contains.
 - `workflow/profiles/friday/profile.yaml` submits every job to one CPU model,
-  the Gold 6226R nodes that Thesis times on, with one thread a core. A measured
-  process gets its node to itself.
+  with one thread a core. The fc430 feature spans a Xeon E5-2680 v3 and a Xeon
+  E5-2680 v4, which probe jobs read from `/proc/cpuinfo`, and 14 cores a socket
+  select the v4. Its 16 nodes stood mostly idle while the Gold 6226R nodes that
+  Thesis times on were all allocated. A measured process gets its node to
+  itself.
 
 The run design follows the literature read for it.
 
