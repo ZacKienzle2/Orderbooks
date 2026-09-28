@@ -17,17 +17,37 @@ namespace lob {
 // Pin the calling thread to a single CPU core. Returns true on success,
 // false on any platform error (including kernels that ignore the hint).
 //
-// Linux: sched_setaffinity on the calling thread, CPU mask = {core}.
+// Linux: core indexes the CPUs of the calling thread's affinity mask, and the
+// thread is pinned to that CPU. A cpuset from Slurm, taskset or numactl so
+// keeps a runtime's threads inside it, and on a host whose sockets interleave
+// their CPU numbers the first indices share a socket. A thread without such a
+// mask has every online CPU, where the index is the CPU number. A thread pins
+// once, since its mask afterwards holds one CPU.
 // macOS: thread_affinity_policy_set with affinity tag = core + 1. macOS
 // honours the tag as a hint rather than a hard pin; cores with the same
 // non-zero tag prefer to run on the same L2 cache. Tag 0 disables.
 // Other platforms: returns false.
 [[nodiscard]] inline bool pin_this_thread_to_core(std::size_t core) noexcept {
 #if defined(__linux__)
-    cpu_set_t set;
-    CPU_ZERO(&set);
-    CPU_SET(core, &set);
-    return pthread_setaffinity_np(pthread_self(), sizeof(set), &set) == 0;
+    cpu_set_t allowed;
+    CPU_ZERO(&allowed);
+    if (sched_getaffinity(0, sizeof(allowed), &allowed) != 0) {
+        return false;
+    }
+    for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+        if (!CPU_ISSET(cpu, &allowed)) {
+            continue;
+        }
+        if (core != 0) {
+            --core;
+            continue;
+        }
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(cpu, &set);
+        return pthread_setaffinity_np(pthread_self(), sizeof(set), &set) == 0;
+    }
+    return false;
 #elif defined(__APPLE__)
     thread_affinity_policy_data_t policy{static_cast<integer_t>(core) + 1};
     const auto result =
