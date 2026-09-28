@@ -49,8 +49,12 @@ checkpoint workloads:
         rules.build.output.profile,
     output:
         "results/workloads/{preset}.txt",
+    log:
+        "logs/workloads/{preset}.log",
+    conda:
+        "envs/toolchain.yaml"
     shell:
-        "{input} --list > {output}"
+        "{input} --list > {output} 2> {log}"
 
 
 def workloads(preset):
