@@ -21,7 +21,6 @@
 // No market data is required. The flow is generated; the symbols spread across
 // shards through the same SplitMix64 routing the runtime uses.
 
-#include <lob/affinity.hpp>
 #include <lob/config.hpp>
 #include <lob/egress_merger.hpp>
 #include <lob/latency_histogram.hpp>
@@ -189,10 +188,8 @@ int run(const args& a) {
     const auto rt_ptr = std::make_unique<runtime_t>(lob::engine_config{}, rt_cfg);
     runtime_t& rt = *rt_ptr;
     latency_sink sink{send_tsc, hist};
-    // With --pin the merger takes the CPU after the workers' and the producer
-    // the one after that, so no thread of the pipeline shares a core or moves.
-    lob::egress_merger<runtime_t, latency_sink> merger{
-        rt, sink, lob::merger_config{.pin_thread = a.pin, .core = num_shards}};
+    lob::egress_merger<runtime_t, latency_sink> merger{rt, sink,
+                                                       lob::merger_config{.pin_thread = false}};
 
     // The merged stream is one consumer of the per-shard rings, not the only
     // one there could be (ADR-0021). With --direct the client drains them
@@ -212,10 +209,6 @@ int run(const args& a) {
     rt.start();
     if (!a.direct)
         merger.start();
-    // After the starts, since a thread inherits the mask of the one that
-    // spawns it and the merger picks its CPU from that mask.
-    if (a.pin)
-        (void)lob::pin_this_thread_to_core(num_shards + 1);
 
     lob::order_id_t next = 1;
 
