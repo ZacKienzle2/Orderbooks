@@ -74,7 +74,10 @@ def workloads(preset):
 # setarch -R turns off address space randomisation for the process and env -i fixes its environment,
 # which brought retired instruction counts from a variation of 1.07 per cent to below 0.002 per cent
 # (Weaver and McKee, IISWC 2008, sections 4.2.1 and 5). perf stat -r repeats the process and -j writes
-# JSON, the tool's own output format.
+# JSON, the tool's own output format. JSON output carries each metric's threshold, and perf adds the
+# events a threshold expression needs, two more general events for retiring, unless
+# --metric-no-threshold is given (perf stat -h). A threshold the metric's own events decide is
+# still reported.
 rule topdown:
     input:
         rules.build.output.profile,
@@ -87,7 +90,8 @@ rule topdown:
     params:
         repeats=config["repeats"],
     shell:
-        'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats} -M {wildcards.metric}'
+        'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats}'
+        " --metric-no-threshold -M {wildcards.metric}"
         " -o {output} -- {input} --workload {wildcards.workload} > {log} 2>&1"
 
 
