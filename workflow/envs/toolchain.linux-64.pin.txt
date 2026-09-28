@@ -73,9 +73,11 @@ https://conda.anaconda.org/conda-forge/noarch/pip-26.2.1-pyh145f28c_0.conda#573c
 https://conda.anaconda.org/conda-forge/linux-64/elfutils-0.196-h03e2bf6_0.conda#24717939d024efa3e042e52e8c279328
 https://conda.anaconda.org/conda-forge/linux-64/libclang-cpp23.1-23.1.2-default_h0acdd01_0.conda#b4820da1ea9315a05a8d9e6a09cd919f
 https://conda.anaconda.org/conda-forge/linux-64/lld-23.1.2-h5985d43_0.conda#6803d265ec68590bb73d31570fd9cf4d
+https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-23-23.1.2-h7399f5f_0.conda#a083ac15368815fc1620ce472f5d38ea
 https://conda.anaconda.org/conda-forge/linux-64/clang-23-23.1.2-default_hfab3205_0.conda#b67150987226220dcb9b2f66a146d2b2
 https://conda.anaconda.org/conda-forge/linux-64/libclang13-23.1.2-default_hfab3205_0.conda#6a0a310fae06a7f1ee8e70f1d3953157
 https://conda.anaconda.org/conda-forge/linux-64/linux-perf-7.2.8-py314h6f48eaa_0.conda#6c02c90f262f7814d7eb8672f82bc97f
+https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-23.1.2-h7148c6a_0.conda#a7c04e20ad3b4f7839730766ff71dc28
 https://conda.anaconda.org/conda-forge/linux-64/clang-scan-deps-23.1.2-default_h0acdd01_0.conda#84b2c7a5d5e0fe4ec4f857f54f9016ea
 https://conda.anaconda.org/conda-forge/linux-64/clang_impl_linux-64-23.1.2-default_he0f7a93_0.conda#4d58d731440b3751115d47dae87f4632
 https://conda.anaconda.org/conda-forge/linux-64/clang_linux-64-23.1-h3dae18f_2.conda#d156164fc129a74ba6f4101deb5123fc
