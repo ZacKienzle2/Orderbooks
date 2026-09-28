@@ -99,6 +99,7 @@ update the index below. The template is the scaffold.
 | [0051](0051-compiler-directed-optimisation.md)                  | Accepted               | Compiler-directed optimisation: remarks surveyed, profile adopted |
 | [0052](0052-the-merger-is-not-on-the-reply-path.md)             | Accepted               | The merger belongs to consumers that need a total order           |
 | [0053](0053-trace-every-literal-and-check-to-a-source.md)       | Proposed               | Trace every literal and every disabled check to a source          |
+| [0054](0054-measure-on-friday-through-a-snakemake-workflow.md)  | Proposed               | Measure on Friday through a Snakemake workflow                    |
 
 ## References
 
