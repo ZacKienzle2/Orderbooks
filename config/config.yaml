@@ -25,10 +25,15 @@ metrics:
   - tma_frontend_bound
   - tma_retiring
 
-# Offered loads of the latency phase of the load generator, as fractions of the rate its
-# throughput phase reached. Load 0 keeps the phase closed with one pair in flight, which times
-# service alone. At 0.8 a closed generator understated the p99 by more than two times (Treadmill,
-# ISCA 2016, section II.A).
+# Offered loads of the latency phase of the load generator, as fractions of the rate at which its
+# saturated throughput phase delivered fills. Load 0 keeps the phase closed with one pair in
+# flight, which times service alone. The saturated phase claims its rings in batches, which
+# Poisson arrivals at a lower rate do not fill, so the pipeline saturates below that rate. A
+# Friday probe on smp-9-5 read a p50 of 954 reference cycles at 0.1, 1975 at 0.3 and 885247 at 0.5,
+# while the generator sent a mean of 33, 74 and 187 cycles behind its schedule, so the queue at
+# 0.5 was the pipeline's. The loads sit below that knee, where the generator stays lightly
+# utilised, which Treadmill asks of a client (ISCA 2016, section II.A).
 loads:
   - 0
-  - 0.8
+  - 0.1
+  - 0.3
