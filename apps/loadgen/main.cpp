@@ -11,8 +11,9 @@
 //
 // The latency phase is closed by default, one pair in flight, which times
 // service without queueing. With --load it is open: pairs arrive at
-// exponential gaps whose rate is that fraction of the throughput phase's, as
-// independent senders would submit them. A closed generator reports lower
+// exponential gaps whose rate is that fraction of the rate at which the
+// throughput phase delivered fills, as independent senders would submit
+// them. A closed generator reports lower
 // response times than an open one at the same load (Schroeder, Wierman and
 // Harchol-Balter, NSDI 2006, section 5.1), and understated the p99 by more
 // than two times at 80 per cent load (Treadmill, ISCA 2016, section II.A).
@@ -20,6 +21,7 @@
 // No market data is required. The flow is generated; the symbols spread across
 // shards through the same SplitMix64 routing the runtime uses.
 
+#include <lob/affinity.hpp>
 #include <lob/config.hpp>
 #include <lob/egress_merger.hpp>
 #include <lob/latency_histogram.hpp>
@@ -76,10 +78,18 @@ struct latency_sink {
     // so until then a fill skips the stamp table, a random load into 8 MiB
     // that would otherwise slow the merger it is measuring.
     std::atomic<bool> stamping{false};
+    // Fills that reached the sink. A full egress ring drops events, so the
+    // open loop sizes its rate on these rather than on the orders submitted.
+    // The consumer is the only writer, so a relaxed load and store count them
+    // without a locked add.
+    std::atomic<std::uint64_t> fills{0};
 
     void on_event(const lob::event& e, std::uint64_t /*merge_seq*/) noexcept {
         ++events;
-        if (e.k == lob::event::kind::fill && stamping.load(std::memory_order_relaxed)) {
+        if (e.k != lob::event::kind::fill)
+            return;
+        fills.store(fills.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+        if (stamping.load(std::memory_order_relaxed)) {
             const auto t0 = send_tsc[e.body.fill.taker & slot_mask].load(std::memory_order_relaxed);
             if (t0 != 0) {
                 hist.record(read_tsc() - t0);
@@ -179,8 +189,10 @@ int run(const args& a) {
     const auto rt_ptr = std::make_unique<runtime_t>(lob::engine_config{}, rt_cfg);
     runtime_t& rt = *rt_ptr;
     latency_sink sink{send_tsc, hist};
-    lob::egress_merger<runtime_t, latency_sink> merger{rt, sink,
-                                                       lob::merger_config{.pin_thread = false}};
+    // With --pin the merger takes the CPU after the workers' and the producer
+    // the one after that, so no thread of the pipeline shares a core or moves.
+    lob::egress_merger<runtime_t, latency_sink> merger{
+        rt, sink, lob::merger_config{.pin_thread = a.pin, .core = num_shards}};
 
     // The merged stream is one consumer of the per-shard rings, not the only
     // one there could be (ADR-0021). With --direct the client drains them
@@ -200,6 +212,10 @@ int run(const args& a) {
     rt.start();
     if (!a.direct)
         merger.start();
+    // After the starts, since a thread inherits the mask of the one that
+    // spawns it and the merger picks its CPU from that mask.
+    if (a.pin)
+        (void)lob::pin_this_thread_to_core(num_shards + 1);
 
     lob::order_id_t next = 1;
 
@@ -225,7 +241,6 @@ int run(const args& a) {
             (void)poll_all();
     }
     rt.drain();
-    const std::uint64_t tsc1 = read_tsc();
     const auto wall1 = std::chrono::steady_clock::now();
     const double secs = std::chrono::duration<double>(wall1 - wall0).count();
 
@@ -240,19 +255,23 @@ int run(const args& a) {
             cpu_relax();
         }
     }
+    const std::uint64_t tsc_idle = read_tsc();
+    const std::uint64_t delivered = sink.fills.load(std::memory_order_relaxed);
     sink.stamping.store(true, std::memory_order_relaxed);
 
     // Phase 2: latency. Only these orders are stamped, so the histogram holds
     // only this phase's samples.
     constexpr std::uint64_t lat_pairs = 200'000;
     if (a.load > 0.0) {
-        // Open loop. The mean gap is the saturated time a pair took over the
-        // load. Each bid is stamped with its scheduled arrival, so a pair sent
-        // late behind a stalled ring counts its wait, as the open loop of
-        // Treadmill does (section II.A). A fixed seed repeats the schedule
-        // each run.
+        // Open loop. The mean gap is the time the saturated pipeline took per
+        // fill it delivered, backlog included, over the load. Each bid is
+        // stamped with its scheduled arrival, so a pair sent late behind a
+        // stalled ring counts its wait, as the open loop of Treadmill does
+        // (section II.A). A fixed seed repeats the schedule each run.
+        if (delivered == 0)
+            throw std::runtime_error("the throughput phase delivered no fill to size --load on");
         const double mean_gap =
-            static_cast<double>(tsc1 - tsc0) / static_cast<double>(pairs) / a.load;
+            static_cast<double>(tsc_idle - tsc0) / static_cast<double>(delivered) / a.load;
         std::mt19937_64 gen{a.seed};
         std::exponential_distribution<double> gap{1.0 / mean_gap};
         double due = static_cast<double>(read_tsc());
