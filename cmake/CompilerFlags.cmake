@@ -1,50 +1,36 @@
 # cmake-lint: disable=C0103
 include_guard(GLOBAL)
-include(CheckCXXCompilerFlag)
+include(CheckCompilerFlag)
 
 add_library(lob_compiler_flags INTERFACE)
 add_library(lob::compiler_flags ALIAS lob_compiler_flags)
 
 target_compile_features(lob_compiler_flags INTERFACE cxx_std_20)
 
-# Probe each candidate flag with -Werror so that compilers which accept the flag with a warning
-# (e.g. Apple Clang on -fno-semantic-interposition) are correctly detected as "unsupported".
-function(_lob_probe_flag flag out_var)
-  set(_old "${CMAKE_REQUIRED_FLAGS}")
-  set(CMAKE_REQUIRED_FLAGS "${flag} -Werror")
-  string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${flag}" _id)
-  check_cxx_compiler_flag("${flag}" ${_id})
-  set(CMAKE_REQUIRED_FLAGS "${_old}")
-  set(${out_var}
-      "${${_id}}"
-      PARENT_SCOPE)
-endfunction()
-
+# Visibility comes from the CMAKE_CXX_VISIBILITY_PRESET and CMAKE_VISIBILITY_INLINES_HIDDEN
+# settings, and colour from the presets' CMAKE_COLOR_DIAGNOSTICS, so neither is a flag here.
 if(MSVC)
   target_compile_options(lob_compiler_flags INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor
                                                       /utf-8)
 else()
-  target_compile_options(
-    lob_compiler_flags INTERFACE -fno-omit-frame-pointer -fdiagnostics-color=always
-                                 -fvisibility=hidden -fvisibility-inlines-hidden)
+  target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer)
 
   if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     # -fno-trapping-math and -ffp-contract=fast both relax floating-point semantics. The engine
     # itself is integer-only today, but any future FP analytics translation unit linked under these
     # flags will have FMA contraction permitted and trapping ops removed; rounding may differ from a
     # strict-IEEE build. Re-evaluate before adding any production FP risk path.
-    set(_lob_perf_candidates
-        -fno-plt
-        -fno-semantic-interposition
-        -fstrict-aliasing
-        -falign-functions=64
-        -falign-loops=32
-        -fno-trapping-math
-        -ffp-contract=fast)
+    #
+    # check_compiler_flag fails a flag the compiler answers with any diagnostic, so a compiler that
+    # accepts a flag with a warning (Apple Clang on -fno-semantic-interposition) counts as not
+    # supporting it.
+    set(_lob_perf_candidates -fno-plt -fno-semantic-interposition -falign-functions=64
+                             -falign-loops=32 -fno-trapping-math -ffp-contract=fast)
     set(_lob_perf_compile "")
     foreach(_flag IN LISTS _lob_perf_candidates)
-      _lob_probe_flag("${_flag}" _ok)
-      if(_ok)
+      string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${_flag}" _id)
+      check_compiler_flag(CXX "${_flag}" ${_id})
+      if(${_id})
         list(APPEND _lob_perf_compile "${_flag}")
       endif()
     endforeach()
