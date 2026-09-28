@@ -34,20 +34,32 @@ something?
 
 The proposal is the Snakemake workflow.
 
-- `workflow/Snakefile` builds the `conda-clang-rel` preset, lists the profiler's
-  workloads from the built binary, and runs perf's TopdownL1 metric group over
-  each one. `config/config.yaml` holds the preset and the repetition count.
-- `workflow/envs/toolchain.yaml` names clang, lld, CMake, Ninja, linux-perf and
-  Valgrind without versions. `snakedeploy pin-conda-envs` solved it in a Friday
-  compute job against glibc 2.34, and Snakemake deploys the pin file. The vcpkg
-  ports stay at the `vcpkg-configuration.json` baseline, which the shared vcpkg
-  clone on Friday contains.
+- `workflow/Snakefile` builds each preset of `config/config.yaml`, lists the
+  profiler's workloads from the built binary, and runs perf's top-down level 1
+  metrics over each one, a metric a process. It also runs the load generator at
+  each offered load of the file. `config/config.yaml` holds the presets, the
+  metrics, the loads and the repetition count.
+- `workflow/envs/toolchain.yaml` names clang, lld, the LLVM tools, CMake, Ninja,
+  linux-perf and Valgrind without versions. `snakedeploy pin-conda-envs` solved
+  it in a Friday compute job against glibc 2.34, and Snakemake deploys the pin
+  file. The vcpkg ports stay at the `vcpkg-configuration.json` baseline, which
+  the shared vcpkg clone on Friday contains.
 - `workflow/profiles/friday/profile.yaml` submits every job to one CPU model,
   with one thread a core. The fc430 feature spans a Xeon E5-2680 v3 and a Xeon
   E5-2680 v4, which probe jobs read from `/proc/cpuinfo`, and 14 cores a socket
   select the v4. Its 16 nodes stood mostly idle while the Gold 6226R nodes that
   Thesis times on were all allocated. A measured process gets its node to
   itself.
+- On those nodes four of the eight general counters the kernel schedules count
+  and the other four read zero, and the NMI watchdog occupies the fixed cycle
+  counter. The TopdownL1 group asks for seven general events, so every metric
+  came back as nan. Front end bound and retiring fit in four, once
+  `--metric-no-threshold` keeps out the events of their thresholds. Bad
+  speculation takes six.
+- The latency rule binds the load generator and its memory to NUMA node 0 with
+  `numactl`, and the pinned workers take the first CPUs of that node. The fc430
+  nodes number socket 0's CPUs even, so pinning by CPU number had put workers 1
+  and 3 on the other socket.
 
 The run design follows the literature read for it.
 
@@ -79,9 +91,14 @@ The run design follows the literature read for it.
   owner's decision.
 - Negative: the conda compiler is clang 23, so Friday numbers compare with each
   other and not with the clang 20 builds on the development machine.
-- Neutral: the load generator's latency phase is closed-loop. Treadmill
-  (ISCA 2016) and Tales of the tail (SoCC 2014, section 3.3) measure with
-  open-loop Poisson arrivals, and a latency run on Friday waits for that mode.
+- Negative: bad speculation and back end bound can't be read on the fc430 nodes,
+  since the first needs six working general counters and the second is what the
+  other three leave.
+- Neutral: the latency rule runs the load generator closed, one pair in flight,
+  and open, with Poisson arrivals at a fraction of the measured throughput, as
+  Treadmill (ISCA 2016) and Tales of the tail (SoCC 2014, section 3.3) measure.
+  A closed generator reports lower response times than an open one at the same
+  load (Schroeder, Wierman and Harchol-Balter, NSDI 2006, section 5.1).
 - Neutral: COZ (SOSP 2015) would attribute the pipeline's throughput to its
   stages. conda-forge doesn't package it, and installing it is the owner's
   decision.
