@@ -9,24 +9,36 @@ import os
 configfile: "config/config.yaml"
 
 
+def topdown_results(wildcards):
+    return [
+        path
+        for preset in config["presets"]
+        for path in expand(
+            "results/topdown/{preset}/{workload}/{metric}.json",
+            preset=preset,
+            workload=workloads(preset),
+            metric=config["metrics"],
+        )
+    ]
+
+
+def latency_results(wildcards):
+    return expand(
+        "results/latency/{preset}/{load}/{rep}.txt",
+        preset=config["presets"],
+        load=config["loads"],
+        rep=range(config["repeats"]),
+    )
+
+
+def sql_list(paths):
+    return "[" + ", ".join(f"'{path}'" for path in paths) + "]"
+
+
 rule all:
     input:
-        lambda wildcards: [
-            path
-            for preset in config["presets"]
-            for path in expand(
-                "results/topdown/{preset}/{workload}/{metric}.json",
-                preset=preset,
-                workload=workloads(preset),
-                metric=config["metrics"],
-            )
-        ]
-        + expand(
-            "results/latency/{preset}/{load}/{rep}.txt",
-            preset=config["presets"],
-            load=config["loads"],
-            rep=range(config["repeats"]),
-        ),
+        "results/summary/topdown.csv",
+        "results/summary/latency.csv",
 
 
 # cmake --workflow configures, builds and runs the preset's tests, so a build that fails its tests on
@@ -124,3 +136,28 @@ rule latency:
         " && cpupower idle-info >> {output.host} 2>> {log}"
         ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
         " {input} --pin {params.load} --seed {wildcards.rep} > {output.latency} 2>> {log}"
+
+
+# DuckDB summarises the results in SQL, each query reading the files its input lists through the
+# variable files, so a result of a preset or a load that config/config.yaml no longer names stays out.
+rule summary:
+    input:
+        topdown=topdown_results,
+        latency=latency_results,
+        topdown_sql="workflow/sql/topdown.sql",
+        latency_sql="workflow/sql/latency.sql",
+    output:
+        topdown="results/summary/topdown.csv",
+        latency="results/summary/latency.csv",
+    log:
+        "logs/summary.log",
+    conda:
+        "envs/summary.yaml"
+    params:
+        topdown=lambda wildcards, input: sql_list(input.topdown),
+        latency=lambda wildcards, input: sql_list(input.latency),
+    shell:
+        'duckdb -csv -c "SET VARIABLE files = {params.topdown}" -c ".read {input.topdown_sql}"'
+        " > {output.topdown} 2> {log}"
+        ' && duckdb -csv -c "SET VARIABLE files = {params.latency}" -c ".read {input.latency_sql}"'
+        " > {output.latency} 2>> {log}"
