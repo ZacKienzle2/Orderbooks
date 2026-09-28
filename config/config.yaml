@@ -1,0 +1,12 @@
+# Settings of the measurement workflow. A run takes every setting from this file and none from its
+# command line, so the configuration archived beside a result reproduces it (Ingo and Daly, DBTest
+# 2020, sections 2.1 and 2.4).
+
+# The configure, build and test preset of CMakePresets.json whose binaries are measured. The conda
+# presets take their compilers from the toolchain environment the rules deploy.
+preset: conda-clang-rel
+
+# Executions of each measured process. Kalibera and Jones (ISMM 2013, section 9.1) open with an
+# initial experiment of 30 repetitions at each level, from which the variances dimension the real
+# experiment.
+repeats: 30

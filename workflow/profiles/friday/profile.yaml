@@ -1,0 +1,31 @@
+# The workflow profile of UQ's Friday cluster, read by snakemake --workflow-profile
+# workflow/profiles/friday on a login node, where the Slurm executor plugin submits every job with
+# sbatch. Pass it explicitly: without the flag, Snakemake looks for workflow/profiles/default.
+#
+# The cluster keys repeat those of the Thesis workflow profile, whose ADR-0099 derives each one from
+# the Friday user guide and scontrol. The snakemake-infrastructure-profiles README puts such keys in
+# one global profile per cluster, and moving them there awaits the user's decision.
+executor: slurm
+jobs: unlimited
+scheduler: greedy
+latency-wait: 60
+cores: 32
+software-deployment-method: conda
+default-resources:
+  # Thesis times its benchmarks on the Gold 6226R of biol-0-[0-5], one CPU model in the general
+  # partition, which runs the x86-64-v3 code of these builds and exposes the top-down events.
+  slurm_partition: general
+  constraint: biol
+  # One usable thread a core, since hyper-threading confounds the top-down tree (Yasin, ISPASS
+  # 2014, section 7).
+  slurm_extra: --threads-per-core=1
+  mem_mb: threads * 189400 // 32
+  runtime: 1d
+  tmpdir: /scratch/$USER
+slurm-efficiency-report: true
+slurm-efficiency-report-path: logs/slurm
+set-resources:
+  # A measured process gets the node to itself, so no other job shares its caches or memory
+  # bandwidth. set-resources replaces slurm_extra whole, so the thread setting is repeated.
+  topdown:
+    slurm_extra: --threads-per-core=1 --exclusive

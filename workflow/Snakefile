@@ -1,0 +1,79 @@
+# The measurement workflow of Orderbooks. It builds a preset in the toolchain environment of
+# workflow/envs and classifies each profiler workload with the top-down method (Yasin, ISPASS 2014)
+# before any remedy is measured, since the method drills only into the categories it flags (section
+# 3). Every setting comes from config/config.yaml.
+
+import glob
+import os
+
+configfile: "config/config.yaml"
+
+
+rule all:
+    input:
+        lambda wildcards: expand(
+            "results/topdown/{preset}/{workload}.json",
+            preset=config["preset"],
+            workload=workloads(config["preset"]),
+        ),
+
+
+# cmake --workflow configures, builds and runs the preset's tests, so a build that fails its tests on
+# Friday stops here. vcpkg builds the manifest on logical cores + 1 unless VCPKG_MAX_CONCURRENCY is
+# set (vcpkg environment variables reference), which counts the node rather than the job's threads.
+rule build:
+    input:
+        [
+            path
+            for tree in ("include", "src", "apps", "bench", "tests", "fuzz", "cmake")
+            for path in glob.glob(f"{tree}/**/*", recursive=True)
+            if os.path.isfile(path)
+        ]
+        + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"],
+    output:
+        profile="build/{preset}/apps/profile/lob_profile",
+    log:
+        "logs/build/{preset}.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    shell:
+        "VCPKG_MAX_CONCURRENCY={threads} cmake --workflow --preset {wildcards.preset} --fresh"
+        " > {log} 2>&1"
+
+
+# The profiler lists its workloads, so a workload added there is measured without a second list
+# here, as the profile training tests read the same listing.
+checkpoint workloads:
+    input:
+        rules.build.output.profile,
+    output:
+        "results/workloads/{preset}.txt",
+    shell:
+        "{input} --list > {output}"
+
+
+def workloads(preset):
+    with open(checkpoints.workloads.get(preset=preset).output[0]) as listing:
+        return [line.split()[0] for line in listing if line.strip()]
+
+
+# Top-level slots of each workload: retiring, bad speculation, front end bound and back end bound.
+# setarch -R turns off address space randomisation for the process and env -i fixes its environment,
+# which brought retired instruction counts from a variation of 1.07 per cent to below 0.002 per cent
+# (Weaver and McKee, IISWC 2008, sections 4.2.1 and 5). perf stat -r repeats the process and -j writes
+# JSON, the tool's own output format.
+rule topdown:
+    input:
+        rules.build.output.profile,
+    output:
+        "results/topdown/{preset}/{workload}.json",
+    log:
+        "logs/topdown/{preset}/{workload}.log",
+    conda:
+        "envs/toolchain.yaml"
+    params:
+        repeats=config["repeats"],
+    shell:
+        'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats} -M TopdownL1'
+        " -o {output} -- {input} --workload {wildcards.workload} > {log} 2>&1"

@@ -190,6 +190,16 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_PGO": "use"
       }
+    },
+    {
+      "name": "conda-clang-rel",
+      "inherits": "linux-clang-rel",
+      "displayName": "Linux Clang Release in the conda toolchain of the workflow",
+      "description": "linux-clang-rel built inside workflow/envs/toolchain.yaml, whose clang activation packages set CXX to the conda-forge compiler and its sysroot (conda-forge FAQ). That clang lacks the LLVMgold.so plugin the default linker would load for ThinLTO, and lld is a linker of the Clang ThinLTO documentation, so the preset selects it through CMAKE_LINKER_TYPE, which try_compile also reads.",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "$env{CXX}",
+        "CMAKE_LINKER_TYPE": "LLD"
+      }
     }
   ],
   "buildPresets": [
@@ -256,6 +266,10 @@
     {
       "name": "linux-clang-pgo",
       "configurePreset": "linux-clang-pgo"
+    },
+    {
+      "name": "conda-clang-rel",
+      "configurePreset": "conda-clang-rel"
     }
   ],
   "testPresets": [
@@ -339,6 +353,11 @@
       "name": "linux-clang-pgo-generate",
       "configurePreset": "linux-clang-pgo-generate",
       "inherits": "_test_base"
+    },
+    {
+      "name": "conda-clang-rel",
+      "configurePreset": "conda-clang-rel",
+      "inherits": "_test_base"
     }
   ],
   "workflowPresets": [
@@ -420,6 +439,23 @@
         {
           "type": "build",
           "name": "linux-clang-pgo"
+        }
+      ]
+    },
+    {
+      "name": "conda-clang-rel",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "conda-clang-rel"
+        },
+        {
+          "type": "build",
+          "name": "conda-clang-rel"
+        },
+        {
+          "type": "test",
+          "name": "conda-clang-rel"
         }
       ]
     }

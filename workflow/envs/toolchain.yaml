@@ -1,0 +1,19 @@
+# The toolchain that builds and measures Orderbooks, deployed by Snakemake from the pin file beside
+# this one, which snakedeploy pin-conda-envs writes in a Friday compute job, as Thesis ADR-0106 pins
+# its engine toolchain. The clang activation packages set CC and CXX to the conda-forge compilers and
+# their sysroot (conda-forge FAQ), and the conda-clang presets read CXX. lld links the ThinLTO
+# objects, since this clang lacks the LLVMgold.so plugin the default linker would load. linux-perf
+# gives the compute nodes the perf they lack, whose perf_event_paranoid of 2 admits the user-space
+# events of the job's own processes. valgrind supplies cachegrind, the instrument of record for
+# instruction counts (ADR-0034).
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - clang_linux-64
+  - clangxx_linux-64
+  - lld
+  - cmake
+  - ninja
+  - linux-perf
+  - valgrind
