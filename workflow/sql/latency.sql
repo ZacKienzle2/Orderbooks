@@ -1,6 +1,7 @@
 -- One row a preset and offered load from the load generator outputs the latency rule writes, whose
 -- paths the summary rule sets in the variable files. A run prints a throughput line, a latency line
--- and a percentile line. The quartiles are across runs, each run's percentile being one value.
+-- and a percentile line, and an open run a generator lag line. The quartiles are across runs,
+-- each run's percentile being one value.
 WITH lines AS (
     SELECT
         regexp_extract(filename, 'results/latency/([^/]+)/', 1) AS preset,
@@ -29,7 +30,9 @@ runs AS (
         max(try_cast(regexp_extract(line, 'p99=([0-9]+)', 1) AS BIGINT))
             FILTER (WHERE line LIKE 'end-to-end%') AS p99,
         max(try_cast(regexp_extract(line, 'p99\.9=([0-9]+)', 1) AS BIGINT))
-            FILTER (WHERE line LIKE 'end-to-end%') AS p999
+            FILTER (WHERE line LIKE 'end-to-end%') AS p999,
+        max(try_cast(regexp_extract(line, 'mean=([0-9]+)', 1) AS BIGINT))
+            FILTER (WHERE line LIKE 'generator lag%') AS lag_mean
     FROM lines
     GROUP BY ALL
 )
@@ -47,7 +50,8 @@ SELECT
     quantile_cont(p99, 0.75) AS p99_q3,
     median(p999) AS p999_median,
     median(morders) AS morders_median,
-    median(dropped) AS dropped_median
+    median(dropped) AS dropped_median,
+    median(lag_mean) AS lag_mean_median
 FROM runs
 GROUP BY ALL
 ORDER BY load, preset;
