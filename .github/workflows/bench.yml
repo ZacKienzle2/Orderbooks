@@ -61,7 +61,6 @@ jobs:
           mkdir -p artifacts
           ./build/linux-clang-rel/bench/lob_bench \
             --benchmark_format=json \
-            --benchmark_min_time=0.5s \
             --benchmark_repetitions=5 \
             --benchmark_report_aggregates_only=true \
             --benchmark_out=artifacts/bench.json \

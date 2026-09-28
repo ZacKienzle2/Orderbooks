@@ -15,7 +15,7 @@ lint preset=preset:
 # perf stat counters over the benchmark binary under its fixed-seed workload.
 perfstat preset=preset:
     mkdir -p artifacts/perf
-    perf stat -o artifacts/perf/perf.txt -e cycles,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses,dTLB-load-misses,iTLB-load-misses -- build/{{ preset }}/bench/lob_bench --benchmark_min_time=1.0s --benchmark_repetitions=3 --benchmark_report_aggregates_only=true
+    perf stat -o artifacts/perf/perf.txt -e cycles,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses,dTLB-load-misses,iTLB-load-misses -- build/{{ preset }}/bench/lob_bench --benchmark_repetitions=3 --benchmark_report_aggregates_only=true
 
 # Build the synthetic-flow profiler for a preset.
 profiler preset=preset:
