@@ -150,6 +150,46 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
+    },
+    {
+      "name": "linux-clang-coverage",
+      "displayName": "Linux Clang source-based coverage of the test suite",
+      "inherits": "linux-clang-debug",
+      "cacheVariables": {
+        "LOB_COVERAGE": "ON",
+        "LOB_BUILD_BENCH": "OFF"
+      }
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "displayName": "Linux Clang source-based coverage of the fuzz corpora",
+      "inherits": "linux-clang-fuzz",
+      "cacheVariables": {
+        "LOB_COVERAGE": "ON",
+        "LOB_SANITIZER": ""
+      }
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "displayName": "Linux Clang profile training over the profiler workloads",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_PGO": "generate",
+        "LOB_BUILD_TESTS": "OFF",
+        "LOB_BUILD_BENCH": "OFF"
+      }
+    },
+    {
+      "name": "linux-clang-pgo",
+      "displayName": "Linux Clang Release built from the trained profile",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_PGO": "use"
+      }
     }
   ],
   "buildPresets": [
@@ -200,6 +240,22 @@
     {
       "name": "macos-clang-debug",
       "configurePreset": "macos-clang-debug"
+    },
+    {
+      "name": "linux-clang-coverage",
+      "configurePreset": "linux-clang-coverage"
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "configurePreset": "linux-clang-fuzz-coverage"
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "configurePreset": "linux-clang-pgo-generate"
+    },
+    {
+      "name": "linux-clang-pgo",
+      "configurePreset": "linux-clang-pgo"
     }
   ],
   "testPresets": [
@@ -263,6 +319,109 @@
       "name": "macos-clang-debug",
       "configurePreset": "macos-clang-debug",
       "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "configurePreset": "linux-clang-fuzz",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-coverage",
+      "configurePreset": "linux-clang-coverage",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "configurePreset": "linux-clang-fuzz-coverage",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "configurePreset": "linux-clang-pgo-generate",
+      "inherits": "_test_base"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "linux-clang-fuzz",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-fuzz"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-fuzz"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-fuzz"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-coverage"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-coverage"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-coverage"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-fuzz-coverage"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-fuzz-coverage"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-fuzz-coverage"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-pgo-generate"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-pgo-generate"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-pgo-generate"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-pgo",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-pgo"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-pgo"
+        }
+      ]
     }
   ]
 }

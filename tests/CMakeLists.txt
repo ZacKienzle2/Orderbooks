@@ -26,4 +26,8 @@ target_link_libraries(
           magic_enum::magic_enum
           Threads::Threads)
 
-catch_discover_tests(lob_tests)
+if(LOB_PROFILE_DIR)
+  catch_discover_tests(lob_tests PROPERTIES ${LOB_PROFILE_TEST_PROPERTIES})
+else()
+  catch_discover_tests(lob_tests)
+endif()
