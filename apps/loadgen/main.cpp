@@ -262,6 +262,8 @@ int run(const args& a) {
     // Phase 2: latency. Only these orders are stamped, so the histogram holds
     // only this phase's samples.
     constexpr std::uint64_t lat_pairs = 200'000;
+    std::uint64_t lag_sum = 0;
+    std::uint64_t lag_final = 0;
     if (a.load > 0.0) {
         // Open loop. The mean gap is the time the saturated pipeline took per
         // fill it delivered, backlog included, over the load. Each bid is
@@ -274,16 +276,29 @@ int run(const args& a) {
             static_cast<double>(tsc_idle - tsc0) / static_cast<double>(delivered) / a.load;
         std::mt19937_64 gen{a.seed};
         std::exponential_distribution<double> gap{1.0 / mean_gap};
-        double due = static_cast<double>(read_tsc());
+        // The schedule is drawn before the phase, so the send loop does no
+        // arithmetic beyond its clock reads. A generator that falls behind its
+        // schedule queues on the client side and biases the latency it
+        // reports (Treadmill, section II.A), so the loop sums how late each
+        // pair left, and the report prints the mean and the lag at the end.
+        std::vector<std::uint64_t> due(lat_pairs);
+        double at = 0.0;
+        for (auto& d : due) {
+            at += gap(gen);
+            d = static_cast<std::uint64_t>(at);
+        }
+        const std::uint64_t start = read_tsc();
         for (std::uint64_t i = 0; i < lat_pairs; ++i) {
             const lob::symbol_id_t sym = i % num_symbols;
-            due += gap(gen);
-            const auto t = static_cast<std::uint64_t>(due);
-            while (read_tsc() < t) {
+            const std::uint64_t t = start + due[i];
+            std::uint64_t now = read_tsc();
+            while (now < t) {
                 if (a.direct)
                     (void)poll_all();
                 cpu_relax();
+                now = read_tsc();
             }
+            lag_sum += now - t;
             while (!rt.try_submit(sym, ask(next++))) {
             }
             const lob::order_id_t bid_id = next++;
@@ -291,6 +306,7 @@ int run(const args& a) {
             while (!rt.try_submit(sym, bid(bid_id))) {
             }
         }
+        lag_final = read_tsc() - (start + due.back());
     } else {
         // Closed loop with one pair in flight, so the pipeline stays
         // unsaturated and the stamp-to-echo difference is processing latency,
@@ -340,6 +356,11 @@ int run(const args& a) {
                 static_cast<unsigned long long>(hist.value_at_percentile(99.0)),
                 static_cast<unsigned long long>(hist.value_at_percentile(99.9)),
                 static_cast<unsigned long long>(hist.max()));
+    if (a.load > 0.0) {
+        std::printf("generator lag (reference cycles): mean=%llu final=%llu\n",
+                    static_cast<unsigned long long>(lag_sum / lat_pairs),
+                    static_cast<unsigned long long>(lag_final));
+    }
     if (hist.overflow_count() > 0) {
         std::printf(
             "latency WARNING: %llu samples exceeded the histogram range; "
