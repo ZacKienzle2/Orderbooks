@@ -43,6 +43,14 @@ open question.
 | `spin.hpp`, `tsc.hpp`                   | `std::atomic::wait`, `std::chrono`               | Both wrap one intrinsic each, deliberately: the standard facilities are the thing being avoided on these paths.                                                                                                                                                                         |
 | `shard_router.hpp`, `egress_merger.hpp` | none                                             | A hash and a modulo, and a linear scan over four rings. There is no library for a four-way merge that beats reading four cursors.                                                                                                                                                       |
 
+## The analysis harness
+
+| Component                  | Alternative considered                                         | Result                                                                                                                                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bench_ci.read_run`        | `pandas.json_normalize` over the report's `benchmarks` records | Adopted. The hand parser merged a benchmark's arguments under one name and read the last entry, which for a repeated benchmark is the coefficient of variation aggregate.                                                                                                                          |
+| `bench_ci.ratio_interval`  | Google Benchmark `compare.py`                                  | Kept. `compare.py` reports a Mann-Whitney U p-value and asks for at least nine repetitions. Kalibera and Jones (ISMM 2013, section 4) argue for an effect size interval over a significance test, and the Fieller interval is their equation 5. Neither scipy.stats nor statsmodels provides one.  |
+| `viz/event_log.py` reading | `pandas.read_json(lines=True, dtype_backend="numpy_nullable")` | Rejected. A generated equivalence test against the orjson reader found it reads 9007199254740993 as 9007199254740992 in a column that other event kinds lack, which passes through float64. DuckDB `read_json` with the columns declared `UBIGINT` is untried, because DuckDB is not a dependency. |
+
 ## Adding a row
 
 A row follows a measurement. The measurement belongs in an ADR when it changes a
