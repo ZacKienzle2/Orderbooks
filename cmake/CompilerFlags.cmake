@@ -16,16 +16,9 @@ else()
   target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer)
 
   if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # -fno-trapping-math and -ffp-contract=fast both relax floating-point semantics. The engine
-    # itself is integer-only today, but any future FP analytics translation unit linked under these
-    # flags will have FMA contraction permitted and trapping ops removed; rounding may differ from a
-    # strict-IEEE build. Re-evaluate before adding any production FP risk path.
-    #
     # check_compiler_flag fails a flag the compiler answers with any diagnostic, so a compiler that
-    # accepts a flag with a warning (Apple Clang on -fno-semantic-interposition) counts as not
-    # supporting it.
-    set(_lob_perf_candidates -fno-plt -fno-semantic-interposition -falign-functions=64
-                             -falign-loops=32 -fno-trapping-math -ffp-contract=fast)
+    # accepts a flag with a warning counts as not supporting it.
+    set(_lob_perf_candidates -fno-plt -falign-functions=64 -falign-loops=32)
     set(_lob_perf_compile "")
     foreach(_flag IN LISTS _lob_perf_candidates)
       string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${_flag}" _id)
