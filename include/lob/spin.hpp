@@ -43,10 +43,10 @@ inline void cpu_relax() noexcept {
 
 // How many cpu_relax hints a bounded spin runs before it gives the core back.
 //
-// Karlin, Manasse, McGeoch and Owicki (doi:10.1145/121132.286599) showed that
-// spinning for exactly the cost of the blocking alternative, then blocking, is
-// within a factor of two of the optimal offline strategy whatever the wait
-// turns out to be. So the budget is not a preference: it is the cost of the
+// Karlin, Li, Manasse and Owicki (doi:10.1145/121132.286599, section 2.4)
+// state that spinning for exactly the cost of the blocking alternative, then
+// blocking, is within a factor of two of the optimal offline strategy whatever
+// the wait turns out to be. So the budget is not a preference: it is the cost of the
 // alternative, divided by the cost of one hint.
 //
 // Both sides are measurable. On this development host a cpu_relax costs about
