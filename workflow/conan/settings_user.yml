@@ -1,0 +1,8 @@
+# Settings that conan config install merges into the settings.yml of the Conan home before every
+# conan command of workflow/Snakefile. settings.yml lists the clang versions released when that
+# Conan was, and the conda-forge clang of the toolchain environment can be a newer major, which
+# conan profile detect reports and settings.yml then rejects as an invalid setting (Conan FAQ,
+# "ERROR: Invalid setting"). ANY accepts the version detected.
+compiler:
+  clang:
+    version: [ANY]

@@ -55,15 +55,22 @@ SOURCES = [
     for tree in ("include", "src", "apps", "bench", "tests", "fuzz", "cmake")
     for path in glob.glob(f"{tree}/**/*", recursive=True)
     if os.path.isfile(path)
-] + ["CMakeLists.txt", "conanfile.py", "conan.lock", "workflow/conan/conda"]
+] + [
+    "CMakeLists.txt",
+    "conanfile.py",
+    "conan.lock",
+    "workflow/conan/conda",
+    "workflow/conan/settings_user.yml",
+]
 
 
 # The arguments of a conan command for a preset of config/config.yaml. The Conan package cache is not
 # concurrent, and parallel tasks need separate caches (Conan guidelines), so every rule that runs
 # conan takes the one unit of the conan resource the workflow profile declares, which Snakemake
-# counts across all jobs in cluster execution ("Resources and Remote Execution"). conan profile
-# detect --force writes the default profile the conda profile includes from the environment's
-# compilers each time. The const entry of build_folder_vars names the build folder
+# counts across all jobs in cluster execution ("Resources and Remote Execution"). CONAN_SETUP
+# installs workflow/conan/settings_user.yml into the Conan home, and conan profile detect --force
+# writes the default profile the conda profile includes from the environment's compilers, each time
+# a rule runs conan. The const entry of build_folder_vars names the build folder
 # build/<preset>/Release and its presets conan-<preset>-release after the preset (cmake_layout
 # reference), and the recipe's options name nothing here. The & pattern applies a conf to the
 # consumer conanfile alone ("Profile patterns"), so no dependency built into the shared cache takes
@@ -74,6 +81,12 @@ def conan(preset, command, folder=None):
         f"conan {command} . -pr:h workflow/conan/conda -pr:b default --build=missing {options}"
         f" -c \"&:tools.cmake.cmake_layout:build_folder_vars=['const.{folder or preset}']\""
     )
+
+
+CONAN_SETUP = (
+    "conan config install workflow/conan/settings_user.yml > {log} 2>&1"
+    " && conan profile detect --force >> {log} 2>&1"
+)
 
 
 # The training build runs every profiler workload instrumented and merges the counts into the
@@ -94,8 +107,7 @@ rule pgo_profile:
     params:
         conan=conan(config["pgo"]["train"], "build"),
     shell:
-        "conan profile detect --force > {log} 2>&1"
-        " && {params.conan} -c tools.build:jobs={threads} >> {log} 2>&1"
+        CONAN_SETUP + " && {params.conan} -c tools.build:jobs={threads} >> {log} 2>&1"
 
 
 # conan build installs the dependencies, configures, builds and runs the tests (conanfile.py), so a
@@ -119,8 +131,7 @@ rule build:
     params:
         conan=lambda wildcards: conan(wildcards.preset, "build"),
     shell:
-        "conan profile detect --force > {log} 2>&1"
-        " && {params.conan} -c tools.build:jobs={threads} >> {log} 2>&1"
+        CONAN_SETUP + " && {params.conan} -c tools.build:jobs={threads} >> {log} 2>&1"
 
 
 # The profiler lists its workloads, so a workload added there is measured without a second list
@@ -259,8 +270,7 @@ rule layout_install:
             wildcards.preset, "install", f"layout-{wildcards.preset}-{wildcards.seed}"
         ),
     shell:
-        "conan profile detect --force > {log} 2>&1"
-        " && {params.conan} -c tools.build:jobs={threads}"
+        CONAN_SETUP + " && {params.conan} -c tools.build:jobs={threads}"
         " -c \"&:tools.cmake.cmaketoolchain:extra_variables*={{'CMAKE_CXX_FLAGS': '-ffunction-sections'}}\""
         " >> {log} 2>&1"
 
