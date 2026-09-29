@@ -13,7 +13,6 @@
 #include <catch2/generators/catch_generators_all.hpp>
 
 #include <rapidcheck.h>
-#include <rapidcheck/catch.h>
 #include <rapidcheck/state.h>
 
 using lob::hier_bitmap;
@@ -205,11 +204,11 @@ struct clear_bit : rc::state::Command<bit_model, bitmap_sut> {
 }  // namespace
 
 TEST_CASE("hier_bitmap answers as the set it represents", "[bitmap][property][model]") {
-    rc::prop("every query agrees with std::set after every set and clear", [] {
+    REQUIRE(rc::check("every query agrees with std::set after every set and clear", [] {
         bitmap_sut sut;
         rc::state::check(bit_model{}, sut, rc::state::gen::execOneOfWithArgs<set_bit, clear_bit>());
         RC_CLASSIFY(!sut.bm.empty(), "left bits set");
-    });
+    }));
 }
 
 TEST_CASE("hier_bitmap clear_all wipes every tier", "[bitmap]") {

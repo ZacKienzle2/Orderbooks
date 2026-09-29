@@ -24,7 +24,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <rapidcheck.h>
-#include <rapidcheck/catch.h>
 #include <magic_enum/magic_enum.hpp>
 
 namespace {
@@ -178,28 +177,31 @@ struct consistency_system : engine_system {
 }  // namespace
 
 TEST_CASE("engine conserves quantity across a resting stream", "[engine][invariant][model]") {
-    rc::prop("submitted equals filled twice over, plus cancelled, resting and rejected", [] {
-        cmds::check_sequence<conservation_system, cmds::rest, cmds::cancel>(lob::engine_config{});
-    });
+    REQUIRE(
+        rc::check("submitted equals filled twice over, plus cancelled, resting and rejected", [] {
+            cmds::check_sequence<conservation_system, cmds::rest, cmds::cancel>(
+                lob::engine_config{});
+        }));
 }
 
 TEST_CASE("engine fill-or-kill executes all or nothing", "[engine][invariant][model][fok]") {
     // magic_enum enumerates the policies, so a policy added to the library is
     // covered here without this file being edited.
     for (const auto policy : magic_enum::enum_values<lob::self_cross_policy>()) {
-        rc::prop(std::string{"policy "} + std::string{magic_enum::enum_name(policy)}, [policy] {
-            cmds::check_sequence<fok_system, cmds::submit, cmds::cancel, cmds::modify>(
-                lob::engine_config{.self_cross = policy});
-        });
+        REQUIRE(rc::check(
+            std::string{"policy "} + std::string{magic_enum::enum_name(policy)}, [policy] {
+                cmds::check_sequence<fok_system, cmds::submit, cmds::cancel, cmds::modify>(
+                    lob::engine_config{.self_cross = policy});
+            }));
     }
 }
 
 TEST_CASE("engine keeps its aggregates and bitmap in step with its FIFOs",
           "[engine][invariant][model]") {
-    rc::prop("every level agrees with itself after every command", [] {
+    REQUIRE(rc::check("every level agrees with itself after every command", [] {
         cmds::check_sequence<consistency_system, cmds::submit, cmds::cancel, cmds::modify>(
             lob::engine_config{.self_cross = cmds::gen_enum<lob::self_cross_policy>()});
-    });
+    }));
 }
 
 TEST_CASE("engine publishes a reject when the arena is exhausted", "[engine][invariant][reject]") {

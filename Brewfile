@@ -4,7 +4,7 @@
 # listed. llvm is keg-only: its bin directory goes on PATH, which the dotfiles
 # do, and clangd, clang-tidy and run-clang-tidy come from it.
 brew "cmake"
-brew "ninja"
+brew "conan"
 brew "llvm"
 brew "ccache"
 # The cppcheck hook is at the manual stage and runs the binary from PATH.

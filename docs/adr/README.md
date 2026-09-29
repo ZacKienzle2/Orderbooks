@@ -48,7 +48,7 @@ update the index below. The template is the scaffold.
 | --------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------- |
 | [0000](0000-record-architecture-decisions.md)                   | Accepted               | Record architecture decisions                                     |
 | [0001](0001-cpp20-baseline.md)                                  | Accepted               | C++20 as the language baseline                                    |
-| [0002](0002-cmake-vcpkg-manifest-mode.md)                       | Accepted               | CMake 3.28 with vcpkg manifest mode                               |
+| [0002](0002-cmake-vcpkg-manifest-mode.md)                       | Superseded by ADR-0059 | CMake 3.28 with vcpkg manifest mode                               |
 | [0003](0003-linux-x86-64-primary-macos-dev.md)                  | Accepted               | Linux x86_64 primary target, macOS for development                |
 | [0004](0004-dense-tick-ladder-book.md)                          | Accepted               | Dense tick ladder for the order book                              |
 | [0005](0005-hierarchical-bitmap-best-price.md)                  | Accepted               | Hierarchical bitmap for best-price queries                        |
@@ -102,6 +102,7 @@ update the index below. The template is the scaffold.
 | [0054](0054-measure-on-friday-through-a-snakemake-workflow.md)  | Proposed               | Measure on Friday through a Snakemake workflow                    |
 | [0055](0055-drop-the-front-end-flags.md)                        | Proposed               | Drop the front end flags of the release build                     |
 | [0056](0056-keep-the-profile-guided-build-off.md)               | Proposed               | Keep the profile-guided build off by default                      |
+| [0059](0059-generate-the-presets-with-conan.md)                 | Accepted               | Generate the presets with Conan                                   |
 
 ## References
 

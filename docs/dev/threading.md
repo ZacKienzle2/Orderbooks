@@ -20,8 +20,8 @@ lob::shard_runtime_config cfg{
 ```
 
 Worker `i` pins to `first_core + i * core_stride`. A stride of one packs workers
-onto contiguous cores. A stride of two skips SMT siblings so each worker owns a
-full physical core, which is usually what a latency build wants. Choose
+onto contiguous cores, and a stride of two skips SMT siblings to give each
+worker a full physical core, the usual choice for a latency build. Choose
 `first_core` to avoid core 0, since the kernel steers most housekeeping and
 timer work there.
 
@@ -42,12 +42,12 @@ and steer interrupts away from them.
   isolcpus=4-7 nohz_full=4-7 rcu_nocbs=4-7 irqaffinity=0-3
   ```
 
-  `isolcpus` keeps the general scheduler off the worker cores, `nohz_full` stops
-  the periodic timer tick on cores running a single task, `rcu_nocbs` offloads
+  `isolcpus` removes the worker cores from the general scheduler, `nohz_full`
+  stops the periodic timer tick on cores running one task, `rcu_nocbs` offloads
   RCU callbacks to the housekeeping cores, and `irqaffinity` confines interrupt
   handling to cores 0 to 3.
 
-- Hold every core at a fixed high frequency so a frequency transition never
+- Set every core to a fixed high frequency so a frequency transition never
   stalls the hot path.
 
   ```bash
@@ -87,28 +87,28 @@ shows each `lob-shard-NN` thread on a distinct isolated core that never changes.
 
 ## macOS
 
-macOS exposes no hard CPU pin. `thread_policy_set` with an affinity tag is a
-hint that asks threads sharing a non-zero tag to prefer the same L2, and the
+macOS doesn't expose a hard CPU pin. `thread_policy_set` with an affinity tag is
+a hint that asks threads sharing a non-zero tag to prefer the same L2, and the
 scheduler may still migrate them. Use macOS for development and correctness
-work; capture production latency numbers on a tuned Linux host.
+work. Measure production latency on a tuned Linux host.
 
 ## Egress
 
 `shard_runtime` shares one publisher across every worker, so that publisher must
 be thread safe. `shard_egress_runtime` removes that requirement by giving each
-shard its own SPSC egress ring fed by a `ring_publisher`. Worker i is the sole
-producer of egress ring i and a single downstream consumer drains it with
-`try_poll`, so the publish path holds no lock and contends no cache line across
-cores. A full ring drops the event and bumps a per-shard loss counter; size the
-ring to the worst-case burst and drain it promptly.
+shard its own SPSC egress ring fed by a `ring_publisher`. With worker i as the
+only producer of egress ring i and one downstream consumer draining it with
+`try_poll`, the publish path doesn't take a lock or contend for a cache line
+across cores. A full ring drops the event and bumps a per-shard loss counter;
+size the ring to the worst-case burst and drain it promptly.
 
-When a downstream wants one feed rather than a per-shard poll loop,
-`egress_merger` runs a single thread that owns the consumer side of every egress
-ring and forwards events to one sink stamped with a gap-free global sequence.
-Each round claims at most `merger_config::batch_max` events per shard in one
-ring cursor claim, so a backlogged shard cannot stall the shards behind it and
-the merged stream interleaves by round. Quiesce the producing runtime before
-stopping the merger so its final pass drains every ring.
+For a downstream that reads one feed rather than a per-shard poll loop,
+`egress_merger` runs one thread as the consumer of every egress ring and
+forwards events to one sink stamped with a gap-free global sequence. Each round
+claims at most `merger_config::batch_max` events per shard in one ring cursor
+claim, so a backlogged shard cannot stall the shards behind it and the merged
+stream interleaves by round. Quiesce the producing runtime before stopping the
+merger so its final pass drains every ring.
 
 Each shard's engine seeds its event sequence from `lob::shard_seq_base`, so the
 engine seq stamps stay globally unique after the per-shard streams merge; the
@@ -121,11 +121,12 @@ order.
 each runtime reproduces the synchronous router's book state byte for byte over a
 randomised command stream, and `tests/test_egress_merger.cpp` asserts the merger
 delivers every event exactly once in a gap-free sequence. Run the suite under
-ThreadSanitizer on Linux to check the memory ordering of the ingress and egress
-rings, the stop flag, and the drain counters.
+ThreadSanitizer on Linux to check memory ordering on the ingress and egress
+rings. The same run covers the stop flag and the drain counters.
 
 ```bash
-cmake --preset linux-clang-tsan
-cmake --build --preset linux-clang-tsan --target lob_tests --parallel
-ctest --preset linux-clang-tsan -R "runtime|egress|merger"
+conan install . -s:a compiler.cppstd=20 --build=missing -s build_type=Debug -o "&:sanitizer=thread"
+cmake --preset conan-sanitizer_thread-debug
+cmake --build --preset conan-sanitizer_thread-debug --target lob_tests
+ctest --preset conan-sanitizer_thread-debug -R "runtime|egress|merger"
 ```

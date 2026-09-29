@@ -2,7 +2,7 @@
 
 `lob_loadgen` (`apps/loadgen`) drives the assembled multi-shard runtime end to
 end under synthetic order flow and reports throughput and end-to-end latency. It
-needs no market data; the flow is generated, and the symbols spread across
+doesn't need market data. The flow is generated, and the symbols spread across
 shards through the same SplitMix64 routing the runtime uses.
 
 ## What it measures
@@ -23,14 +23,14 @@ The run has two phases so each number means what it says.
   order's fill to echo back before sending the next. The pipeline stays
   unsaturated, so the stamp-to-echo difference is processing latency, not
   queueing delay. The producer parks an rdtsc stamp keyed by the bid's order id
-  before submitting; the sink differences the egress stamp against it. Only
-  these orders are stamped, so the histogram holds only unloaded samples.
+  before submitting. The sink differences the egress stamp against it. Only
+  these orders are stamped, and the histogram records only unloaded samples.
 
 ## Run
 
 ```bash
-cmake --build --preset linux-clang-rel --target lob_loadgen --parallel
-./build/linux-clang-rel/apps/loadgen/lob_loadgen --orders 20000000 --pin
+just release
+./build/lto_on/Release/apps/loadgen/lob_loadgen --orders 20000000 --pin
 ```
 
 ```text

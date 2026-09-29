@@ -7,8 +7,8 @@ designed for sub-microsecond order processing on Linux x86_64.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C.svg?logo=cplusplus)](https://en.cppreference.com/w/cpp/20)
-[![CMake](https://img.shields.io/badge/build-CMake%203.28%2B-064F8C.svg?logo=cmake)](https://cmake.org/)
-[![vcpkg](https://img.shields.io/badge/deps-vcpkg-0078D4.svg)](https://learn.microsoft.com/vcpkg/)
+[![CMake](https://img.shields.io/badge/build-CMake%203.30%2B-064F8C.svg?logo=cmake)](https://cmake.org/)
+[![Conan](https://img.shields.io/badge/deps-Conan%202-blue.svg)](https://conan.io/)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196.svg)](https://www.conventionalcommits.org/en/v1.0.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue.svg)](https://semver.org/spec/v2.0.0.html)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
@@ -74,30 +74,24 @@ designed for sub-microsecond order processing on Linux x86_64.
 
 ## Build
 
-Requires CMake 3.28, vcpkg in manifest mode, and a C++20 compiler (GCC 13+,
-Clang 17+, Apple Clang 15+).
+Requires CMake 3.30, Conan 2, and a C++20 compiler (GCC 13+, Clang 17+, Apple
+Clang 15+). `conan profile detect` writes a profile for the compiler `CC` and
+`CXX` name. `conan build` installs the dependencies `conan.lock` pins from
+ConanCenter, writes the CMake toolchain and presets, then configures, builds and
+runs the tests.
 
 ```bash
 git clone https://github.com/ZacKienzle2/Orderbooks
 cd Orderbooks
-cmake --preset linux-clang-rel
-cmake --build --preset linux-clang-rel
-ctest --preset linux-clang-rel --output-on-failure
+export CC=clang CXX=clang++
+conan profile detect
+conan build . -s:a compiler.cppstd=20 --build=missing -o "&:lto=ON"
 ```
 
-macOS dev:
+Benchmarks, from that build:
 
 ```bash
-cmake --preset macos-clang-dev
-cmake --build --preset macos-clang-dev
-ctest --preset macos-clang-dev --output-on-failure
-```
-
-Benchmarks:
-
-```bash
-cmake --build --preset linux-clang-rel --target lob_bench
-./build/linux-clang-rel/bench/lob_bench --benchmark_format=json | tee bench/last.json
+./build/lto_on/Release/bench/lob_bench --benchmark_format=json | tee bench/last.json
 ```
 
 ## Tooling harness

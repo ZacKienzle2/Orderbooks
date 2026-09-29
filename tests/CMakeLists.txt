@@ -1,5 +1,5 @@
-# Catch2 ships its CTest integration as Catch.cmake under its install share dir.
-include("${Catch2_DIR}/Catch.cmake")
+# Catch2's CTest integration, which the Conan package puts on the module path.
+include(Catch)
 
 # The suite is every test_*.cpp beside this file. A hand-kept list drifts from the directory the
 # moment a file is added under another name, and CONFIGURE_DEPENDS makes CMake re-glob when the

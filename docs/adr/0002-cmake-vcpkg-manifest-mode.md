@@ -1,5 +1,5 @@
 ---
-status: "Accepted"
+status: "Superseded by ADR-0059"
 date: "2026-05-19"
 deciders: ["Zac Kienzle"]
 ---
@@ -39,57 +39,58 @@ RapidCheck / Google Benchmark / nanobench in or out.
 
 ### Consequences
 
-- Positive: Single source of truth (`vcpkg.json`) for dependencies + their
-  version constraints + their feature gating.
-- Positive: Presets give every contributor identical configure invocations
+- Positive: one file (`vcpkg.json`) declares the dependencies, their version
+  constraints and their feature gating.
+- Positive: presets give every contributor identical configure invocations
   across Linux and macOS.
-- Positive: GitHub Actions cache (`x-gha`) accelerates CI dramatically.
-- Positive: Toolchain file from vcpkg handles cross-platform find_package
+- Positive: the GitHub Actions cache (`x-gha`) accelerates CI dramatically.
+- Positive: the toolchain file from vcpkg handles cross-platform find_package
   bindings.
-- Negative: vcpkg manifest mode requires `VCPKG_ROOT` to be set; CI workflows
-  must install vcpkg before configure.
-- Negative: First clean build is slow because vcpkg compiles every dependency
-  from source; mitigated by the GHA cache.
+- Negative: vcpkg manifest mode requires `VCPKG_ROOT` to be set, and CI
+  workflows must install vcpkg before configure.
+- Negative: the first clean build is slow because vcpkg compiles every
+  dependency from source. The GHA cache mitigates it.
 
 ## Pros and Cons of the Options
 
 ### CMake + vcpkg manifest
 
-- Pro: Manifest mode pins dependencies per project, no global state.
-- Pro: Microsoft-maintained, large registry, security advisories.
-- Pro: Presets v6 supports condition expressions, inheritance, env vars.
-- Con: Compiles from source by default (large first-build cost).
-- Con: Triplet system has a small learning curve.
+- Pro: manifest mode pins each project's dependencies in that project.
+- Pro: maintained by Microsoft, with a large registry and security advisories.
+- Pro: presets v6 supports condition expressions, inheritance and env vars.
+- Con: compiles from source by default (large first-build cost).
+- Con: the triplet system has a small learning curve.
 
 ### CMake + Conan 2
 
-- Pro: Profiles allow more granular cross-compilation.
-- Pro: Binary cache servers are easier to self-host.
-- Con: Two ways to declare dependencies (recipes vs requires) is confusing for
+- Pro: profiles give finer control over cross-compilation.
+- Pro: binary cache servers are easier to self-host.
+- Con: declaring dependencies through both recipes and requires confuses
   reviewers.
-- Con: Python tool with its own venv churn.
+- Con: a Python tool with its own venv churn.
 
 ### CMake + FetchContent only
 
-- Pro: Zero external tooling; CMake fetches and configures everything.
-- Pro: Simplest CI setup.
-- Con: No dependency pinning across builds; every contributor downloads the same
-  archive from scratch.
-- Con: No package cache; CI runs balloon.
-- Con: No security advisory feed.
+- Pro: zero external tooling. CMake fetches and configures everything.
+- Pro: simplest CI setup.
+- Con: builds don't share a pinned dependency set. Every contributor downloads
+  the same archive from scratch.
+- Con: without a package cache, CI runs balloon.
+- Con: without a security advisory feed.
 
 ### Bazel
 
-- Pro: Hermetic builds, remote caching, fine-grained incrementality.
-- Con: Most C++ HFT-style review audiences expect CMake.
+- Pro: hermetic builds, remote caching, fine-grained incrementality.
+- Con: most C++ HFT-style review audiences expect CMake.
 - Con: vcpkg / Conan-equivalent dependency story is heavier in Bazel.
 - Con: IDE integration is uneven outside Google ecosystem.
 
 ### Meson + wraps
 
-- Pro: Fast configure, clean syntax.
-- Con: Smaller ecosystem; fewer C++ libraries ship native Meson configurations.
-- Con: Fewer reviewers will be fluent.
+- Pro: fast configure, clean syntax.
+- Con: smaller ecosystem. Fewer C++ libraries provide native Meson
+  configurations.
+- Con: fewer reviewers will be fluent.
 
 ## More Information
 

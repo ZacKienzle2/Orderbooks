@@ -18,7 +18,6 @@
 #include <catch2/generators/catch_generators_all.hpp>
 
 #include <rapidcheck.h>
-#include <rapidcheck/catch.h>
 #include <boost/pfr/ops.hpp>
 #include <magic_enum/magic_enum.hpp>
 
@@ -127,9 +126,9 @@ struct snapshot_system {
 
 TEST_CASE("engine snapshot restores a book that carries on identically",
           "[engine][snapshot][model]") {
-    rc::prop("restore reproduces the book and the events that follow it", [] {
+    REQUIRE(rc::check("restore reproduces the book and the events that follow it", [] {
         cmds::check_sequence<snapshot_system, cmds::rest, cmds::cancel, cmds::modify>();
-    });
+    }));
 }
 
 TEST_CASE("engine restore rejects header from an incompatible engine shape", "[engine][snapshot]") {
