@@ -6,6 +6,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace lob {
 
@@ -36,8 +37,8 @@ namespace lob {
                                              std::size_t num_shards) noexcept {
     if (num_shards <= 1)
         return 0;
-    const auto log2_shards = static_cast<unsigned>(std::countr_zero(num_shards));
-    return static_cast<seq_t>(shard_idx) << (64U - log2_shards);
+    const int log2_shards = std::countr_zero(num_shards);
+    return static_cast<seq_t>(shard_idx) << (std::numeric_limits<seq_t>::digits - log2_shards);
 }
 
 }  // namespace lob
