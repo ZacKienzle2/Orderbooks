@@ -86,9 +86,10 @@ The run design follows the literature read for it.
   workflows submit to Friday through the same plugin.
 - Positive: perf's hardware counters become available through the pinned
   linux-perf, which WSL could not provide.
-- Negative: the cluster keys of the workflow profile repeat the Thesis
-  profile's. A global Friday profile would hold them once, and that awaits the
-  owner's decision.
+- Positive: the keys of Friday's compute environment live once, in the global
+  `friday` profile that the Thesis workflow reads too. The workflow profile
+  keeps the resources of the Orderbooks rules, and a run passes both with
+  `--profile friday --workflow-profile workflow/profiles/friday`.
 - Negative: the conda compiler is clang 23, so Friday numbers compare with each
   other and not with the clang 20 builds on the development machine.
 - Negative: bad speculation and back end bound can't be read on the fc430 nodes,

@@ -1,18 +1,12 @@
-# The workflow profile of UQ's Friday cluster, read by snakemake --workflow-profile
-# workflow/profiles/friday on a login node, where the Slurm executor plugin submits every job with
-# sbatch. Pass it explicitly: without the flag, Snakemake looks for workflow/profiles/default.
+# The workflow profile of UQ's Friday cluster, read after the global friday profile by
+# snakemake --profile friday --workflow-profile workflow/profiles/friday on a login node. The global
+# profile in $HOME/.config/snakemake/friday holds the keys of the compute environment, such as the
+# executor and the conda deployment ("Using global profiles" of the command line documentation), and
+# this one the resources of the Orderbooks rules, overriding it key by key.
 #
-# The executor keys repeat those of the Thesis workflow profile, whose ADR-0099 derives each one from
-# the Friday user guide and scontrol. The snakemake-infrastructure-profiles README puts such keys in
-# one global profile per cluster, and moving them there awaits the user's decision.
-executor: slurm
-jobs: unlimited
-scheduler: greedy
-latency-wait: 60
 # The CPUs of one node of the model below, the most a rule that sizes its threads by workflow.cores
-# can use on it.
+# can use on it, in place of the global profile's 32.
 cores: 28
-software-deployment-method: conda
 default-resources:
   # One CPU model for every job. The fc430 feature spans two, which the Friday hardware page lists
   # together as haswell. Probe jobs read a Xeon E5-2680 v3 with 24 CPUs on smp-9-0 and a Xeon
@@ -27,7 +21,6 @@ default-resources:
   # The memory of a CPU of those nodes, 255240 MB over 28 CPUs on the Friday hardware page.
   mem_mb: threads * 255240 // 28
   tmpdir: /scratch/$USER
-slurm-efficiency-report: true
 slurm-efficiency-report-path: logs/slurm
 set-resources:
   # A measured process gets the node to itself, so no other job shares its caches or memory
