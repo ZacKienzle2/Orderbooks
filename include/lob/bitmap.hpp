@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 
 namespace lob {
@@ -24,7 +25,7 @@ namespace lob {
 //   - Tier invariants are maintained internally; do not mutate raw words.
 template <std::size_t Ticks>
 class hier_bitmap {
-    static constexpr std::size_t W = 64;
+    static constexpr auto W = static_cast<std::size_t>(std::numeric_limits<std::uint64_t>::digits);
 
     [[nodiscard]] static constexpr std::size_t ceildiv(std::size_t a, std::size_t b) noexcept {
         return (a + b - 1) / b;

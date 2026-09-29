@@ -141,7 +141,7 @@ inline void drive_shard(std::size_t idx,
     if (cfg.pin_threads) {
         (void)pin_this_thread_to_core(cfg.first_core + idx * cfg.core_stride);
     }
-    char name[16];
+    char name[thread_name_capacity];
     std::snprintf(name, sizeof(name), "lob-shard-%02zu", idx);
     (void)set_this_thread_name(name);
 
