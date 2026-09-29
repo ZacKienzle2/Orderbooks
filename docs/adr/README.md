@@ -102,6 +102,7 @@ update the index below. The template is the scaffold.
 | [0054](0054-measure-on-friday-through-a-snakemake-workflow.md)  | Proposed               | Measure on Friday through a Snakemake workflow                    |
 | [0055](0055-drop-the-front-end-flags.md)                        | Proposed               | Drop the front end flags of the release build                     |
 | [0056](0056-keep-the-profile-guided-build-off.md)               | Proposed               | Keep the profile-guided build off by default                      |
+| [0057](0057-compare-the-cpp-build-with-cmake-init.md)           | Proposed               | Compare the C++ build with a cmake-init project                   |
 
 ## References
 
