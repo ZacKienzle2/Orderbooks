@@ -289,3 +289,18 @@ perf.data
 perf.data.old
 *.profraw
 *.profdata
+
+# github/gitignore has no Snakemake template. The workflow catalog's own
+# snakemake-workflow-template publishes this block, copied unedited.
+results/**
+resources/**
+logs/**
+.snakemake
+.snakemake/**
+.test/results/*
+workflow/notebooks/.ipynb_checkpoints/**
+**/.Rhistory
+**/*.Rproj
+**/.Rproj.user/**
+**/.RData
+**/Rplots.pdf

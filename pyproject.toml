@@ -69,6 +69,11 @@ docs = [
   "sphinx_autodoc_typehints",
   "furo>=2023.08.17",
 ]
+workflow = [
+    "snakedeploy>=0.17.1",
+    "snakemake>=9.27.0",
+    "snakemake-executor-plugin-slurm>=2.8.0",
+]
 
 
 [tool.hatch]

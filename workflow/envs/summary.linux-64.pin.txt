@@ -1,0 +1,14 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: linux-64
+# created-by: conda 24.11.3
+@EXPLICIT
+https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.7.22-hbd8a1cb_0.conda#0f51e2391ade309db462a55611263e9c
+https://conda.anaconda.org/conda-forge/linux-64/libgomp-16.2.0-he0feb66_7.conda#d904c7ddd95e026254b4b80808ee9e12
+https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda#a9f577daf3de00bca7c3c76c0ecbd1de
+https://conda.anaconda.org/conda-forge/linux-64/libgcc-16.2.0-ha9f2e26_7.conda#735629b400b70eeab21a2ba8f5b1c2ce
+https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-16.2.0-h934c35e_7.conda#9b6707e0caca917fa6ea9ee473f37a5d
+https://conda.anaconda.org/conda-forge/linux-64/openssl-3.6.4-h781a0a9_0.conda#16e3034a330cc625f2c685edec60cf4e
+https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-py310h44b86e0_2.conda#72a381cbad04f24b1c2a43ef707f45b4
+https://conda.anaconda.org/conda-forge/linux-64/libduckdb-1.5.5-hcfde7ca_0.conda#04bbc32652c3f5b5de577b7f8d6e3517
+https://conda.anaconda.org/conda-forge/linux-64/duckdb-cli-1.5.5-hd2095e1_0.conda#162da0a648dcbb0afefc76e9085c7210

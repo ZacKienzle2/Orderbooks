@@ -36,12 +36,12 @@ include(Hardening)
 include(Dependencies)
 include(HeaderSelfContainment)
 
+# Under policy CMP0069 CMake adds the IPO flags it knows for the compiler and stops the configure
+# for a compiler whose flags it doesn't know. check_ipo_supported is left out, because its test
+# project ignores CMAKE_LINKER_TYPE and links with the default linker of the compiler, which the
+# conda clang of the workflow can't use for LTO objects. The link of each target tests the LTO
+# backend, the check-free form CMP0069 documents.
 if(LOB_ENABLE_LTO)
-  include(CheckIPOSupported)
-  check_ipo_supported(RESULT _lob_ipo_ok OUTPUT _lob_ipo_msg)
-  if(NOT _lob_ipo_ok)
-    message(FATAL_ERROR "LOB_ENABLE_LTO requested but unsupported: ${_lob_ipo_msg}")
-  endif()
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
