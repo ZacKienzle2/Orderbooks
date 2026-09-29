@@ -7,6 +7,7 @@
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string_view>
 #include <system_error>
@@ -99,7 +100,15 @@ enum class tag : std::uint8_t {
 namespace detail {
 
 inline constexpr char soh = '\x01';
-inline constexpr std::size_t checksum_field_width = 7;  // "10=" + three digits + SOH
+
+// The FIXT session orchestration of the FIX Trading Community defines CheckSum(10)
+// as the "Three-octet character representation of the modulo 256 checksum",
+// and the int datatype as a sequence of the characters "0" to "9".
+inline constexpr std::string_view checksum_tag = "10=";
+inline constexpr std::size_t checksum_digits = 3;
+inline constexpr std::size_t checksum_field_width =
+    checksum_tag.size() + checksum_digits + sizeof(soh);
+inline constexpr unsigned decimal_radix = 10;
 
 enum class scan : std::uint8_t { ok, need_more, bad };
 
@@ -124,15 +133,15 @@ struct field {
     // loop over the same bytes. Overflow rejection matches std::from_chars so
     // a tag wider than an int is malformed, not a wrapped value.
     const char* const data = buf.data();
-    // Nine digits is the widest tag that cannot overflow an int (999,999,999 <
-    // 2,147,483,647), so the width check after the loop rejects everything a
-    // per-digit overflow test would have, for one comparison per field instead
-    // of one multiply, subtract and compare per digit. Cachegrind put the
-    // per-digit form at about a hundred instructions per field against the
-    // seventy an equivalent library scan takes; this is most of that gap. The
-    // accumulator is unsigned so a tag wider than the cap wraps defined-ly
+    // std::numeric_limits<int>::digits10 is the widest run of decimal digits
+    // an int holds without change, so the width check after the loop rejects
+    // everything a per-digit overflow test would have, for one comparison per
+    // field instead of one multiply, subtract and compare per digit. Cachegrind
+    // put the per-digit form at about a hundred instructions per field against
+    // the seventy an equivalent library scan takes; this is most of that gap.
+    // The accumulator is unsigned so a tag wider than the cap wraps defined-ly
     // rather than overflowing on the way to being rejected.
-    constexpr std::size_t max_tag_digits = 9;
+    constexpr auto max_tag_digits = static_cast<std::size_t>(std::numeric_limits<int>::digits10);
     std::uint32_t tag = 0;
     std::size_t i = pos;
     for (; i < n; ++i) {
@@ -140,9 +149,9 @@ struct field {
         if (ch == '=')
             break;
         const unsigned digit = static_cast<unsigned>(static_cast<unsigned char>(ch)) - '0';
-        if (digit >= 10)
+        if (digit >= decimal_radix)
             return scan::bad;
-        tag = tag * 10 + digit;
+        tag = tag * decimal_radix + digit;
     }
     if (i >= n)
         return scan::need_more;
@@ -237,21 +246,24 @@ template <typename T>
         return r;
     }
 
-    // CheckSum(10) closes the frame: "10=" + three digits + SOH.
+    // CheckSum(10) closes the frame, its tag, three digits and SOH.
     const std::size_t cs_start = total - detail::checksum_field_width;
-    if (buf.substr(cs_start, 3) != "10=" || buf[total - 1] != soh) {
+    const std::size_t cs_digits = cs_start + detail::checksum_tag.size();
+    if (buf.substr(cs_start, detail::checksum_tag.size()) != detail::checksum_tag ||
+        buf[total - 1] != soh) {
         r.err = error::malformed;
         return r;
     }
     unsigned stated = 0;
-    if (!to_uint(buf.substr(cs_start + 3, 3), stated)) {
+    if (!to_uint(buf.substr(cs_digits, detail::checksum_digits), stated)) {
         r.err = error::malformed;
         return r;
     }
-    unsigned computed = 0;
+    unsigned sum = 0;
     for (std::size_t i = 0; i < cs_start; ++i)
-        computed += static_cast<unsigned char>(buf[i]);
-    computed &= 0xFFU;
+        sum += static_cast<unsigned char>(buf[i]);
+    // Conversion to an unsigned type of eight bits is reduction modulo 256.
+    const unsigned computed = static_cast<std::uint8_t>(sum);
     if (computed != stated) {
         r.err = error::bad_checksum;
         return r;

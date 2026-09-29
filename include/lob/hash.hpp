@@ -6,17 +6,33 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace lob {
 
-// SplitMix64 finaliser. One multiply and two xor-shifts per call with full
-// avalanche, so contiguous key ranges spread evenly across a power-of-two
-// modulus. The function is stateless and identical on every host, which is
-// what keeps shard assignment deterministic across runs and snapshots.
+namespace detail {
+
+// The shifts and multipliers of mix64variant13, David Stafford's Mix13 variant
+// of the MurmurHash3 finaliser, as Steele, Lea and Flood list it in figure 16
+// of "Fast splittable pseudorandom number generators" (OOPSLA 2014,
+// doi:10.1145/2660193.2660195).
+inline constexpr unsigned mix13_shift_1 = 30;
+inline constexpr std::uint64_t mix13_multiplier_1 = 0xBF58476D1CE4E5B9ULL;
+inline constexpr unsigned mix13_shift_2 = 27;
+inline constexpr std::uint64_t mix13_multiplier_2 = 0x94D049BB133111EBULL;
+inline constexpr unsigned mix13_shift_3 = 31;
+
+}  // namespace detail
+
+// SplitMix64 finaliser, mix64variant13. Two multiplies and three xor-shifts
+// per call with full avalanche, so contiguous key ranges spread evenly across
+// a power-of-two modulus. The function is stateless and identical on every
+// host, which is what keeps shard assignment deterministic across runs and
+// snapshots.
 [[nodiscard]] constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
-    x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
-    return x ^ (x >> 31);
+    x = (x ^ (x >> detail::mix13_shift_1)) * detail::mix13_multiplier_1;
+    x = (x ^ (x >> detail::mix13_shift_2)) * detail::mix13_multiplier_2;
+    return x ^ (x >> detail::mix13_shift_3);
 }
 
 // Map a symbol id to one of num_shards buckets. num_shards must be a power of
@@ -36,8 +52,8 @@ namespace lob {
                                              std::size_t num_shards) noexcept {
     if (num_shards <= 1)
         return 0;
-    const auto log2_shards = static_cast<unsigned>(std::countr_zero(num_shards));
-    return static_cast<seq_t>(shard_idx) << (64U - log2_shards);
+    const int log2_shards = std::countr_zero(num_shards);
+    return static_cast<seq_t>(shard_idx) << (std::numeric_limits<seq_t>::digits - log2_shards);
 }
 
 }  // namespace lob
