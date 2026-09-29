@@ -130,7 +130,7 @@ jobs:
         run: >-
           conan build . -s:a compiler.cppstd=20 --build=missing -c
           tools.build:skip_test=True -c
-          "tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_INCLUDE_WHAT_YOU_USE':
+          "&:tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_INCLUDE_WHAT_YOU_USE':
           'iwyu'}"
 
   clang-tidy:

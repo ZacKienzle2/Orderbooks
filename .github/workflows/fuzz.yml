@@ -71,7 +71,7 @@ jobs:
         run: >-
           conan build . -s:a compiler.cppstd=20 -s build_type=Debug -o
           "&:sanitizer=address,undefined" -o "&:fuzz=ON" --build=missing -c
-          "tools.cmake.cmaketoolchain:extra_variables={'LOB_FUZZ_SECONDS':
+          "&:tools.cmake.cmaketoolchain:extra_variables={'LOB_FUZZ_SECONDS':
           '$FUZZ_SECONDS'}"
 
       - name: Upload corpora and any reproducers

@@ -4,7 +4,8 @@ Started from ``conan new cmake_lib`` and cut to what a consumer needs. Each
 option passes one CMake cache variable through when it is given, so the
 CMakeLists.txt defaults stay the only defaults, and the options given name the
 build folder and the generated presets. A value that names no configuration,
-such as a path, goes through ``tools.cmake.cmaketoolchain:extra_variables``.
+such as a path, goes through ``tools.cmake.cmaketoolchain:extra_variables``
+scoped to this recipe with ``&:``, so no dependency build sees it.
 """
 
 from typing import ClassVar
