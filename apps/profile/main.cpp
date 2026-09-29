@@ -70,7 +70,7 @@ using lob::read_tsc;
 
 // SplitMix64 generator step: a Weyl increment finalised by lob::splitmix64.
 std::uint64_t splitmix(std::uint64_t& s) noexcept {
-    return lob::splitmix64(s += 0x9E3779B97F4A7C15ULL);
+    return lob::splitmix64(s += lob::splitmix64_gamma);
 }
 
 struct result {

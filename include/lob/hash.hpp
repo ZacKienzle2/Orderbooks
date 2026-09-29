@@ -20,6 +20,10 @@ namespace lob {
     return x ^ (x >> 31);
 }
 
+// The Weyl increment of the SplitMix64 generator, whose next output is
+// splitmix64(state += splitmix64_gamma).
+inline constexpr std::uint64_t splitmix64_gamma = 0x9E3779B97F4A7C15ULL;
+
 // Map a symbol id to one of num_shards buckets. num_shards must be a power of
 // two so the modulus reduces to a single mask. SplitMix64 spreads the low
 // bits as well as the high bits, so masking off the high bits loses no
