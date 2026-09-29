@@ -86,10 +86,10 @@ repos:
         entry: PyBind|Numpy|Cmake|CCache|Github|PyTest
         exclude: .pre-commit-config.yaml
 
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: "v0.6.13"
+  - repo: https://github.com/BlankSpruce/gersemi-pre-commit
+    rev: "0.29.1"
     hooks:
-      - id: cmake-format
+      - id: gersemi
 
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: "0.26"

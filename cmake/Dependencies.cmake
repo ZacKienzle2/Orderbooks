@@ -4,9 +4,9 @@ find_package(Boost REQUIRED COMPONENTS headers)
 find_package(hdr_histogram CONFIG REQUIRED)
 
 if(LOB_BUILD_TESTS)
-  find_package(Catch2 3 CONFIG REQUIRED)
+    find_package(Catch2 3 CONFIG REQUIRED)
 endif()
 
 if(LOB_BUILD_BENCH)
-  find_package(benchmark CONFIG REQUIRED)
+    find_package(benchmark CONFIG REQUIRED)
 endif()

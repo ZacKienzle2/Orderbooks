@@ -68,7 +68,7 @@ ctest --preset linux-clang-rel --output-on-failure
 ## Formatting and linting
 
 ```bash
-just format            # clang-format and cmake-format, through the hooks
+just format            # clang-format and gersemi, through the hooks
 just lint              # run-clang-tidy over build/<preset>/compile_commands.json
 prek run --all-files
 ```

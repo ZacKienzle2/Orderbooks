@@ -18,44 +18,77 @@
 # and replaying one is the same binary with that file as its only argument.
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  message(STATUS "LOB_BUILD_FUZZ: skipped, libFuzzer needs clang")
-  return()
+    message(STATUS "LOB_BUILD_FUZZ: skipped, libFuzzer needs clang")
+    return()
 endif()
 
 set(LOB_FUZZ_CORPUS_DIR
     "${PROJECT_SOURCE_DIR}/artifacts/fuzz/corpus"
-    CACHE PATH "Directory holding one corpus directory per fuzz harness")
+    CACHE PATH
+    "Directory holding one corpus directory per fuzz harness"
+)
 set(LOB_FUZZ_SECONDS
     0
-    CACHE STRING "Seconds each harness fuzzes as a test, or 0 for no fuzzing tests")
+    CACHE STRING
+    "Seconds each harness fuzzes as a test, or 0 for no fuzzing tests"
+)
 cmake_path(GET LOB_FUZZ_CORPUS_DIR PARENT_PATH _lob_fuzz_artifacts)
 
 # The harnesses are every fuzz_*.cpp beside this file, as the test suite is every test_*.cpp.
-file(GLOB _lob_fuzz_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/fuzz_*.cpp")
+file(
+    GLOB _lob_fuzz_sources
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/fuzz_*.cpp"
+)
 foreach(source IN LISTS _lob_fuzz_sources)
-  cmake_path(GET source STEM stem)
-  string(REGEX REPLACE "^fuzz_" "" target "${stem}")
-  add_executable(lob_fuzz_${target} "${source}")
-  target_include_directories(lob_fuzz_${target} PRIVATE "${PROJECT_SOURCE_DIR}")
-  target_link_libraries(lob_fuzz_${target} PRIVATE lob::core lob::compiler_flags lob::warnings
-                                                   lob::sanitizers lob::hardening)
-  # A harness states the invariants a sanitizer cannot see, so its assertions are live whatever the
-  # build type would have done to NDEBUG.
-  target_compile_options(lob_fuzz_${target} PRIVATE -fsanitize=fuzzer -UNDEBUG)
-  target_link_options(lob_fuzz_${target} PRIVATE -fsanitize=fuzzer)
+    cmake_path(GET source STEM stem)
+    string(REGEX REPLACE "^fuzz_" "" target "${stem}")
+    add_executable(lob_fuzz_${target} "${source}")
+    target_include_directories(
+        lob_fuzz_${target}
+        PRIVATE "${PROJECT_SOURCE_DIR}"
+    )
+    target_link_libraries(
+        lob_fuzz_${target}
+        PRIVATE
+            lob::core
+            lob::compiler_flags
+            lob::warnings
+            lob::sanitizers
+            lob::hardening
+    )
+    # A harness states the invariants a sanitizer cannot see, so its assertions are live whatever the
+    # build type would have done to NDEBUG.
+    target_compile_options(
+        lob_fuzz_${target}
+        PRIVATE -fsanitize=fuzzer -UNDEBUG
+    )
+    target_link_options(lob_fuzz_${target} PRIVATE -fsanitize=fuzzer)
 
-  set(corpus "${LOB_FUZZ_CORPUS_DIR}/${target}")
-  file(MAKE_DIRECTORY "${corpus}")
-  add_test(NAME lob_fuzz_${target}_replay COMMAND lob_fuzz_${target} -runs=0 "${corpus}")
-  if(LOB_PROFILE_DIR)
-    set_tests_properties(lob_fuzz_${target}_replay PROPERTIES ${LOB_PROFILE_TEST_PROPERTIES})
-  endif()
-  if(LOB_FUZZ_SECONDS GREATER 0)
-    add_test(NAME lob_fuzz_${target}_run
-             COMMAND lob_fuzz_${target} -max_total_time=${LOB_FUZZ_SECONDS} -print_final_stats=1
-                     "${corpus}")
-    set_tests_properties(
-      lob_fuzz_${target}_run PROPERTIES DEPENDS lob_fuzz_${target}_replay WORKING_DIRECTORY
-                                        "${_lob_fuzz_artifacts}")
-  endif()
+    set(corpus "${LOB_FUZZ_CORPUS_DIR}/${target}")
+    file(MAKE_DIRECTORY "${corpus}")
+    add_test(
+        NAME lob_fuzz_${target}_replay
+        COMMAND lob_fuzz_${target} -runs=0 "${corpus}"
+    )
+    if(LOB_PROFILE_DIR)
+        set_tests_properties(
+            lob_fuzz_${target}_replay
+            PROPERTIES ${LOB_PROFILE_TEST_PROPERTIES}
+        )
+    endif()
+    if(LOB_FUZZ_SECONDS GREATER 0)
+        add_test(
+            NAME lob_fuzz_${target}_run
+            COMMAND
+                lob_fuzz_${target} -max_total_time=${LOB_FUZZ_SECONDS}
+                -print_final_stats=1 "${corpus}"
+        )
+        set_tests_properties(
+            lob_fuzz_${target}_run
+            PROPERTIES
+                DEPENDS lob_fuzz_${target}_replay
+                WORKING_DIRECTORY "${_lob_fuzz_artifacts}"
+        )
+    endif()
 endforeach()
