@@ -1,13 +1,14 @@
 # The toolchain that builds and measures Orderbooks, deployed by Snakemake from the pin file beside
 # this one, which snakedeploy pin-conda-envs writes in a Friday compute job, as Thesis ADR-0106 pins
 # its engine toolchain. The clang activation packages set CC and CXX to the conda-forge compilers and
-# their sysroot (conda-forge FAQ), and the conda-clang presets read CXX. lld links the ThinLTO
-# objects, since this clang lacks the LLVMgold.so plugin the default linker would load, and
-# llvm-tools supplies the llvm-ar and llvm-ranlib CMake archives ThinLTO objects with, and the
-# llvm-profdata and llvm-cov of the profile and coverage presets. linux-perf
-# gives the compute nodes the perf they lack, whose perf_event_paranoid of 2 admits the user-space
-# events of the job's own processes. valgrind supplies cachegrind, the instrument of record for
-# instruction counts (ADR-0034).
+# their sysroot (conda-forge FAQ), which the conda profile of workflow/conan reads. conan installs
+# the dependencies of conanfile.py and writes the toolchain and presets, and the recipe's tool
+# requirement brings ninja. lld links the ThinLTO objects, since this clang lacks the LLVMgold.so
+# plugin the default linker would load, and llvm-tools supplies the llvm-ar and llvm-ranlib CMake
+# archives ThinLTO objects with, and the llvm-profdata and llvm-cov of the profile and coverage
+# builds. linux-perf gives the compute nodes the perf they lack, whose perf_event_paranoid of 2 admits
+# the user-space events of the job's own processes. valgrind supplies cachegrind, the instrument of
+# record for instruction counts (ADR-0034).
 channels:
   - conda-forge
   - nodefaults
@@ -17,6 +18,6 @@ dependencies:
   - lld
   - llvm-tools
   - cmake
-  - ninja
+  - conan
   - linux-perf
   - valgrind

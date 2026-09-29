@@ -39,11 +39,14 @@ The proposal is the Snakemake workflow.
   metrics over each one, a metric a process. It also runs the load generator at
   each offered load of the file. `config/config.yaml` holds the presets, the
   metrics, the loads and the repetition count.
-- `workflow/envs/toolchain.yaml` names clang, lld, the LLVM tools, CMake, Ninja,
-  linux-perf and Valgrind without versions. `snakedeploy pin-conda-envs` solved
+- `workflow/envs/toolchain.yaml` names clang, lld, the LLVM tools, CMake, Conan,
+  linux-perf and Valgrind without versions. `snakedeploy pin-conda-envs` solves
   it in a Friday compute job against glibc 2.34, and Snakemake deploys the pin
-  file. The vcpkg ports stay at the `vcpkg-configuration.json` baseline, which
-  the shared vcpkg clone on Friday contains.
+  file. Conan resolves the dependencies from `conan.lock` into the cache that
+  CONAN_HOME places under /data in a Friday login shell, as the Friday user
+  guide asks of software and caches. Its cache is not concurrent (Conan
+  guidelines), so the rules that run conan take the one unit of a `conan`
+  resource the workflow profile declares.
 - `workflow/profiles/friday/profile.yaml` submits every job to one CPU model,
   with one thread a core. The fc430 feature spans a Xeon E5-2680 v3 and a Xeon
   E5-2680 v4, which probe jobs read from `/proc/cpuinfo`, and 14 cores a socket

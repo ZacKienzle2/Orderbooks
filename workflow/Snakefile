@@ -5,14 +5,15 @@
 
 import glob
 import os
+import re
 
 configfile: "config/config.yaml"
 
 
-# A preset is one path component, so build/{preset} can't also match the layout experiment's
-# build/layout/{preset}/{seed}, and a seed or a repetition is a number.
+# A preset is one that config/config.yaml configures, so build/{preset} can't also match the layout
+# experiment's build/layout-{preset}-{seed}, and a seed or a repetition is a number.
 wildcard_constraints:
-    preset=r"[^/]+",
+    preset="|".join(map(re.escape, config["conan"])),
     seed=r"\d+",
     rep=r"\d+",
 
@@ -54,10 +55,26 @@ SOURCES = [
     for tree in ("include", "src", "apps", "bench", "tests", "fuzz", "cmake")
     for path in glob.glob(f"{tree}/**/*", recursive=True)
     if os.path.isfile(path)
-] + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"]
+] + ["CMakeLists.txt", "conanfile.py", "conan.lock", "workflow/conan/conda"]
 
 
-# The training workflow runs every profiler workload instrumented and merges the counts into the
+# The arguments of a conan command for a preset of config/config.yaml. The Conan package cache is not
+# concurrent, and parallel tasks need separate caches (Conan guidelines), so every rule that runs
+# conan takes the one unit of the conan resource the workflow profile declares, which Snakemake
+# counts across all jobs in cluster execution ("Resources and Remote Execution"). conan profile
+# detect --force writes the default profile the conda profile includes from the environment's
+# compilers each time. The const entry of build_folder_vars names the build folder
+# build/<preset>/Release and its presets conan-<preset>-release after the preset (cmake_layout
+# reference), and the recipe's options name nothing here.
+def conan(preset, command, folder=None):
+    options = " ".join(f'-o "&:{option}"' for option in config["conan"][preset])
+    return (
+        f"conan {command} . -pr:h workflow/conan/conda -pr:b default --build=missing {options}"
+        f" -c \"tools.cmake.cmake_layout:build_folder_vars=['const.{folder or preset}']\""
+    )
+
+
+# The training build runs every profiler workload instrumented and merges the counts into the
 # profile a LOB_PGO=use build reads, the default LOB_PGO_PROFILE of CMakeLists.txt. ADR-0056 trained
 # on the gateway and the load generator too, and kept the profile-guided build off.
 rule pgo_profile:
@@ -70,32 +87,38 @@ rule pgo_profile:
     conda:
         "envs/toolchain.yaml"
     threads: workflow.cores
+    resources:
+        conan=1,
     params:
-        preset=config["pgo"]["train"],
+        conan=conan(config["pgo"]["train"], "build"),
     shell:
-        "VCPKG_MAX_CONCURRENCY={threads} cmake --workflow --preset {params.preset} --fresh"
-        " > {log} 2>&1"
+        "conan profile detect --force > {log} 2>&1"
+        " && {params.conan} -c tools.build:jobs={threads} >> {log} 2>&1"
 
 
-# cmake --workflow configures, builds and runs the preset's tests, so a build that fails its tests on
-# Friday stops here. vcpkg builds the manifest on logical cores + 1 unless VCPKG_MAX_CONCURRENCY is
-# set (vcpkg environment variables reference), which counts the node rather than the job's threads.
-# A preset that reads the profile waits for the training.
+# conan build installs the dependencies, configures, builds and runs the tests (conanfile.py), so a
+# build that fails its tests on Friday stops here. tools.build:jobs sets the parallelism of the build
+# and of ctest to the job's threads rather than the node's CPUs. A preset that reads the profile
+# waits for the training.
 rule build:
     input:
         lambda wildcards: SOURCES
         + (rules.pgo_profile.output if wildcards.preset in config["pgo"]["use"] else []),
     output:
-        profile="build/{preset}/apps/profile/lob_profile",
-        loadgen="build/{preset}/apps/loadgen/lob_loadgen",
+        profile="build/{preset}/Release/apps/profile/lob_profile",
+        loadgen="build/{preset}/Release/apps/loadgen/lob_loadgen",
     log:
         "logs/build/{preset}.log",
     conda:
         "envs/toolchain.yaml"
     threads: workflow.cores
+    resources:
+        conan=1,
+    params:
+        conan=lambda wildcards: conan(wildcards.preset, "build"),
     shell:
-        "VCPKG_MAX_CONCURRENCY={threads} cmake --workflow --preset {wildcards.preset} --fresh"
-        " > {log} 2>&1"
+        "conan profile detect --force > {log} 2>&1"
+        " && {params.conan} -c tools.build:jobs={threads} >> {log} 2>&1"
 
 
 # The profiler lists its workloads, so a workload added there is measured without a second list
@@ -201,8 +224,7 @@ rule summary:
 # happened to get. lld's --randomize-section-padding inserts random padding between input sections
 # and at the start of each segment, to control measurement bias in A/B experiments (lld 20 release
 # notes). Function sections make each function an input section, so the padding moves functions
-# relative to each other as well as the segment. The rule keeps the LDFLAGS the conda activation
-# exports, whose rpath binds the environment's libstdc++. Run it as the target `layout`.
+# relative to each other as well as the segment. Run it as the target `layout`.
 rule layout:
     input:
         expand(
@@ -213,22 +235,51 @@ rule layout:
         "results/summary/layout/nodes.csv",
 
 
-rule layout_build:
+# Each binary gets a Conan build folder of its own, since the presets Conan writes name the toolchain
+# file relative to the build folder (CMakeToolchain absolute_paths). The dict update of
+# extra_variables replaces the conda profile's empty CMAKE_CXX_FLAGS, which the toolchain sets as a
+# normal variable that a -D cache entry can't override. The installs take the conan resource, and
+# the builds that follow run in parallel.
+rule layout_install:
     input:
         SOURCES,
     output:
-        "build/layout/{preset}/{seed}/apps/loadgen/lob_loadgen",
+        "build/layout-{preset}-{seed}/Release/generators/CMakePresets.json",
+    log:
+        "logs/layout/install/{preset}/{seed}.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    resources:
+        conan=1,
+    params:
+        conan=lambda wildcards: conan(
+            wildcards.preset, "install", f"layout-{wildcards.preset}-{wildcards.seed}"
+        ),
+    shell:
+        "conan profile detect --force > {log} 2>&1"
+        " && {params.conan} -c tools.build:jobs={threads}"
+        " -c \"tools.cmake.cmaketoolchain:extra_variables*={{'CMAKE_CXX_FLAGS': '-ffunction-sections'}}\""
+        " >> {log} 2>&1"
+
+
+# The linker flags keep the LDFLAGS the conda activation exports, whose rpath binds the environment's
+# libstdc++, and CMake reads a -D cache entry for them since the toolchain leaves them alone.
+rule layout_build:
+    input:
+        rules.layout_install.output,
+    output:
+        "build/layout-{preset}-{seed}/Release/apps/loadgen/lob_loadgen",
     log:
         "logs/layout/build/{preset}/{seed}.log",
     conda:
         "envs/toolchain.yaml"
     threads: workflow.cores
     params:
-        tree=lambda wildcards: f"build/layout/{wildcards.preset}/{wildcards.seed}",
+        tree=lambda wildcards: f"build/layout-{wildcards.preset}-{wildcards.seed}/Release",
     shell:
-        "VCPKG_MAX_CONCURRENCY={threads} cmake --preset {wildcards.preset} -B {params.tree} --fresh"
-        " -DCMAKE_CXX_FLAGS=-ffunction-sections"
-        ' -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -ffunction-sections'
+        "cmake --presets-file {input} --preset conan-layout-{wildcards.preset}-{wildcards.seed}-release"
+        ' --fresh -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -ffunction-sections'
         ' -Wl,--randomize-section-padding={wildcards.seed}" > {log} 2>&1'
         " && cmake --build {params.tree} --target lob_loadgen >> {log} 2>&1"
 

@@ -39,3 +39,8 @@ set-resources:
 # one Slurm job, so a node runs 60 runs back to back rather than one job each.
 group-components:
   - layout=2
+# The Conan package cache is not concurrent (Conan guidelines). Snakemake counts a resource other
+# than mem_mb, disk_mb and threads across all jobs in cluster execution ("Resources and Remote
+# Execution"), so one conan job runs at a time.
+resources:
+  - conan=1

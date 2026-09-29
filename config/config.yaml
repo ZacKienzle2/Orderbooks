@@ -2,10 +2,20 @@
 # command line, so the configuration archived beside a result reproduces it (Ingo and Daly, DBTest
 # 2020, sections 2.1 and 2.4).
 
-# The configure, build and test presets of CMakePresets.json whose binaries are measured, each
-# with every rule. The conda presets take their compilers from the toolchain environment the rules
-# deploy. ADR-0055 compared conda-clang-rel with conda-clang-rel-no-frontend-flags through the
-# layout experiment below.
+# The presets the workflow builds, each as the options conanfile.py takes. Conan names each preset's
+# build folder and its CMake presets after it, and the conda profile of workflow/conan takes the
+# compilers from the toolchain environment the rules deploy. conda-clang-rel is CI's release
+# configuration, and the other two train and read the profile of ADR-0056.
+conan:
+  conda-clang-rel:
+    - lto=ON
+  conda-clang-pgo-generate:
+    - tests=OFF
+    - pgo=generate
+  conda-clang-pgo:
+    - pgo=use
+
+# The presets whose binaries are measured, each with every rule.
 presets:
   - conda-clang-rel
 
@@ -52,7 +62,6 @@ loads:
 layout:
   presets:
     - conda-clang-rel
-    - conda-clang-rel-no-frontend-flags
   binaries: 30
   loads:
     - 0

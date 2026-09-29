@@ -1,0 +1,18 @@
+# The host profile of every conan command in workflow/Snakefile. It includes the default profile,
+# which conan profile detect writes from the compilers that the activation of the toolchain
+# environment exports as CC and CXX (conda-forge FAQ), and adds what that environment needs.
+include(default)
+
+[settings]
+# The sources are C++20, which the recipe's validate() checks.
+compiler.cppstd=20
+
+[conf]
+# The conda-forge compilers carry the x86_64-conda-linux-gnu- prefix.
+tools.build:compiler_executables={'c': '{{ os.getenv("CC") }}', 'cpp': '{{ os.getenv("CXX") }}'}
+# lld links the ThinLTO objects, since this clang lacks the LLVMgold.so plugin the default linker
+# would load. CMake looks for ar and ranlib under the compiler's prefix, and llvm-tools supplies the
+# llvm-ar and llvm-ranlib that archive ThinLTO objects. The activation also exports CXXFLAGS with
+# conda-forge's own optimisation and code generation flags, and the empty CMAKE_CXX_FLAGS keeps the
+# compile to the flags the repository sets.
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_LINKER_TYPE': 'LLD', 'CMAKE_CXX_COMPILER_AR': '{{ os.getenv("CONDA_PREFIX") }}/bin/llvm-ar', 'CMAKE_CXX_COMPILER_RANLIB': '{{ os.getenv("CONDA_PREFIX") }}/bin/llvm-ranlib', 'CMAKE_CXX_FLAGS': ''}
