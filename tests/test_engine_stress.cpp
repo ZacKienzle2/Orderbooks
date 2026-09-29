@@ -1,5 +1,6 @@
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
+#include <lob/hash.hpp>
 #include <lob/messages.hpp>
 #include <lob/types.hpp>
 
@@ -36,10 +37,7 @@ struct counting_pub {
 using eng_t = lob::engine<counting_pub, ticks, max_ord>;
 
 std::uint64_t splitmix(std::uint64_t& s) noexcept {
-    std::uint64_t z = (s += 0x9E3779B97F4A7C15ULL);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    return z ^ (z >> 31);
+    return lob::splitmix64(s += lob::splitmix64_gamma);
 }
 
 // Asserts, for one side over the whole ladder, that the bitmap's populated set

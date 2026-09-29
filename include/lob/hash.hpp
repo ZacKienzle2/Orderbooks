@@ -6,18 +6,28 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace lob {
 
-// SplitMix64 finaliser. One multiply and two xor-shifts per call with full
-// avalanche, so contiguous key ranges spread evenly across a power-of-two
-// modulus. The function is stateless and identical on every host, which is
-// what keeps shard assignment deterministic across runs and snapshots.
+// The shifts and multipliers are mix64variant13 in Steele, Lea and Flood,
+// "Fast splittable pseudorandom number generators", OOPSLA 2014,
+// doi:10.1145/2660193.2660195, section 3, figure 16, which the paper
+// attributes to David Stafford's Mix13 variant of the MurmurHash3 finalizer.
+// Two multiplies and three xor-shifts give full avalanche, so contiguous key
+// ranges spread evenly across a power-of-two modulus. The function is
+// stateless and identical on every host, which is what keeps shard assignment
+// deterministic across runs and snapshots.
 [[nodiscard]] constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
     x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
     x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
     return x ^ (x >> 31);
 }
+
+// GOLDEN_GAMMA in the same figure, the odd increment the generator adds to
+// its seed before mixing, so the next output is
+// splitmix64(state += splitmix64_gamma).
+inline constexpr std::uint64_t splitmix64_gamma = 0x9E3779B97F4A7C15ULL;
 
 // Map a symbol id to one of num_shards buckets. num_shards must be a power of
 // two so the modulus reduces to a single mask. SplitMix64 spreads the low
@@ -36,8 +46,8 @@ namespace lob {
                                              std::size_t num_shards) noexcept {
     if (num_shards <= 1)
         return 0;
-    const auto log2_shards = static_cast<unsigned>(std::countr_zero(num_shards));
-    return static_cast<seq_t>(shard_idx) << (64U - log2_shards);
+    const int log2_shards = std::countr_zero(num_shards);
+    return static_cast<seq_t>(shard_idx) << (std::numeric_limits<seq_t>::digits - log2_shards);
 }
 
 }  // namespace lob

@@ -7,6 +7,7 @@
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string_view>
 #include <system_error>
@@ -124,15 +125,16 @@ struct field {
     // loop over the same bytes. Overflow rejection matches std::from_chars so
     // a tag wider than an int is malformed, not a wrapped value.
     const char* const data = buf.data();
-    // Nine digits is the widest tag that cannot overflow an int (999,999,999 <
-    // 2,147,483,647), so the width check after the loop rejects everything a
-    // per-digit overflow test would have, for one comparison per field instead
-    // of one multiply, subtract and compare per digit. Cachegrind put the
-    // per-digit form at about a hundred instructions per field against the
-    // seventy an equivalent library scan takes; this is most of that gap. The
-    // accumulator is unsigned so a tag wider than the cap wraps defined-ly
-    // rather than overflowing on the way to being rejected.
-    constexpr std::size_t max_tag_digits = 9;
+    // Nine digits, digits10 of int, is the widest tag that cannot overflow an
+    // int (999,999,999 < 2,147,483,647), so the width check after the loop
+    // rejects everything a per-digit overflow test would have, for one
+    // comparison per field instead of one multiply, subtract and compare per
+    // digit. Cachegrind put the per-digit form at about a hundred instructions
+    // per field against the seventy an equivalent library scan takes; this is
+    // most of that gap. The accumulator is unsigned so a tag wider than the
+    // cap wraps defined-ly rather than overflowing on the way to being
+    // rejected.
+    constexpr auto max_tag_digits = static_cast<std::size_t>(std::numeric_limits<int>::digits10);
     std::uint32_t tag = 0;
     std::size_t i = pos;
     for (; i < n; ++i) {
@@ -251,7 +253,7 @@ template <typename T>
     unsigned computed = 0;
     for (std::size_t i = 0; i < cs_start; ++i)
         computed += static_cast<unsigned char>(buf[i]);
-    computed &= 0xFFU;
+    computed = static_cast<std::uint8_t>(computed);  // modulo 256, as CheckSum is defined
     if (computed != stated) {
         r.err = error::bad_checksum;
         return r;
