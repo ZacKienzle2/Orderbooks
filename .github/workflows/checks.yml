@@ -1,0 +1,37 @@
+name: Checks
+
+# One required check for every workflow run a pull request starts. The `pass`
+# job of ci.yml gathers the jobs of its own workflow through alls-green, and
+# cannot see cmake.yml, analysis.yml, fuzz.yml or bench.yml, so auto-merge fired
+# while clang-tidy and include-what-you-use still ran (#130). The action waits
+# on each workflow run, which stays open until its last job, `needs` included,
+# has finished. A workflow that a paths filter never started has no run, so it
+# cannot block. CodeQL's default setup runs under the `dynamic` event.
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wait-for-workflows:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      checks: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
+      - name: Wait for every other workflow run
+        uses: int128/wait-for-workflows-action@b0fce9254d3e390110e83329ca4c97ce52cb38e3 # v1.104.0
+        with:
+          filter-workflow-events: |
+            ${{ github.event_name }}
+            dynamic
