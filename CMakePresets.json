@@ -23,14 +23,6 @@
       }
     },
     {
-      "name": "_linux_clang",
-      "hidden": true,
-      "inherits": "_linux",
-      "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++"
-      }
-    },
-    {
       "name": "_macos",
       "hidden": true,
       "inherits": "_base",
@@ -43,26 +35,29 @@
     {
       "name": "linux-clang-rel",
       "displayName": "Linux Clang Release",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_ENABLE_LTO": "ON"
       }
     },
     {
       "name": "linux-clang-relwithdebinfo",
       "displayName": "Linux Clang RelWithDebInfo",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     },
     {
       "name": "linux-clang-debug",
       "displayName": "Linux Clang Debug",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     },
     {
@@ -86,36 +81,40 @@
     {
       "name": "linux-clang-asan",
       "displayName": "Linux Clang AddressSanitizer + UndefinedBehaviorSanitizer",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_SANITIZER": "address,undefined"
       }
     },
     {
       "name": "linux-clang-tsan",
       "displayName": "Linux Clang ThreadSanitizer",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_SANITIZER": "thread"
       }
     },
     {
       "name": "linux-clang-msan",
       "displayName": "Linux Clang MemorySanitizer",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_SANITIZER": "memory"
       }
     },
     {
       "name": "linux-clang-fuzz",
       "displayName": "Linux Clang libFuzzer",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_BUILD_FUZZ": "ON",
         "LOB_BUILD_TESTS": "OFF",
         "LOB_BUILD_BENCH": "OFF",
@@ -167,9 +166,10 @@
     {
       "name": "linux-clang-pgo-generate",
       "displayName": "Linux Clang profile training over the profiler workloads",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_PGO": "generate",
         "LOB_BUILD_TESTS": "OFF",
         "LOB_BUILD_BENCH": "OFF"
@@ -178,9 +178,10 @@
     {
       "name": "linux-clang-pgo",
       "displayName": "Linux Clang Release built from the trained profile",
-      "inherits": "_linux_clang",
+      "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
         "LOB_PGO": "use"
       }
     },
