@@ -40,7 +40,7 @@ std::string frame(std::string_view body) {
     unsigned sum = 0;
     for (const char c : wire)
         sum += static_cast<unsigned char>(c);
-    sum &= 0xFFU;
+    sum = static_cast<std::uint8_t>(sum);  // modulo 256, as CheckSum is defined
 
     char tail[8];
     std::snprintf(tail, sizeof tail, "10=%03u%c", sum, soh);
