@@ -1,12 +1,11 @@
--- One row a preset, path and offered load from the load generator outputs the latency rule
--- writes, whose paths the summary rule sets in the variable files. A run prints a throughput line,
--- a latency line and a percentile line, and an open run a generator lag line. The quartiles are
--- across runs, each run's percentile being one value.
+-- One row a preset and offered load from the load generator outputs the latency rule writes, whose
+-- paths the summary rule sets in the variable files. A run prints a throughput line, a latency line
+-- and a percentile line, and an open run a generator lag line. The quartiles are across runs,
+-- each run's percentile being one value.
 WITH lines AS (
     SELECT
         regexp_extract(filename, 'results/latency/([^/]+)/', 1) AS preset,
-        regexp_extract(filename, 'results/latency/[^/]+/([^/]+)/', 1) AS path,
-        regexp_extract(filename, 'results/latency/[^/]+/[^/]+/([^/]+)/', 1) AS load,
+        regexp_extract(filename, 'results/latency/[^/]+/([^/]+)/', 1) AS load,
         filename,
         line
     FROM read_csv(
@@ -20,7 +19,6 @@ WITH lines AS (
 runs AS (
     SELECT
         preset,
-        path,
         load,
         filename,
         max(try_cast(regexp_extract(line, '([0-9.]+) Morders/s', 1) AS DOUBLE))
@@ -40,7 +38,6 @@ runs AS (
 )
 SELECT
     preset,
-    path,
     load,
     count(*) AS runs,
     min(p50) AS p50_min,
@@ -57,4 +54,4 @@ SELECT
     median(lag_mean) AS lag_mean_median
 FROM runs
 GROUP BY ALL
-ORDER BY load, path, preset;
+ORDER BY load, preset;
