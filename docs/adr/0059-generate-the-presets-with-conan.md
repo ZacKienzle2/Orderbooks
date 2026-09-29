@@ -25,7 +25,9 @@ options given as `build_folder_vars`, so a plain Release build goes to
 `build/Release` and an address-sanitised Debug build to
 `build/sanitizer_address,undefined/Debug`, each with its own presets. A value
 outside the configuration, such as a path (`LOB_PGO_PROFILE`) or a budget
-(`LOB_FUZZ_SECONDS`), goes through `tools.cmake.cmaketoolchain:extra_variables`.
+(`LOB_FUZZ_SECONDS`), goes through `tools.cmake.cmaketoolchain:extra_variables`,
+scoped to the consumer with the `&:` pattern, since Conan applies an unscoped
+conf to every dependency it builds from source.
 
 `conan profile detect` writes the profile for the compiler `CC` and `CXX` name.
 `conan build` configures, builds and runs the tests through `CMake.ctest()`,

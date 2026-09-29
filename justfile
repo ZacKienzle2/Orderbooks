@@ -81,7 +81,7 @@ fuzz target="fix_framed" seconds="60": fuzzers
 # Fuzz every harness at once, each for the budget, as ctest runs the fuzzing
 # tests that LOB_FUZZ_SECONDS registers.
 fuzz-all seconds="60":
-    {{ conan }} {{ fuzz_options }} -c "tools.cmake.cmaketoolchain:extra_variables={'LOB_FUZZ_SECONDS': '{{ seconds }}'}"
+    {{ conan }} {{ fuzz_options }} -c "&:tools.cmake.cmaketoolchain:extra_variables={'LOB_FUZZ_SECONDS': '{{ seconds }}'}"
 
 # Train a profile. The build is instrumented, runs every workload the profiler
 # lists as a test, and merges the counts into artifacts/pgo. The workloads are

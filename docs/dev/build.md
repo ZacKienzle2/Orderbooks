@@ -43,7 +43,7 @@ pull request. `just build` takes the same arguments. `conan install` alone
 writes the toolchain and presets, after which
 `cmake --preset conan-<folder>-<build type>` and `cmake --build --preset` work
 as usual. A value outside the configuration, such as a path, goes through
-`-c "tools.cmake.cmaketoolchain:extra_variables={'LOB_PGO_PROFILE': '...'}"`.
+`-c "&:tools.cmake.cmaketoolchain:extra_variables={'LOB_PGO_PROFILE': '...'}"`.
 
 ## Targets
 
