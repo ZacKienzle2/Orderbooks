@@ -4,8 +4,8 @@
 
 # The configure, build and test presets of CMakePresets.json whose binaries are measured, each
 # with every rule. The conda presets take their compilers from the toolchain environment the rules
-# deploy. ADR-0055 compared conda-clang-rel with conda-clang-rel-no-frontend-flags, and listing
-# both here repeats that comparison, as listing conda-clang-pgo repeats that of ADR-0056.
+# deploy. ADR-0055 compared conda-clang-rel with conda-clang-rel-no-frontend-flags through the
+# layout experiment below.
 presets:
   - conda-clang-rel
 
@@ -46,8 +46,9 @@ loads:
 # The layout experiment, run as the target `layout`. It builds each preset this many times with
 # lld's section padding randomised by a seed of its own, and runs each binary `repeats` times at
 # each load. Thirty binaries follow the initial experiment of 30 repetitions at each level
-# (Kalibera and Jones, ISMM 2013, section 9.1). ADR-0055 compared these presets with one binary a
-# side, and the difference it found was largest at 0.3 and absent closed.
+# (Kalibera and Jones, ISMM 2013, section 9.1). A first comparison of these presets with one binary
+# a side favoured the flags, and across 30 binaries a side the build without them had the lower
+# p50 at both loads (ADR-0055).
 layout:
   presets:
     - conda-clang-rel
