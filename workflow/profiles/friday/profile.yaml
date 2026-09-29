@@ -29,3 +29,13 @@ set-resources:
     slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
   latency:
     slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  layout_latency:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  # Snakemake refuses a group whose jobs ask for different string resources, and the values of a
+  # binary run in the group of its runs.
+  layout_values:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+# The runs of one binary and load form one connected group, and Snakemake puts any two of them in
+# one Slurm job, so a node runs 60 runs back to back rather than one job each.
+group-components:
+  - layout=2

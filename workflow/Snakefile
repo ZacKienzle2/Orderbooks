@@ -9,6 +9,14 @@ import os
 configfile: "config/config.yaml"
 
 
+# A preset is one path component, so build/{preset} can't also match the layout experiment's
+# build/layout/{preset}/{seed}, and a seed or a repetition is a number.
+wildcard_constraints:
+    preset=r"[^/]+",
+    seed=r"\d+",
+    rep=r"\d+",
+
+
 def topdown_results(wildcards):
     return [
         path
@@ -185,3 +193,115 @@ rule summary:
         " > {output.topdown} 2> {log}"
         ' && duckdb -csv -c "SET VARIABLE files = {params.latency}" -c ".read {input.latency_sql}"'
         " > {output.latency} 2>> {log}"
+
+
+# The layout experiment repeats each preset of config/config.yaml's layout at the level of the
+# binary. Link order alone moved two SPEC programs by 4 and 2.6 per cent (Kalibera and Jones, ISMM
+# 2013, section 8.2), so one binary a side leaves the effect of a flag confounded with the layout it
+# happened to get. lld's --randomize-section-padding inserts random padding between input sections
+# and at the start of each segment, to control measurement bias in A/B experiments (lld 20 release
+# notes). Function sections make each function an input section, so the padding moves functions
+# relative to each other as well as the segment. The rule keeps the LDFLAGS the conda activation
+# exports, whose rpath binds the environment's libstdc++. Run it as the target `layout`.
+rule layout:
+    input:
+        expand(
+            "results/summary/layout/{load}/{metric}.txt",
+            load=config["layout"]["loads"],
+            metric=config["layout"]["metrics"],
+        ),
+
+
+rule layout_build:
+    input:
+        SOURCES,
+    output:
+        "build/layout/{preset}/{seed}/apps/loadgen/lob_loadgen",
+    log:
+        "logs/layout/build/{preset}/{seed}.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    params:
+        tree=lambda wildcards: f"build/layout/{wildcards.preset}/{wildcards.seed}",
+    shell:
+        "VCPKG_MAX_CONCURRENCY={threads} cmake --preset {wildcards.preset} -B {params.tree} --fresh"
+        " -DCMAKE_CXX_FLAGS=-ffunction-sections"
+        ' -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -ffunction-sections'
+        ' -Wl,--randomize-section-padding={wildcards.seed}" > {log} 2>&1'
+        " && cmake --build {params.tree} --target lob_loadgen >> {log} 2>&1"
+
+
+# Each binary runs as the latency rule runs its binary, and the runs of one binary and load go to
+# the Slurm job of one group. The first line of a result names the node, because every run whose
+# saturated rate halved in the layout run of ADR-0055 ran on smp-9-18.
+rule layout_latency:
+    input:
+        rules.layout_build.output,
+    output:
+        "results/layout/{preset}/{seed}/{load}/{rep}.txt",
+    log:
+        "logs/layout/latency/{preset}/{seed}/{load}/{rep}.log",
+    conda:
+        "envs/toolchain.yaml"
+    group:
+        "layout"
+    threads: workflow.cores
+    params:
+        load=lambda wildcards: f"--load {wildcards.load}" if float(wildcards.load) > 0 else "",
+    shell:
+        "uname -n > {output}"
+        ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
+        " {input} --pin {params.load} --seed {wildcards.rep} >> {output} 2> {log}"
+
+
+# One bench_ci values object a binary, load and percentile, which bench_ci reads as one run of the
+# top level.
+rule layout_values:
+    input:
+        runs=lambda wildcards: expand(
+            "results/layout/{preset}/{seed}/{load}/{rep}.txt",
+            rep=range(config["repeats"]),
+            allow_missing=True,
+        ),
+        sql="workflow/sql/layout_values.sql",
+    output:
+        "results/layout/bench_ci/{load}/{metric}/{preset}-{seed}.json",
+    log:
+        "logs/layout/values/{load}/{metric}/{preset}-{seed}.log",
+    conda:
+        "envs/summary.yaml"
+    group:
+        "layout"
+    params:
+        files=lambda wildcards, input: sql_list(input.runs),
+    shell:
+        'duckdb -jsonlines -c "SET VARIABLE files = {params.files}"'
+        " -c \"SET VARIABLE system = '{wildcards.preset}'\""
+        " -c \"SET VARIABLE benchmark = '{wildcards.metric}'\""
+        " -c \"SET VARIABLE pattern = '{wildcards.metric}=([0-9]+)'\""
+        ' -c ".read {input.sql}" > {output} 2> {log}'
+
+
+# bench_ci reports each preset's mean with its interval across binaries and the Fieller interval
+# of the ratio of each preset to the first in name order (Kalibera and Jones, ISMM 2013, equations
+# 4 and 5).
+rule layout_report:
+    input:
+        lambda wildcards: expand(
+            "results/layout/bench_ci/{load}/{metric}/{preset}-{seed}.json",
+            load=wildcards.load,
+            metric=wildcards.metric,
+            preset=config["layout"]["presets"],
+            seed=range(1, config["layout"]["binaries"] + 1),
+        ),
+    output:
+        "results/summary/layout/{load}/{metric}.txt",
+    log:
+        "logs/layout/report/{load}/{metric}.log",
+    conda:
+        "envs/analysis.yaml"
+    params:
+        directory=lambda wildcards: f"results/layout/bench_ci/{wildcards.load}/{wildcards.metric}",
+    shell:
+        "PYTHONPATH=src python -m orderbooks.bench_ci {params.directory} > {output} 2> {log}"
