@@ -1,0 +1,41 @@
+# The workflow profile of UQ's Friday cluster, read after the global friday profile by
+# snakemake --profile friday --workflow-profile workflow/profiles/friday on a login node. The global
+# profile in $HOME/.config/snakemake/friday holds the keys of the compute environment, such as the
+# executor and the conda deployment ("Using global profiles" of the command line documentation), and
+# this one the resources of the Orderbooks rules, overriding it key by key.
+#
+# The CPUs of one node of the model below, the most a rule that sizes its threads by workflow.cores
+# can use on it, in place of the global profile's 32.
+cores: 28
+default-resources:
+  # One CPU model for every job. The fc430 feature spans two, which the Friday hardware page lists
+  # together as haswell. Probe jobs read a Xeon E5-2680 v3 with 24 CPUs on smp-9-0 and a Xeon
+  # E5-2680 v4 with 28 CPUs on smp-9-15, both two sockets with one thread a core. --cores-per-socket
+  # restricts node selection by layout (Slurm CPU management guide, step 1), and the 14 cores a
+  # socket of the v4 leave out the 12 of the v3.
+  slurm_partition: general
+  constraint: fc430
+  # One usable thread a core, since hyper-threading confounds the top-down tree (Yasin, ISPASS
+  # 2014, section 7).
+  slurm_extra: --threads-per-core=1 --cores-per-socket=14
+  # The memory of a CPU of those nodes, 255240 MB over 28 CPUs on the Friday hardware page.
+  mem_mb: threads * 255240 // 28
+  tmpdir: /scratch/$USER
+slurm-efficiency-report-path: logs/slurm
+set-resources:
+  # A measured process gets the node to itself, so no other job shares its caches or memory
+  # bandwidth. set-resources replaces slurm_extra whole, so the other settings are repeated.
+  topdown:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  latency:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  layout_latency:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  # Snakemake refuses a group whose jobs ask for different string resources, and the values of a
+  # binary run in the group of its runs.
+  layout_values:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+# The runs of one binary and load form one connected group, and Snakemake puts any two of them in
+# one Slurm job, so a node runs 60 runs back to back rather than one job each.
+group-components:
+  - layout=2
