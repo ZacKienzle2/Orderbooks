@@ -57,11 +57,11 @@ repos:
         files: src|tests|noxfile.py
         args: []
         additional_dependencies:
+          - duckdb
           - hypothesis
           - matplotlib
           - nox
           - numpy
-          - orjson
           - pandas-stubs
           - pytest
           - scipy-stubs

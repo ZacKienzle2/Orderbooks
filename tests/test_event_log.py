@@ -6,15 +6,17 @@
 #       orderbooks.viz.event_log
 #
 # The strategies are narrowed to the stream json_recorder writes, which
-# conftest registers. read_file is left out, since it reads a path from disk.
+# conftest registers and reads through read_file. The missing-field case is
+# written by hand, since no generated stream lacks a field.
 
-from io import StringIO
+from pathlib import Path
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 import orderbooks.viz.event_log
-from orderbooks.viz.event_log import EventLog
+from orderbooks.viz.event_log import EventLog, MissingFieldError, read_file
 
 
 @given(log=st.from_type(EventLog))
@@ -28,11 +30,8 @@ def test_fuzz_EventLog(log: EventLog) -> None:
     )
 
 
-@given(handle=st.from_type(StringIO))
-def test_fuzz_read_stream(handle: StringIO) -> None:
-    orderbooks.viz.event_log.read_stream(handle=handle)
-
-
-@given(text=st.from_type(StringIO).map(StringIO.getvalue))
-def test_fuzz_read_text(text: str) -> None:
-    orderbooks.viz.event_log.read_text(text=text)
+def test_read_file_rejects_missing_field(tmp_path: Path) -> None:
+    path = tmp_path / "events.jsonl"
+    path.write_text('{"kind":"fill","maker":1,"px":5,"qty":3,"seq":1}\n')
+    with pytest.raises(MissingFieldError):
+        read_file(path)

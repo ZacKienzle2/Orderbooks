@@ -5,15 +5,16 @@ The event stream draws each field over the width the engine declares for it in
 numbers are assigned in order, since the engine emits them strictly increasing.
 """
 
-from io import StringIO
+import json
+import tempfile
+from pathlib import Path
 from typing import Any
 
 import numpy as np
-import orjson
 from hypothesis import strategies as st
 
 from orderbooks.viz.depth import BookSnapshot
-from orderbooks.viz.event_log import EventLog, read_text
+from orderbooks.viz.event_log import EventLog, read_file
 
 _UINT64 = int(np.iinfo(np.uint64).max)
 _TICK = st.integers(min_value=0, max_value=int(np.iinfo(np.uint32).max))
@@ -76,15 +77,26 @@ def _jsonl(events: list[dict[str, Any]]) -> str:
         One JSON object per line, numbered from 1 in order.
     """
     return "\n".join(
-        orjson.dumps({**event, "seq": seq}).decode()
-        for seq, event in enumerate(events, start=1)
+        json.dumps({**event, "seq": seq}) for seq, event in enumerate(events, start=1)
     )
 
 
-_STREAMS = st.lists(_EVENTS).map(_jsonl)
+def _read(text: str) -> EventLog:
+    """Read a stream through a file, the way ``read_file`` reads a log on disk.
 
-st.register_type_strategy(StringIO, _STREAMS.map(StringIO))
-st.register_type_strategy(EventLog, _STREAMS.map(read_text))
+    Args:
+        text: A JSON Lines event stream.
+
+    Returns:
+        The stream partitioned by event kind.
+    """
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "events.jsonl"
+        path.write_text(text, encoding="utf-8")
+        return read_file(path)
+
+
+st.register_type_strategy(EventLog, st.lists(_EVENTS).map(_jsonl).map(_read))
 st.register_type_strategy(
     BookSnapshot,
     st.builds(
