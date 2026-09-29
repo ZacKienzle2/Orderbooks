@@ -102,6 +102,7 @@ update the index below. The template is the scaffold.
 | [0054](0054-measure-on-friday-through-a-snakemake-workflow.md)  | Proposed               | Measure on Friday through a Snakemake workflow                    |
 | [0055](0055-drop-the-front-end-flags.md)                        | Proposed               | Drop the front end flags of the release build                     |
 | [0056](0056-keep-the-profile-guided-build-off.md)               | Proposed               | Keep the profile-guided build off by default                      |
+| [0060](0060-serve-each-shards-sessions-on-its-own-core.md)      | Proposed               | Serve each shard's sessions on its own core                       |
 
 ## References
 
