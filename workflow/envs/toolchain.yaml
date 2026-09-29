@@ -1,6 +1,5 @@
-# The toolchain that builds and measures Orderbooks, deployed by Snakemake from the pin file beside
-# this one, which snakedeploy pin-conda-envs writes in a Friday compute job, as Thesis ADR-0106 pins
-# its engine toolchain. The clang activation packages set CC and CXX to the conda-forge compilers and
+# The toolchain that builds and measures Orderbooks, which Snakemake creates from this file and conda
+# resolves in a Friday compute job. The clang activation packages set CC and CXX to the conda-forge compilers and
 # their sysroot (conda-forge FAQ), which the conda profile of workflow/conan reads. conan installs
 # the dependencies of conanfile.py and writes the toolchain and presets, and the recipe's tool
 # requirement brings ninja. lld links the ThinLTO objects, since this clang lacks the LLVMgold.so

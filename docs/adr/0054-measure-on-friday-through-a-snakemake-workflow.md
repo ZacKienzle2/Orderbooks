@@ -18,7 +18,7 @@ something?
 ## Decision Drivers
 
 - The Thesis repository already runs on Friday through the Slurm executor plugin
-  (its ADR-0099) and a toolchain pinned by snakedeploy (its ADR-0106).
+  (its ADR-0099).
 - A run takes its settings from a versioned file, and the archived file
   reproduces the run (Ingo and Daly, DBTest 2020, sections 2.1 and 2.4).
 - A remedy is measured only for the bottleneck it addresses.
@@ -40,10 +40,10 @@ The proposal is the Snakemake workflow.
   each offered load of the file. `config/config.yaml` holds the presets, the
   metrics, the loads and the repetition count.
 - `workflow/envs/toolchain.yaml` names clang, lld, the LLVM tools, CMake, Conan,
-  linux-perf and Valgrind without versions. `snakedeploy pin-conda-envs` solves
-  it in a Friday compute job against glibc 2.34, and Snakemake deploys the pin
-  file. Conan resolves the dependencies from `conan.lock` into the cache that
-  CONAN_HOME places under /data in a Friday login shell, as the Friday user
+  linux-perf and Valgrind without versions, and Snakemake creates the
+  environment from that file in a Friday compute job, where conda resolves the
+  versions. Conan resolves the dependencies from `conan.lock` into the cache
+  that CONAN_HOME places under /data in a Friday login shell, as the Friday user
   guide asks of software and caches. Its cache is not concurrent (Conan
   guidelines), so the rules that run conan take the one unit of a `conan`
   resource the workflow profile declares.
@@ -85,9 +85,10 @@ The run design follows the literature read for it.
 
 ### Consequences
 
-- Positive: a tool writes every toolchain version, and the Thesis and Orderbooks
-  workflows submit to Friday through the same plugin.
-- Positive: perf's hardware counters become available through the pinned
+- Positive: conda resolves the toolchain's versions and no file records them,
+  and the Thesis and Orderbooks workflows submit to Friday through the same
+  plugin.
+- Positive: perf's hardware counters become available through conda-forge's
   linux-perf, which WSL could not provide.
 - Positive: the keys of Friday's compute environment live once, in the global
   `friday` profile that the Thesis workflow reads too. The workflow profile
@@ -109,7 +110,6 @@ The run design follows the literature read for it.
 
 ## More Information
 
-- Thesis ADR-0099 and ADR-0106 describe the same arrangement for the Thesis
-  workflow.
+- Thesis ADR-0099 describes the same submission for the Thesis workflow.
 - ADR-0034 made cachegrind the instrument of record under WSL.
 - `docs/dev/literature-review.md` cites the section behind each rule above.
