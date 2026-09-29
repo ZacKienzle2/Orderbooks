@@ -9,6 +9,14 @@ import os
 configfile: "config/config.yaml"
 
 
+# A preset is one path component, so build/{preset} can't also match the layout experiment's
+# build/layout/{preset}/{seed}, and a seed or a repetition is a number.
+wildcard_constraints:
+    preset=r"[^/]+",
+    seed=r"\d+",
+    rep=r"\d+",
+
+
 def topdown_results(wildcards):
     return [
         path
