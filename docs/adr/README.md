@@ -102,6 +102,7 @@ update the index below. The template is the scaffold.
 | [0054](0054-measure-on-friday-through-a-snakemake-workflow.md)  | Proposed               | Measure on Friday through a Snakemake workflow                    |
 | [0055](0055-keep-the-front-end-flags.md)                        | Proposed               | Keep the front end flags of the release build                     |
 | [0056](0056-keep-the-profile-guided-build-off.md)               | Proposed               | Keep the profile-guided build off by default                      |
+| [0058](0058-inventory-what-is-maintained-by-hand.md)            | Proposed               | Inventory what is maintained by hand                              |
 
 ## References
 
