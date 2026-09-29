@@ -25,7 +25,9 @@ concurrency:
 
 jobs:
   build-test:
-    name: ${{ matrix.preset }} on ${{ matrix.os }}
+    name:
+      ${{ matrix.cc }} ${{ matrix.build_type }} ${{ matrix.options }} on ${{
+      matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -33,37 +35,44 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
-            preset: linux-clang-rel
             cc: clang
             cxx: clang++
+            build_type: Release
+            options: -o &:lto=ON
           - os: ubuntu-24.04
-            preset: linux-clang-debug
             cc: clang
             cxx: clang++
+            build_type: Debug
           - os: ubuntu-24.04
-            preset: linux-gcc-rel
             cc: gcc
             cxx: g++
+            build_type: Release
           - os: ubuntu-24.04
-            preset: linux-gcc-debug
             cc: gcc
             cxx: g++
+            build_type: Debug
           - os: ubuntu-24.04
-            preset: linux-clang-asan
             cc: clang
             cxx: clang++
+            build_type: Debug
+            options: -o &:sanitizer=address,undefined
           - os: ubuntu-24.04
-            preset: linux-clang-tsan
             cc: clang
             cxx: clang++
+            build_type: Debug
+            options: -o &:sanitizer=thread
           - os: macos-14
-            preset: macos-clang-rel
             cc: clang
             cxx: clang++
+            build_type: Release
           - os: macos-14
-            preset: macos-clang-debug
             cc: clang
             cxx: clang++
+            build_type: Debug
+    # conan profile detect and CMake both take the compiler from these.
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
     steps:
       - name: Harden runner
         if: runner.os == 'Linux'
@@ -76,15 +85,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build
-        uses: $/.github/actions/cmake-preset
+      - name: Install Conan
+        uses: conan-io/setup-conan@ed3942a6883243f4af84e13e49c972f9440fa1c2 # v1.4.0
         with:
-          preset: ${{ matrix.preset }}
-          cc: ${{ matrix.cc }}
-          cxx: ${{ matrix.cxx }}
+          cache_packages: true
 
-      - name: Test
-        run: ctest --preset ${{ matrix.preset }} --output-on-failure
+      - name: Build and test
+        env:
+          BUILD_TYPE: ${{ matrix.build_type }}
+          OPTIONS: ${{ matrix.options }}
+        run:
+          conan build . -s:a compiler.cppstd=20 -s build_type="$BUILD_TYPE"
+          $OPTIONS --build=missing
 
   iwyu:
     name: include-what-you-use
@@ -92,6 +104,9 @@ jobs:
     timeout-minutes: 30
     needs: build-test
     if: github.event_name == 'pull_request'
+    env:
+      CC: clang
+      CXX: clang++
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -106,11 +121,17 @@ jobs:
       - name: Install iwyu
         run: sudo apt-get update && sudo apt-get install -y iwyu
 
-      - name: Build to surface IWYU advice
-        uses: $/.github/actions/cmake-preset
+      - name: Install Conan
+        uses: conan-io/setup-conan@ed3942a6883243f4af84e13e49c972f9440fa1c2 # v1.4.0
         with:
-          preset: linux-clang-rel
-          configure-args: -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=iwyu
+          cache_packages: true
+
+      - name: Build to surface IWYU advice
+        run: >-
+          conan build . -s:a compiler.cppstd=20 --build=missing -c
+          tools.build:skip_test=True -c
+          "tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_INCLUDE_WHAT_YOU_USE':
+          'iwyu'}"
 
   clang-tidy:
     name: clang-tidy
@@ -118,6 +139,9 @@ jobs:
     timeout-minutes: 30
     needs: build-test
     if: github.event_name == 'pull_request'
+    env:
+      CC: clang
+      CXX: clang++
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -130,6 +154,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Install Conan
+        uses: conan-io/setup-conan@ed3942a6883243f4af84e13e49c972f9440fa1c2 # v1.4.0
+        with:
+          cache_packages: true
+
       # Module scanning emits @<tu>.o.modmap response files into the compile
       # commands. They are generated during the build, which this job skips,
       # so clang-tidy cannot open them and reports a clang-diagnostic-error.
@@ -140,12 +169,13 @@ jobs:
       # them clang-tidy falls back to a guessed command carrying the build
       # type's NDEBUG, which deletes the assertions the harnesses are written
       # around and reports every variable they check as unused.
+      #
+      # conan install writes the toolchain and the preset, which cmake then
+      # configures without building.
       - name: Configure the compilation database
-        uses: $/.github/actions/cmake-preset
-        with:
-          preset: linux-clang-rel
-          configure-args: -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DLOB_BUILD_FUZZ=ON
-          build: "false"
+        run: |
+          conan install . -s:a compiler.cppstd=20 -o "&:fuzz=ON" --build=missing
+          cmake --preset conan-fuzz_on-release -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
 
       # cpp-linter runs clang-tidy over the files the pull request changed, with
       # the compilation database this job configured and the checks and header
@@ -166,7 +196,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: 18
-          database: build/linux-clang-rel
+          database: build/fuzz_on/Release
           tidy-checks: ""
           style: ""
           files-changed-only: true

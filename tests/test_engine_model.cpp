@@ -48,7 +48,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <rapidcheck.h>
-#include <rapidcheck/catch.h>
 #include <rapidcheck/state.h>
 #include <boost/pfr/core.hpp>
 #include <boost/pfr/functions_for.hpp>
@@ -251,11 +250,13 @@ TEST_CASE("engine matches the reference book under every self-cross policy",
     // magic_enum enumerates the policies, so a policy added to the library is
     // covered here without this file being edited.
     for (const auto policy : magic_enum::enum_values<lob::self_cross_policy>()) {
-        rc::prop(std::string{"policy "} + std::string{magic_enum::enum_name(policy)}, [policy] {
-            cmds::check_sequence<id_system<deep_arena>, cmds::submit, cmds::cancel, cmds::modify>(
-                lob::engine_config{.self_cross = policy}, deep_arena, lob::prefetch_plan{}, 1U,
-                apply_path::command);
-        });
+        REQUIRE(rc::check(
+            std::string{"policy "} + std::string{magic_enum::enum_name(policy)}, [policy] {
+                cmds::check_sequence<id_system<deep_arena>, cmds::submit, cmds::cancel,
+                                     cmds::modify>(lob::engine_config{.self_cross = policy},
+                                                   deep_arena, lob::prefetch_plan{}, 1U,
+                                                   apply_path::command);
+            }));
     }
 }
 
@@ -264,17 +265,17 @@ TEST_CASE("engine matches the reference book at arena capacity",
     // A book with orders on one side only never matches, so the population
     // only grows and both engines must reject the same residuals with the same
     // stamps once the arena is full.
-    rc::prop("bids only, until the arena is full", [] {
+    REQUIRE(rc::check("bids only, until the arena is full", [] {
         cmds::check_sequence<one_sided_system<minimal_arena, lob::side::bid>, cmds::rest,
                              cmds::cancel>(lob::engine_config{}, minimal_arena,
                                            lob::prefetch_plan{}, 1U, apply_path::command);
-    });
+    }));
 
-    rc::prop("asks only, until the arena is full", [] {
+    REQUIRE(rc::check("asks only, until the arena is full", [] {
         cmds::check_sequence<one_sided_system<minimal_arena, lob::side::ask>, cmds::rest,
                              cmds::cancel>(lob::engine_config{}, minimal_arena,
                                            lob::prefetch_plan{}, 1U, apply_path::command);
-    });
+    }));
 }
 
 TEST_CASE("prefetching batch drain matches the reference book",
@@ -284,7 +285,7 @@ TEST_CASE("prefetching batch drain matches the reference book",
     // an id that an earlier command of the same batch has yet to insert or has
     // just erased. A distance is only meaningful against the batch it looks
     // ahead within, so the batch is drawn first and bounds the distances.
-    rc::prop("batched application agrees at every prefetch distance", [] {
+    REQUIRE(rc::check("batched application agrees at every prefetch distance", [] {
         const auto batch = *rc::gen::positive<unsigned>();
         const lob::prefetch_plan plan{
             .index_ahead = *rc::gen::inRange<unsigned>(0, batch + 1),
@@ -293,14 +294,14 @@ TEST_CASE("prefetching batch drain matches the reference book",
         cmds::check_sequence<id_system<deep_arena>, cmds::submit, cmds::cancel, cmds::modify>(
             lob::engine_config{.self_cross = cmds::gen_enum<lob::self_cross_policy>()}, deep_arena,
             plan, batch, apply_path::batch);
-    });
+    }));
 }
 
 TEST_CASE("handle-driven engine matches the reference book",
           "[engine][differential][model][handle]") {
-    rc::prop("handles reach the same orders an id index would", [] {
+    REQUIRE(rc::check("handles reach the same orders an id index would", [] {
         cmds::check_sequence<handle_system, cmds::submit, cmds::cancel, cmds::modify>(
             lob::engine_config{.self_cross = cmds::gen_enum<lob::self_cross_policy>()}, deep_arena,
             lob::prefetch_plan{}, 1U, apply_path::command);
-    });
+    }));
 }

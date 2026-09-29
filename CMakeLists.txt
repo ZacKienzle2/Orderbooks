@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30)
 
-# Toolchain pre-set via CMakePresets.json (vcpkg manifest mode).
+# conanfile.py writes the toolchain and the presets, through `conan install` or `conan build`.
 project(
   Orderbooks
   VERSION 0.1.0
@@ -46,7 +46,7 @@ if(LOB_ENABLE_LTO)
 endif()
 
 # Testing is on whatever the build shape, because the profiler's training runs and the fuzz corpus
-# replays are tests too, and a preset that builds no unit tests still runs those.
+# replays are tests too, and a build without unit tests still runs those.
 include(CTest)
 
 add_subdirectory(src/lob)
@@ -85,7 +85,7 @@ endif()
 
 # llvm-cov's arguments for the merged profile, written as a response file so the report names every
 # instrumented binary the build defines and only this repository's sources, with nothing listed by
-# hand: `llvm-cov report @build/<preset>/coverage.rsp`.
+# hand: `llvm-cov report @<build folder>/coverage.rsp`.
 if(LOB_COVERAGE)
   set(_lob_cov_targets "")
   if(TARGET lob_tests)

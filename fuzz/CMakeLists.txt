@@ -1,15 +1,14 @@
 # libFuzzer harnesses for the code that reads bytes this process did not write: the FIX parser,
 # snapshot restore, and the gateway's wire decode.
 #
-# The sanitizers come from the preset (LOB_SANITIZER, which linux-clang-fuzz sets to
-# address,undefined) through lob::sanitizers, so that set is declared in one place rather than
-# repeated here. -fsanitize=fuzzer belongs to these targets alone, because it supplies main() and
-# every other executable in the project has its own. libFuzzer ships with clang, so the targets
-# build only under it.
+# The sanitizers come from LOB_SANITIZER, address,undefined in the fuzz build, through
+# lob::sanitizers, so that set is declared in one place rather than repeated here. -fsanitize=fuzzer
+# belongs to these targets alone, because it supplies main() and every other executable in the
+# project has its own. libFuzzer ships with clang, so the targets build only under it.
 #
 # Each harness keeps its corpus in LOB_FUZZ_CORPUS_DIR/<harness>, where a fuzzing run adds the
 # inputs that reached new coverage. Each is also a test that replays that corpus once (-runs=0),
-# which is the check an engine change owes every corpus, and which the fuzz-coverage preset runs to
+# which is the check an engine change owes every corpus, and which the fuzz coverage build runs to
 # measure what the corpora reach.
 #
 # With LOB_FUZZ_SECONDS above zero, each harness also fuzzes its corpus for that long as a test, so

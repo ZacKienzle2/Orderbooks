@@ -1,9 +1,9 @@
 # Order-entry gateway
 
 `lob_gateway` (`apps/gateway`) is a binary order-entry gateway over TCP. A
-client sends fixed-size `wire_order` records; the gateway decodes each into an
-engine command, runs it, and writes back one `wire_ack` summarising the result.
-The protocol is one ack per order, so a client times the ack to measure
+client sends fixed-size `wire_order` records. The gateway decodes each into an
+engine command and runs it. It then writes back one `wire_ack` summarising the
+result. The protocol is one ack per order. A client times the ack to measure
 round-trip latency. It makes the engine a connectable order-entry endpoint
 rather than a library.
 
@@ -22,21 +22,20 @@ wire_ack    (24 bytes)  id, filled, last_px, status
 killed (an IOC or FOK that executed nothing and rests nothing). `filled` and
 `last_px` summarise the order's fills.
 
-Every order is validated before it reaches the engine: `px` and `new_px` must
-sit on the tick ladder, `qty` must be positive and at most
-`engine_config::max_order_qty`, and `tif` must name a known time-in-force.
+The gateway validates each order before it reaches the engine: `px` and `new_px`
+must sit on the tick ladder, `qty` must be positive and at most
+`engine_config::max_order_qty`, and `tif` must be a known time-in-force.
 Anything else acks status 3 with the book untouched, as does a submit whose
 residual cannot rest because the order arena is full.
 
 ## Run
 
-Self-test (listens on an ephemeral loopback port, serves on a thread, drives a
-client that runs a resting-ask, crossing-bid workload and checks every bid
-fills):
+Self-test. The gateway serves an ephemeral loopback port from a thread, and a
+client runs a resting-ask, crossing-bid workload that checks every bid fills:
 
 ```bash
-cmake --build --preset linux-clang-rel --target lob_gateway --parallel
-./build/linux-clang-rel/apps/gateway/lob_gateway --orders 50000
+just release
+./build/lto_on/Release/apps/gateway/lob_gateway --orders 50000
 ```
 
 Pipelined self-test (a window of order pairs in flight per batch, exercising the
@@ -44,13 +43,13 @@ gateway's batched read and ack paths; the window is clamped so the in-flight
 bytes stay inside the socket buffers):
 
 ```bash
-./build/linux-clang-rel/apps/gateway/lob_gateway --orders 1000000 --pipeline 64
+./build/lto_on/Release/apps/gateway/lob_gateway --orders 1000000 --pipeline 64
 ```
 
 Server mode for an external client:
 
 ```bash
-./build/linux-clang-rel/apps/gateway/lob_gateway --listen 7001
+./build/lto_on/Release/apps/gateway/lob_gateway --listen 7001
 # then connect a client to 127.0.0.1:7001 and stream wire_order records
 ```
 
@@ -64,5 +63,5 @@ microseconds. The engine's own latency is the in-process figure from
 `lob_loadgen` (`docs/dev/loadgen.md`), about 360 ns end to end. Shrinking the
 wire tax with io_uring and kernel-bypass is the next step on the roadmap.
 
-The self-test's headline result is the correctness line, that every crossing bid
-filled, which holds regardless of host timing.
+The self-test's main result is the correctness line, that every crossing bid
+filled, which is true regardless of host timing.

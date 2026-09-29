@@ -10,7 +10,6 @@
 #include <catch2/generators/catch_generators_all.hpp>
 
 #include <rapidcheck.h>
-#include <rapidcheck/catch.h>
 #include <rapidcheck/state.h>
 
 namespace {
@@ -194,12 +193,12 @@ struct give_back : rc::state::Command<pool_model, arena_sut> {
 }  // namespace
 
 TEST_CASE("slab_arena hands out each slot to one holder at a time", "[arena][property][model]") {
-    rc::prop("occupancy agrees with what the caller holds", [] {
+    REQUIRE(rc::check("occupancy agrees with what the caller holds", [] {
         arena_sut sut;
         rc::state::check(pool_model{}, sut, rc::state::gen::execOneOfWithArgs<take, give_back>());
         RC_CLASSIFY(sut.arena.full(), "filled the arena");
         RC_CLASSIFY(!sut.live.empty(), "left slots out");
-    });
+    }));
 }
 
 TEST_CASE("slab_arena is movable", "[arena]") {
