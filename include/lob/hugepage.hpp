@@ -98,17 +98,18 @@ class hugepage_region {
 
 #if defined(__linux__) && defined(MAP_HUGETLB)
         // mmap(2) selects the huge page size by the base-2 logarithm of its
-        // size at MAP_HUGE_SHIFT, and a zero field selects the default size.
+        // size at MAP_HUGE_SHIFT, and an empty field selects the default size.
 #if defined(MAP_HUGE_2MB)
-        constexpr int huge_2mb = MAP_HUGE_2MB;
+        constexpr int huge_flags = MAP_HUGETLB | MAP_HUGE_2MB;
 #elif defined(MAP_HUGE_SHIFT)
-        constexpr int huge_2mb = std::countr_zero(huge_page_bytes) << MAP_HUGE_SHIFT;
+        constexpr int huge_flags =
+            MAP_HUGETLB | (std::countr_zero(huge_page_bytes) << MAP_HUGE_SHIFT);
 #else
-        constexpr int huge_2mb = 0;
+        constexpr int huge_flags = MAP_HUGETLB;
 #endif
         const std::size_t rounded = round_up_(bytes, huge_page_bytes);
         void* huge_map = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE,
-                                MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_2mb, -1, 0);
+                                MAP_PRIVATE | MAP_ANONYMOUS | huge_flags, -1, 0);
         if (huge_map != MAP_FAILED) {
             ptr_ = huge_map;
             mapped_bytes_ = rounded;
