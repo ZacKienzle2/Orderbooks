@@ -1,0 +1,9 @@
+# The Python and SciPy that orderbooks.bench_ci imports, for the rule that runs it from src/ with
+# PYTHONPATH rather than installing the package. Pinned by snakedeploy pin-conda-envs in a Friday
+# compute job, like the toolchain beside it.
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python
+  - scipy

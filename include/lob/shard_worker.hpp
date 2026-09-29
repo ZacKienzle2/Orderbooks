@@ -37,12 +37,12 @@ struct prefetch_plan {
 
 // Host placement, busy-wait and prefetch policy shared by every shard worker.
 //
-// When pin_threads is set, worker i is pinned to core (first_core + i *
-// core_stride) via lob::pin_this_thread_to_core. A stride above one skips
-// SMT siblings or interleaves across sockets, depending on the host's core
-// enumeration. Pinning is best effort. A platform that ignores the hint, or
-// any non-Linux and non-macOS target, leaves the worker unpinned and the
-// runtime still functions.
+// When pin_threads is set, worker i is pinned to the CPU at index (first_core
+// + i * core_stride) of the process's affinity mask via
+// lob::pin_this_thread_to_core. A stride above one skips SMT siblings or
+// interleaves across sockets, depending on the host's core enumeration. Pinning is best effort. A
+// platform that ignores the hint, or any non-Linux and non-macOS target, leaves the worker unpinned
+// and the runtime still functions.
 //
 // spin_budget bounds the busy-wait. A worker that finds its ingress ring
 // empty spins with cpu_relax up to spin_budget times, then yields to the

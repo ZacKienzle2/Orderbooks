@@ -1,0 +1,7 @@
+# The DuckDB command line that the summary rules run their SQL with, pinned by snakedeploy
+# pin-conda-envs in a Friday compute job like the toolchain beside it.
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - duckdb-cli
