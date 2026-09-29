@@ -41,18 +41,42 @@ rule all:
         "results/summary/latency.csv",
 
 
+SOURCES = [
+    path
+    for tree in ("include", "src", "apps", "bench", "tests", "fuzz", "cmake")
+    for path in glob.glob(f"{tree}/**/*", recursive=True)
+    if os.path.isfile(path)
+] + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"]
+
+
+# The training workflow runs every profiler workload, the gateway and the load generator
+# instrumented, and merges their counts into the profile a LOB_PGO=use build reads, the default
+# LOB_PGO_PROFILE of CMakeLists.txt.
+rule pgo_profile:
+    input:
+        SOURCES,
+    output:
+        "artifacts/pgo/train.profdata",
+    log:
+        "logs/pgo/train.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    params:
+        preset=config["pgo"]["train"],
+    shell:
+        "VCPKG_MAX_CONCURRENCY={threads} cmake --workflow --preset {params.preset} --fresh"
+        " > {log} 2>&1"
+
+
 # cmake --workflow configures, builds and runs the preset's tests, so a build that fails its tests on
 # Friday stops here. vcpkg builds the manifest on logical cores + 1 unless VCPKG_MAX_CONCURRENCY is
 # set (vcpkg environment variables reference), which counts the node rather than the job's threads.
+# A preset that reads the profile waits for the training.
 rule build:
     input:
-        [
-            path
-            for tree in ("include", "src", "apps", "bench", "tests", "fuzz", "cmake")
-            for path in glob.glob(f"{tree}/**/*", recursive=True)
-            if os.path.isfile(path)
-        ]
-        + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"],
+        lambda wildcards: SOURCES
+        + (rules.pgo_profile.output if wildcards.preset in config["pgo"]["use"] else []),
     output:
         profile="build/{preset}/apps/profile/lob_profile",
         loadgen="build/{preset}/apps/loadgen/lob_loadgen",
