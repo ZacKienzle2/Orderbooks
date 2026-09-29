@@ -16,8 +16,11 @@ else()
   target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer)
 
   if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # check_compiler_flag fails a flag the compiler answers with any diagnostic, so a compiler that
-    # accepts a flag with a warning counts as not supporting it.
+    # The C++ flag check fails only on output that names a flag of another language
+    # (Modules/Internal/CheckFlagCommonConfig.cmake), so Clang's "argument unused during
+    # compilation" warning passes it. -Werror in CMAKE_REQUIRED_FLAGS makes that warning fail it.
+    block()
+    set(CMAKE_REQUIRED_FLAGS -Werror)
     set(_lob_perf_candidates -fno-plt -falign-functions=64 -falign-loops=32)
     set(_lob_perf_compile "")
     foreach(_flag IN LISTS _lob_perf_candidates)
@@ -28,6 +31,7 @@ else()
       endif()
     endforeach()
     target_compile_options(lob_compiler_flags INTERFACE ${_lob_perf_compile})
+    endblock()
   endif()
 endif()
 

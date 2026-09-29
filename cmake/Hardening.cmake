@@ -12,14 +12,17 @@ endif()
 include(CheckCompilerFlag)
 include(CheckLinkerFlag)
 
-# check_compiler_flag and check_linker_flag fail a flag the toolchain answers with any diagnostic,
-# so one that is accepted with a warning (Apple Clang on -fcf-protection or
-# -fstack-clash-protection) counts as unsupported. Position independence comes from
+# The C++ flag check fails only on output that names a flag of another language
+# (Modules/Internal/CheckFlagCommonConfig.cmake), so Apple Clang, which accepts
+# -fstack-clash-protection with an "argument unused during compilation" warning, passes it. -Werror
+# in CMAKE_REQUIRED_FLAGS makes that warning fail it. Position independence comes from
 # CMAKE_POSITION_INDEPENDENT_CODE and check_pie_supported, not from a flag here.
 set(_lob_hard_candidate_compile -fstack-protector-strong -fstack-clash-protection
                                 -fcf-protection=full)
 set(_lob_hard_candidate_link -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack)
 
+block(PROPAGATE _lob_hard_compile)
+set(CMAKE_REQUIRED_FLAGS -Werror)
 set(_lob_hard_compile "")
 foreach(_flag IN LISTS _lob_hard_candidate_compile)
   string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${_flag}" _var)
@@ -28,6 +31,7 @@ foreach(_flag IN LISTS _lob_hard_candidate_compile)
     list(APPEND _lob_hard_compile "${_flag}")
   endif()
 endforeach()
+endblock()
 
 set(_lob_hard_link "")
 foreach(_flag IN LISTS _lob_hard_candidate_link)
