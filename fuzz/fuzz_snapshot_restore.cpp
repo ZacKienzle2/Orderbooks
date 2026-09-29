@@ -14,6 +14,7 @@
 // rest: a length field that walks off the buffer, an unaligned read, an
 // uninitialised byte.
 
+#include <lob/concepts.hpp>
 #include <lob/engine.hpp>
 #include <lob/snapshot.hpp>
 #include <lob/types.hpp>
@@ -32,13 +33,7 @@ constexpr std::size_t max_orders = 1024;
 
 // Counts nothing and keeps nothing: restore publishes no events, and a
 // fuzzing run should not pay for recording them.
-struct null_publisher {
-    void publish(const lob::fill_msg&) noexcept {}
-    void publish(const lob::top_msg&) noexcept {}
-    void publish(const lob::trade_msg&) noexcept {}
-    void publish(const lob::self_trade_msg&) noexcept {}
-    void publish(const lob::reject_msg&) noexcept {}
-};
+using null_publisher = lob::null_publisher;
 
 using engine_t = lob::engine<null_publisher, ticks, max_orders>;
 

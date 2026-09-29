@@ -25,6 +25,22 @@ concept publisher = requires(P p,
     { p.publish(rj) } noexcept -> std::same_as<void>;
 };
 
+// A publisher that discards every event, for a caller that drives the engine
+// for its book state or its timing and reads no event.
+struct null_publisher {
+    void publish(const fill_msg& /*unused*/) noexcept {}
+
+    void publish(const top_msg& /*unused*/) noexcept {}
+
+    void publish(const trade_msg& /*unused*/) noexcept {}
+
+    void publish(const self_trade_msg& /*unused*/) noexcept {}
+
+    void publish(const reject_msg& /*unused*/) noexcept {}
+};
+
+static_assert(publisher<null_publisher>);
+
 // snapshot_sink / snapshot_source live in <lob/snapshot.hpp> alongside the
 // wire format they describe.
 
