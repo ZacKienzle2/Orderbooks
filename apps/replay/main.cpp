@@ -2,7 +2,7 @@
 // ----------
 // Drive the matching engine with a deterministic random command stream and
 // emit every event as one JSON Lines record per line. Output is consumed by
-// the Python analysis and visualisation harness under scripts/.
+// the Python analysis and visualisation harness in src/orderbooks.
 
 #include <lob/engine.hpp>
 #include <lob/json_recorder.hpp>
