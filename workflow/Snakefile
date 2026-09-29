@@ -24,8 +24,9 @@ def topdown_results(wildcards):
 
 def latency_results(wildcards):
     return expand(
-        "results/latency/{preset}/{load}/{rep}.txt",
+        "results/latency/{preset}/{path}/{load}/{rep}.txt",
         preset=config["presets"],
+        path=config["paths"],
         load=config["loads"],
         rep=range(config["repeats"]),
     )
@@ -117,25 +118,27 @@ rule topdown:
 # tail (Tales of the tail, SoCC 2014, section 4.5), and the pinned workers take the first CPUs of
 # that node. Each repetition draws its arrivals from a seed of its own. cpupower records the
 # frequency governor and the idle states, which a job cannot change and which moved the tail too
-# (section 4.6).
+# (section 4.6). The direct path drains the shard rings on the client thread, which ADR-0052
+# gives a consumer that needs no total order, and the merged path reads them through the merger.
 rule latency:
     input:
         rules.build.output.loadgen,
     output:
-        latency="results/latency/{preset}/{load}/{rep}.txt",
-        host="results/latency/{preset}/{load}/{rep}.host.txt",
+        latency="results/latency/{preset}/{path}/{load}/{rep}.txt",
+        host="results/latency/{preset}/{path}/{load}/{rep}.host.txt",
     log:
-        "logs/latency/{preset}/{load}/{rep}.log",
+        "logs/latency/{preset}/{path}/{load}/{rep}.log",
     conda:
         "envs/toolchain.yaml"
     threads: workflow.cores
     params:
         load=lambda wildcards: f"--load {wildcards.load}" if float(wildcards.load) > 0 else "",
+        path=lambda wildcards: {"merged": "", "direct": "--direct"}[wildcards.path],
     shell:
         "cpupower frequency-info > {output.host} 2> {log}"
         " && cpupower idle-info >> {output.host} 2>> {log}"
         ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
-        " {input} --pin {params.load} --seed {wildcards.rep} > {output.latency} 2>> {log}"
+        " {input} --pin {params.path} {params.load} --seed {wildcards.rep} > {output.latency} 2>> {log}"
 
 
 # DuckDB summarises the results in SQL, each query reading the files its input lists through the
