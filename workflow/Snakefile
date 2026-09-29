@@ -49,9 +49,9 @@ SOURCES = [
 ] + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"]
 
 
-# The training workflow runs every profiler workload, the gateway and the load generator
-# instrumented, and merges their counts into the profile a LOB_PGO=use build reads, the default
-# LOB_PGO_PROFILE of CMakeLists.txt.
+# The training workflow runs every profiler workload instrumented and merges the counts into the
+# profile a LOB_PGO=use build reads, the default LOB_PGO_PROFILE of CMakeLists.txt. ADR-0056 trained
+# on the gateway and the load generator too, and kept the profile-guided build off.
 rule pgo_profile:
     input:
         SOURCES,
