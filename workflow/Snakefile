@@ -210,6 +210,7 @@ rule layout:
             load=config["layout"]["loads"],
             metric=config["layout"]["metrics"],
         ),
+        "results/summary/layout/nodes.csv",
 
 
 rule layout_build:
@@ -233,8 +234,8 @@ rule layout_build:
 
 
 # Each binary runs as the latency rule runs its binary, and the runs of one binary and load go to
-# the Slurm job of one group. The first line of a result names the node, because every run whose
-# saturated rate halved in the layout run of ADR-0055 ran on smp-9-18.
+# the Slurm job of one group. The first line of a result records the node as node=, the key=value
+# form of the load generator's own lines, for layout_nodes.
 rule layout_latency:
     input:
         rules.layout_build.output,
@@ -250,7 +251,7 @@ rule layout_latency:
     params:
         load=lambda wildcards: f"--load {wildcards.load}" if float(wildcards.load) > 0 else "",
     shell:
-        "uname -n > {output}"
+        "echo node=$(uname -n) > {output}"
         ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
         " {input} --pin {params.load} --seed {wildcards.rep} >> {output} 2> {log}"
 
@@ -305,3 +306,36 @@ rule layout_report:
         directory=lambda wildcards: f"results/layout/bench_ci/{wildcards.load}/{wildcards.metric}",
     shell:
         "PYTHONPATH=src python -m orderbooks.bench_ci {params.directory} > {output} 2> {log}"
+
+
+# Every run of a Slurm job shares its node, so the state of a node enters all of them together.
+# DuckDB groups the runs by node, preset and load, with the median saturated rate and p50 of each
+# group, and the variables keep out any run of a preset, load, seed or repetition that
+# config/config.yaml no longer names.
+rule layout_nodes:
+    input:
+        runs=expand(
+            "results/layout/{preset}/{seed}/{load}/{rep}.txt",
+            preset=config["layout"]["presets"],
+            seed=range(1, config["layout"]["binaries"] + 1),
+            load=config["layout"]["loads"],
+            rep=range(config["repeats"]),
+        ),
+        sql="workflow/sql/layout_nodes.sql",
+    output:
+        "results/summary/layout/nodes.csv",
+    log:
+        "logs/layout/nodes.log",
+    conda:
+        "envs/summary.yaml"
+    params:
+        presets=sql_list(config["layout"]["presets"]),
+        loads=sql_list(map(str, config["layout"]["loads"])),
+        binaries=config["layout"]["binaries"],
+        repeats=config["repeats"],
+    shell:
+        'duckdb -csv -c "SET VARIABLE presets = {params.presets}"'
+        ' -c "SET VARIABLE loads = {params.loads}"'
+        ' -c "SET VARIABLE binaries = {params.binaries}"'
+        ' -c "SET VARIABLE repeats = {params.repeats}"'
+        ' -c ".read {input.sql}" > {output} 2> {log}'
