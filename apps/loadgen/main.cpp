@@ -9,6 +9,15 @@
 // through the ingress ring, the shard worker, the match, the egress ring, and
 // the merge. The latency is therefore measured under load, queueing included.
 //
+// The latency phase is closed by default, one pair in flight, which times
+// service without queueing. With --load it is open: pairs arrive at
+// exponential gaps whose rate is that fraction of the rate at which the
+// throughput phase delivered fills, as independent senders would submit
+// them. A closed generator reports lower
+// response times than an open one at the same load (Schroeder, Wierman and
+// Harchol-Balter, NSDI 2006, section 5.1), and understated the p99 by more
+// than two times at 80 per cent load (Treadmill, ISCA 2016, section II.A).
+//
 // No market data is required. The flow is generated; the symbols spread across
 // shards through the same SplitMix64 routing the runtime uses.
 
@@ -23,6 +32,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -30,6 +40,8 @@
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <random>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -66,10 +78,18 @@ struct latency_sink {
     // so until then a fill skips the stamp table, a random load into 8 MiB
     // that would otherwise slow the merger it is measuring.
     std::atomic<bool> stamping{false};
+    // Fills that reached the sink. A full egress ring drops events, so the
+    // open loop sizes its rate on these rather than on the orders submitted.
+    // The consumer is the only writer, so a relaxed load and store count them
+    // without a locked add.
+    std::atomic<std::uint64_t> fills{0};
 
     void on_event(const lob::event& e, std::uint64_t /*merge_seq*/) noexcept {
         ++events;
-        if (e.k == lob::event::kind::fill && stamping.load(std::memory_order_relaxed)) {
+        if (e.k != lob::event::kind::fill)
+            return;
+        fills.store(fills.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+        if (stamping.load(std::memory_order_relaxed)) {
             const auto t0 = send_tsc[e.body.fill.taker & slot_mask].load(std::memory_order_relaxed);
             if (t0 != 0) {
                 hist.record(read_tsc() - t0);
@@ -81,16 +101,21 @@ struct latency_sink {
 
 struct args {
     std::uint64_t orders{20'000'000};
+    double load{0.0};  // 0 keeps the latency phase closed
+    std::uint64_t seed{0xC0FFEE};
     bool pin{false};
     bool direct{false};
 };
 
 [[noreturn]] void usage(int code) {
-    std::cerr << "usage: lob_loadgen [options]\n"
-                 "  --orders N   total orders to submit (default 20000000)\n"
-                 "  --pin        pin shard workers to cores\n"
-                 "  --direct     no merger thread: the client drains the shard rings itself\n"
-                 "  --help       show this help\n";
+    std::cerr
+        << "usage: lob_loadgen [options]\n"
+           "  --orders N   total orders to submit (default 20000000)\n"
+           "  --load F     open-loop latency phase at F of the measured throughput, 0 < F < 1\n"
+           "  --seed N     PRNG seed of the open-loop arrivals (default 0xC0FFEE)\n"
+           "  --pin        pin shard workers to cores\n"
+           "  --direct     no merger thread: the client drains the shard rings itself\n"
+           "  --help       show this help\n";
     // std::exit is flagged mt-unsafe, but arg parsing runs single-threaded
     // before any worker is spawned.
     std::exit(code);  // NOLINT(concurrency-mt-unsafe)
@@ -102,6 +127,15 @@ args parse_args(int argc, char** argv) {
         const std::string s = argv[i];
         if (s == "--orders" && i + 1 < argc) {
             a.orders = std::strtoull(argv[++i], nullptr, 10);
+        } else if (s == "--load" && i + 1 < argc) {
+            a.load = std::strtod(argv[++i], nullptr);
+            // An open queue at or above its capacity grows without bound.
+            if (std::isnan(a.load) || a.load <= 0.0 || a.load >= 1.0) {
+                std::cerr << "--load needs 0 < F < 1\n";
+                usage(2);
+            }
+        } else if (s == "--seed" && i + 1 < argc) {
+            a.seed = std::strtoull(argv[++i], nullptr, 0);
         } else if (s == "--pin") {
             a.pin = true;
         } else if (s == "--direct") {
@@ -183,7 +217,11 @@ int run(const args& a) {
     // the saturated queueing delay is never mistaken for processing latency.
     const std::uint64_t pairs = a.orders / 2;
     std::uint64_t submitted = 0;
+    if (a.load > 0.0 && pairs == 0)
+        throw std::invalid_argument(
+            "--load scales the throughput phase, which --orders left empty");
     const auto wall0 = std::chrono::steady_clock::now();
+    const std::uint64_t tsc0 = read_tsc();
     for (std::uint64_t i = 0; i < pairs; ++i) {
         const lob::symbol_id_t sym = i % num_symbols;
         while (!rt.try_submit(sym, ask(next++))) {
@@ -211,26 +249,76 @@ int run(const args& a) {
             cpu_relax();
         }
     }
+    const std::uint64_t tsc_idle = read_tsc();
+    const std::uint64_t delivered = sink.fills.load(std::memory_order_relaxed);
     sink.stamping.store(true, std::memory_order_relaxed);
 
-    // Phase 2: latency. Closed loop with one pair in flight, so the pipeline
-    // stays unsaturated and the stamp-to-echo difference is processing latency,
-    // not queueing. Only these orders are stamped, so the histogram holds only
-    // unloaded samples.
+    // Phase 2: latency. Only these orders are stamped, so the histogram holds
+    // only this phase's samples.
     constexpr std::uint64_t lat_pairs = 200'000;
-    for (std::uint64_t i = 0; i < lat_pairs; ++i) {
-        const lob::symbol_id_t sym = i % num_symbols;
-        const std::uint64_t prev = sink.samples.load(std::memory_order_acquire);
-        while (!rt.try_submit(sym, ask(next++))) {
+    std::uint64_t lag_sum = 0;
+    std::uint64_t lag_final = 0;
+    if (a.load > 0.0) {
+        // Open loop. The mean gap is the time the saturated pipeline took per
+        // fill it delivered, backlog included, over the load. Each bid is
+        // stamped with its scheduled arrival, so a pair sent late behind a
+        // stalled ring counts its wait, as the open loop of Treadmill does
+        // (section II.A). A fixed seed repeats the schedule each run.
+        if (delivered == 0)
+            throw std::runtime_error("the throughput phase delivered no fill to size --load on");
+        const double mean_gap =
+            static_cast<double>(tsc_idle - tsc0) / static_cast<double>(delivered) / a.load;
+        std::mt19937_64 gen{a.seed};
+        std::exponential_distribution<double> gap{1.0 / mean_gap};
+        // The schedule is drawn before the phase, so the send loop does no
+        // arithmetic beyond its clock reads. A generator that falls behind its
+        // schedule queues on the client side and biases the latency it
+        // reports (Treadmill, section II.A), so the loop sums how late each
+        // pair left, and the report prints the mean and the lag at the end.
+        std::vector<std::uint64_t> due(lat_pairs);
+        double at = 0.0;
+        for (auto& d : due) {
+            at += gap(gen);
+            d = static_cast<std::uint64_t>(at);
         }
-        const lob::order_id_t bid_id = next++;
-        send_tsc[bid_id & slot_mask].store(read_tsc(), std::memory_order_relaxed);
-        while (!rt.try_submit(sym, bid(bid_id))) {
+        const std::uint64_t start = read_tsc();
+        for (std::uint64_t i = 0; i < lat_pairs; ++i) {
+            const lob::symbol_id_t sym = i % num_symbols;
+            const std::uint64_t t = start + due[i];
+            std::uint64_t now = read_tsc();
+            while (now < t) {
+                if (a.direct)
+                    (void)poll_all();
+                cpu_relax();
+                now = read_tsc();
+            }
+            lag_sum += now - t;
+            while (!rt.try_submit(sym, ask(next++))) {
+            }
+            const lob::order_id_t bid_id = next++;
+            send_tsc[bid_id & slot_mask].store(t, std::memory_order_relaxed);
+            while (!rt.try_submit(sym, bid(bid_id))) {
+            }
         }
-        while (sink.samples.load(std::memory_order_acquire) == prev) {
-            if (a.direct)
-                (void)poll_all();
-            cpu_relax();
+        lag_final = read_tsc() - (start + due.back());
+    } else {
+        // Closed loop with one pair in flight, so the pipeline stays
+        // unsaturated and the stamp-to-echo difference is processing latency,
+        // not queueing.
+        for (std::uint64_t i = 0; i < lat_pairs; ++i) {
+            const lob::symbol_id_t sym = i % num_symbols;
+            const std::uint64_t prev = sink.samples.load(std::memory_order_acquire);
+            while (!rt.try_submit(sym, ask(next++))) {
+            }
+            const lob::order_id_t bid_id = next++;
+            send_tsc[bid_id & slot_mask].store(read_tsc(), std::memory_order_relaxed);
+            while (!rt.try_submit(sym, bid(bid_id))) {
+            }
+            while (sink.samples.load(std::memory_order_acquire) == prev) {
+                if (a.direct)
+                    (void)poll_all();
+                cpu_relax();
+            }
         }
     }
 
@@ -252,7 +340,8 @@ int run(const args& a) {
     for (std::size_t s = 0; s < runtime_t::shard_count(); ++s) {
         dropped += rt.publisher(s).dropped();
     }
-    std::printf("latency: unloaded round-trip samples=%llu  events=%llu  dropped=%llu\n",
+    std::printf("latency: %s samples=%llu  events=%llu  dropped=%llu\n",
+                a.load > 0.0 ? "open-loop" : "unloaded round-trip",
                 static_cast<unsigned long long>(sink.samples.load(std::memory_order_relaxed)),
                 static_cast<unsigned long long>(sink.events),
                 static_cast<unsigned long long>(dropped));
@@ -261,6 +350,11 @@ int run(const args& a) {
                 static_cast<unsigned long long>(hist.value_at_percentile(99.0)),
                 static_cast<unsigned long long>(hist.value_at_percentile(99.9)),
                 static_cast<unsigned long long>(hist.max()));
+    if (a.load > 0.0) {
+        std::printf("generator lag (reference cycles): mean=%llu final=%llu\n",
+                    static_cast<unsigned long long>(lag_sum / lat_pairs),
+                    static_cast<unsigned long long>(lag_final));
+    }
     if (hist.overflow_count() > 0) {
         std::printf(
             "latency WARNING: %llu samples exceeded the histogram range; "
