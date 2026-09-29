@@ -1,6 +1,5 @@
 # cmake-lint: disable=C0103
 include_guard(GLOBAL)
-include(CheckCompilerFlag)
 
 add_library(lob_compiler_flags INTERFACE)
 add_library(lob::compiler_flags ALIAS lob_compiler_flags)
@@ -15,25 +14,6 @@ if(MSVC)
                                                       /utf-8)
 else()
   target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer)
-
-  if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # The C++ flag check fails only on output that names a flag of another language
-    # (Modules/Internal/CheckFlagCommonConfig.cmake), so Clang's "argument unused during
-    # compilation" warning passes it. -Werror in CMAKE_REQUIRED_FLAGS makes that warning fail it.
-    block()
-    set(CMAKE_REQUIRED_FLAGS -Werror)
-    set(_lob_perf_candidates -fno-plt -falign-functions=64 -falign-loops=32)
-    set(_lob_perf_compile "")
-    foreach(_flag IN LISTS _lob_perf_candidates)
-      string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${_flag}" _id)
-      check_compiler_flag(CXX "${_flag}" ${_id})
-      if(${_id})
-        list(APPEND _lob_perf_compile "${_flag}")
-      endif()
-    endforeach()
-    target_compile_options(lob_compiler_flags INTERFACE ${_lob_perf_compile})
-    endblock()
-  endif()
 endif()
 
 if(LOB_ENABLE_NATIVE AND NOT MSVC)
