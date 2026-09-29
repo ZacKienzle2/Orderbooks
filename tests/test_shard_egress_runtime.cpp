@@ -1,3 +1,4 @@
+#include <lob/concepts.hpp>
 #include <lob/messages.hpp>
 #include <lob/ring_publisher.hpp>
 #include <lob/shard_egress_runtime.hpp>
@@ -22,17 +23,7 @@ constexpr std::size_t ingress = 1024;
 constexpr std::size_t egress = 4096;
 
 // Reference sink for the synchronous router used as the equivalence oracle.
-struct null_publisher {
-    void publish(const lob::fill_msg&) noexcept {}
-
-    void publish(const lob::top_msg&) noexcept {}
-
-    void publish(const lob::trade_msg&) noexcept {}
-
-    void publish(const lob::self_trade_msg&) noexcept {}
-
-    void publish(const lob::reject_msg&) noexcept {}
-};
+using null_publisher = lob::null_publisher;
 
 using runtime_t = lob::shard_egress_runtime<ticks, max_ord, shards, ingress, egress>;
 using router_t = lob::shard_router<null_publisher, ticks, max_ord, shards>;

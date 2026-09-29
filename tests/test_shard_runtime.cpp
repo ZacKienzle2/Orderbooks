@@ -1,3 +1,4 @@
+#include <lob/concepts.hpp>
 #include <lob/messages.hpp>
 #include <lob/shard_router.hpp>
 #include <lob/shard_runtime.hpp>
@@ -22,17 +23,7 @@ constexpr std::size_t ring = 1024;
 
 // Discards every event. The functional tests assert on resting book state,
 // which the engine owns; event delivery is exercised separately.
-struct null_publisher {
-    void publish(const lob::fill_msg&) noexcept {}
-
-    void publish(const lob::top_msg&) noexcept {}
-
-    void publish(const lob::trade_msg&) noexcept {}
-
-    void publish(const lob::self_trade_msg&) noexcept {}
-
-    void publish(const lob::reject_msg&) noexcept {}
-};
+using null_publisher = lob::null_publisher;
 
 // Thread-safe tally. Worker threads call publish concurrently, so the
 // counters must tolerate simultaneous increments from every shard.

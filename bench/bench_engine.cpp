@@ -1,3 +1,4 @@
+#include <lob/concepts.hpp>
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
 #include <lob/messages.hpp>
@@ -15,17 +16,7 @@ namespace {
 // noexcept-correct no-op publisher. The engine concept requires every
 // publish overload to be noexcept; this implementation discards every
 // event and is safe to inline into a Release build.
-struct noop_publisher {
-    void publish(const lob::fill_msg&) noexcept {}
-
-    void publish(const lob::top_msg&) noexcept {}
-
-    void publish(const lob::trade_msg&) noexcept {}
-
-    void publish(const lob::self_trade_msg&) noexcept {}
-
-    void publish(const lob::reject_msg&) noexcept {}
-};
+using noop_publisher = lob::null_publisher;
 
 constexpr std::size_t bench_ticks = 1U << 14;       // 16k tick ladder
 constexpr std::size_t bench_max_orders = 1U << 16;  // 64k live orders cap

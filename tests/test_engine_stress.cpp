@@ -1,3 +1,4 @@
+#include <lob/concepts.hpp>
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
 #include <lob/messages.hpp>
@@ -21,17 +22,7 @@ namespace {
 constexpr std::size_t ticks = 512;
 constexpr std::size_t max_ord = std::size_t{1} << 13;
 
-struct counting_pub {
-    void publish(const lob::fill_msg&) noexcept {}
-
-    void publish(const lob::top_msg&) noexcept {}
-
-    void publish(const lob::trade_msg&) noexcept {}
-
-    void publish(const lob::self_trade_msg&) noexcept {}
-
-    void publish(const lob::reject_msg&) noexcept {}
-};
+using counting_pub = lob::null_publisher;
 
 using eng_t = lob::engine<counting_pub, ticks, max_ord>;
 

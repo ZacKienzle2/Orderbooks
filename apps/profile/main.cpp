@@ -27,6 +27,7 @@
 //   cross     marketable orders sweeping a replenished opposite side.
 //   sweep     one aggressor draining a tall single-price FIFO per iteration.
 
+#include <lob/concepts.hpp>
 #include <lob/config.hpp>
 #include <lob/engine.hpp>
 #include <lob/hash.hpp>
@@ -48,17 +49,7 @@
 
 namespace {
 
-struct null_pub {
-    void publish(const lob::fill_msg&) noexcept {}
-
-    void publish(const lob::top_msg&) noexcept {}
-
-    void publish(const lob::trade_msg&) noexcept {}
-
-    void publish(const lob::self_trade_msg&) noexcept {}
-
-    void publish(const lob::reject_msg&) noexcept {}
-};
+using null_pub = lob::null_publisher;
 
 constexpr std::size_t ticks = 4096;
 constexpr std::size_t max_orders = std::size_t{1} << 17;
