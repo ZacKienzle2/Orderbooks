@@ -51,11 +51,16 @@ revisions before the migration, are still open. The cookie template renders
 ### Presets
 
 `CMakePresets.json` defines 19 configure, 16 build, 15 test and 5 workflow
-presets, all typed. vcpkg writes none. Conan's `CMakeToolchain` generator writes
-them from profiles, and cmake-init writes them once (ADR-0057). Inside the file,
-`CMAKE_CXX_COMPILER=clang++` is set in 9 presets where one hidden preset could
-set it, and `VCPKG_TARGET_TRIPLET` restates the triplet vcpkg's toolchain
-detects when the variable is unset.
+presets, all typed, and a hidden preset typed to share a value is typed as well.
+`CMAKE_CXX_COMPILER=clang++` repeats in 9 presets, and `VCPKG_TARGET_TRIPLET`
+restates the triplet vcpkg's toolchain detects when the variable is unset. vcpkg
+doesn't generate presets, and these tools do.
+
+| Tool                      | What it generates                                                                                                             | Cost                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Conan 2, `CMakeToolchain` | Configure, build and test presets for each profile at `conan install`, prefixed `conan-`, with user presets that include them | The dependencies move from vcpkg to Conan, and workflow presets are not generated                |
+| A Copier template for C++ | `CMakePresets.json` rendered from its questions, kept current by `copier update`                                              | The one found, 02XX/CMakeTemplate, has 8 commits and generates GoogleTest where this uses Catch2 |
+| cmake-init                | Presets once, at creation                                                                                                     | No update (ADR-0057)                                                                             |
 
 ### Constants
 
@@ -99,16 +104,18 @@ workflow presets, and its documentation is not yet indexed.
 ## Decision Outcome
 
 The owner chooses between the first two options, since both change what the
-template renders or which bot the repository runs. The rest follows the drivers
-and doesn't need a decision. The restated triplets go, the clang++ presets
-inherit one hidden preset, the no-op publisher becomes one type, and
-`lukka/run-cmake` is measured against the composite action once its
-documentation is indexed.
+template renders or which bot the repository runs. The owner also chooses the
+generator for the presets, since Conan replaces the package manager and a Copier
+template adds a second template beside cookie. The rest follows the drivers and
+doesn't need a decision. The restated triplets go, the no-op publisher becomes
+one type, and `lukka/run-cmake` is measured against the composite action once
+its documentation is indexed.
 
 ### Consequences
 
 - Positive: each version and preset traces to the tool that writes it.
-- Negative: presets stay typed while no generator serves a vcpkg build.
+- Negative: generated presets need either a package manager change or a second
+  template.
 - Risk: a Dependabot ecosystem opens pull requests on its own schedule, and the
   hook and lock groups have already gone stale once.
 
