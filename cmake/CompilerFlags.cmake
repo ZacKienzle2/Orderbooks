@@ -10,35 +10,50 @@ target_compile_features(lob_compiler_flags INTERFACE cxx_std_20)
 # Visibility comes from the CMAKE_CXX_VISIBILITY_PRESET and CMAKE_VISIBILITY_INLINES_HIDDEN
 # settings, and colour from the presets' CMAKE_COLOR_DIAGNOSTICS, so neither is a flag here.
 if(MSVC)
-  target_compile_options(lob_compiler_flags INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor
-                                                      /utf-8)
+    target_compile_options(
+        lob_compiler_flags
+        INTERFACE /permissive- /Zc:__cplusplus /Zc:preprocessor /utf-8
+    )
 else()
-  target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer)
+    target_compile_options(lob_compiler_flags INTERFACE -fno-omit-frame-pointer)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # The C++ flag check fails only on output that names a flag of another language
-    # (Modules/Internal/CheckFlagCommonConfig.cmake), so Clang's "argument unused during
-    # compilation" warning passes it. -Werror in CMAKE_REQUIRED_FLAGS makes that warning fail it.
-    block()
-    set(CMAKE_REQUIRED_FLAGS -Werror)
-    set(_lob_perf_candidates -fno-plt -falign-functions=64 -falign-loops=32)
-    set(_lob_perf_compile "")
-    foreach(_flag IN LISTS _lob_perf_candidates)
-      string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${_flag}" _id)
-      check_compiler_flag(CXX "${_flag}" ${_id})
-      if(${_id})
-        list(APPEND _lob_perf_compile "${_flag}")
-      endif()
-    endforeach()
-    target_compile_options(lob_compiler_flags INTERFACE ${_lob_perf_compile})
-    endblock()
-  endif()
+    if(
+        CMAKE_BUILD_TYPE STREQUAL "Release"
+        OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    )
+        # The C++ flag check fails only on output that names a flag of another language
+        # (Modules/Internal/CheckFlagCommonConfig.cmake), so Clang's "argument unused during
+        # compilation" warning passes it. -Werror in CMAKE_REQUIRED_FLAGS makes that warning fail it.
+        block()
+            set(CMAKE_REQUIRED_FLAGS -Werror)
+            set(_lob_perf_candidates
+                -fno-plt
+                -falign-functions=64
+                -falign-loops=32
+            )
+            set(_lob_perf_compile "")
+            foreach(_flag IN LISTS _lob_perf_candidates)
+                string(MAKE_C_IDENTIFIER "LOB_HAVE_CXX_${_flag}" _id)
+                check_compiler_flag(CXX "${_flag}" ${_id})
+                if(${_id})
+                    list(APPEND _lob_perf_compile "${_flag}")
+                endif()
+            endforeach()
+            target_compile_options(
+                lob_compiler_flags
+                INTERFACE ${_lob_perf_compile}
+            )
+        endblock()
+    endif()
 endif()
 
 if(LOB_ENABLE_NATIVE AND NOT MSVC)
-  target_compile_options(lob_compiler_flags INTERFACE -march=native -mtune=native)
+    target_compile_options(
+        lob_compiler_flags
+        INTERFACE -march=native -mtune=native
+    )
 elseif(NOT MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-  target_compile_options(lob_compiler_flags INTERFACE -march=x86-64-v3)
+    target_compile_options(lob_compiler_flags INTERFACE -march=x86-64-v3)
 endif()
 
 # Profile-guided optimisation, in two workflow presets. linux-clang-pgo-generate builds
@@ -56,43 +71,66 @@ endif()
 # each exits, so the tests need no environment of their own. CMakeLists.txt adds the test that
 # merges the pool into LOB_PROFDATA.
 if(LOB_COVERAGE AND NOT LOB_PGO STREQUAL "off")
-  message(FATAL_ERROR "LOB_COVERAGE and LOB_PGO instrument the same way; set one of them")
+    message(
+        FATAL_ERROR
+        "LOB_COVERAGE and LOB_PGO instrument the same way; set one of them"
+    )
 endif()
 if(LOB_COVERAGE OR LOB_PGO STREQUAL "generate")
-  set(LOB_PROFILE_DIR "${CMAKE_BINARY_DIR}/profiles")
-  file(REAL_PATH "${CMAKE_CXX_COMPILER}" _lob_cxx_real)
-  cmake_path(GET _lob_cxx_real PARENT_PATH _lob_llvm_bin)
-  find_program(LLVM_PROFDATA llvm-profdata HINTS "${_lob_llvm_bin}" REQUIRED)
-  set(_lob_profile_flag "-fprofile-instr-generate=${LOB_PROFILE_DIR}/%m.profraw")
-  # Every test that runs an instrumented binary carries these, so it waits for the pool to be
-  # emptied and the merge waits for it.
-  set(LOB_PROFILE_TEST_PROPERTIES FIXTURES_REQUIRED lob_profiles_clean FIXTURES_SETUP lob_profiles)
+    set(LOB_PROFILE_DIR "${CMAKE_BINARY_DIR}/profiles")
+    file(REAL_PATH "${CMAKE_CXX_COMPILER}" _lob_cxx_real)
+    cmake_path(GET _lob_cxx_real PARENT_PATH _lob_llvm_bin)
+    find_program(LLVM_PROFDATA llvm-profdata HINTS "${_lob_llvm_bin}" REQUIRED)
+    set(_lob_profile_flag
+        "-fprofile-instr-generate=${LOB_PROFILE_DIR}/%m.profraw"
+    )
+    # Every test that runs an instrumented binary carries these, so it waits for the pool to be
+    # emptied and the merge waits for it.
+    set(LOB_PROFILE_TEST_PROPERTIES
+        FIXTURES_REQUIRED
+        lob_profiles_clean
+        FIXTURES_SETUP
+        lob_profiles
+    )
 endif()
 
 if(LOB_PGO STREQUAL "generate")
-  set(LOB_PROFDATA "${LOB_PGO_PROFILE}")
-  cmake_path(GET LOB_PROFDATA PARENT_PATH _lob_profdata_dir)
-  file(MAKE_DIRECTORY "${_lob_profdata_dir}")
-  target_compile_options(lob_compiler_flags INTERFACE "${_lob_profile_flag}")
-  target_link_options(lob_compiler_flags INTERFACE "${_lob_profile_flag}")
+    set(LOB_PROFDATA "${LOB_PGO_PROFILE}")
+    cmake_path(GET LOB_PROFDATA PARENT_PATH _lob_profdata_dir)
+    file(MAKE_DIRECTORY "${_lob_profdata_dir}")
+    target_compile_options(lob_compiler_flags INTERFACE "${_lob_profile_flag}")
+    target_link_options(lob_compiler_flags INTERFACE "${_lob_profile_flag}")
 elseif(LOB_PGO STREQUAL "use")
-  if(NOT EXISTS "${LOB_PGO_PROFILE}")
-    message(FATAL_ERROR "LOB_PGO=use needs LOB_PGO_PROFILE to name a .profdata file; "
-                        "run the linux-clang-pgo-generate workflow preset first")
-  endif()
-  target_compile_options(lob_compiler_flags INTERFACE "-fprofile-instr-use=${LOB_PGO_PROFILE}")
-  target_link_options(lob_compiler_flags INTERFACE "-fprofile-instr-use=${LOB_PGO_PROFILE}")
-  # The training set is the engine's own workloads, so the gateway, the replay tool and the
-  # generated version file are legitimately unprofiled; under -Werror that diagnostic would fail the
-  # build for doing what was intended. A profile that disagrees with a function it does know is
-  # different: it means the profile has aged past the code, so that one stays a warning and is only
-  # demoted from an error.
-  if(NOT MSVC)
-    target_compile_options(lob_compiler_flags INTERFACE -Wno-profile-instr-unprofiled
-                                                        -Wno-error=profile-instr-out-of-date)
-  endif()
+    if(NOT EXISTS "${LOB_PGO_PROFILE}")
+        message(
+            FATAL_ERROR
+            "LOB_PGO=use needs LOB_PGO_PROFILE to name a .profdata file; "
+            "run the linux-clang-pgo-generate workflow preset first"
+        )
+    endif()
+    target_compile_options(
+        lob_compiler_flags
+        INTERFACE "-fprofile-instr-use=${LOB_PGO_PROFILE}"
+    )
+    target_link_options(
+        lob_compiler_flags
+        INTERFACE "-fprofile-instr-use=${LOB_PGO_PROFILE}"
+    )
+    # The training set is the engine's own workloads, so the gateway, the replay tool and the
+    # generated version file are legitimately unprofiled; under -Werror that diagnostic would fail the
+    # build for doing what was intended. A profile that disagrees with a function it does know is
+    # different: it means the profile has aged past the code, so that one stays a warning and is only
+    # demoted from an error.
+    if(NOT MSVC)
+        target_compile_options(
+            lob_compiler_flags
+            INTERFACE
+                -Wno-profile-instr-unprofiled
+                -Wno-error=profile-instr-out-of-date
+        )
+    endif()
 elseif(NOT LOB_PGO STREQUAL "off")
-  message(FATAL_ERROR "LOB_PGO must be off, generate or use")
+    message(FATAL_ERROR "LOB_PGO must be off, generate or use")
 endif()
 
 # Source-based coverage instrumentation, which llvm-cov reads to report which regions, lines and
@@ -100,7 +138,13 @@ endif()
 # replays the fuzz corpora, which is how the parser's real coverage is measured, because the corpora
 # reach parts of it no unit test does.
 if(LOB_COVERAGE)
-  set(LOB_PROFDATA "${CMAKE_BINARY_DIR}/coverage.profdata")
-  target_compile_options(lob_compiler_flags INTERFACE "${_lob_profile_flag}" -fcoverage-mapping)
-  target_link_options(lob_compiler_flags INTERFACE "${_lob_profile_flag}" -fcoverage-mapping)
+    set(LOB_PROFDATA "${CMAKE_BINARY_DIR}/coverage.profdata")
+    target_compile_options(
+        lob_compiler_flags
+        INTERFACE "${_lob_profile_flag}" -fcoverage-mapping
+    )
+    target_link_options(
+        lob_compiler_flags
+        INTERFACE "${_lob_profile_flag}" -fcoverage-mapping
+    )
 endif()
