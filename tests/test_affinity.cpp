@@ -1,5 +1,6 @@
 #include <lob/affinity.hpp>
 
+#include <cstddef>
 #include <thread>
 
 #include <catch2/catch_test_macros.hpp>
@@ -22,9 +23,9 @@ TEST_CASE("pin_this_thread_to_core indexes the CPUs the thread may use", "[affin
             return;
         }
         count = CPU_COUNT(&allowed);
-        for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+        for (std::size_t cpu = 0; cpu < std::size_t{CPU_SETSIZE}; ++cpu) {
             if (CPU_ISSET(cpu, &allowed)) {
-                last = cpu;
+                last = static_cast<int>(cpu);
             }
         }
         pinned = lob::pin_this_thread_to_core(static_cast<std::size_t>(count - 1));

@@ -34,7 +34,7 @@ namespace lob {
     if (sched_getaffinity(0, sizeof(allowed), &allowed) != 0) {
         return false;
     }
-    for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+    for (std::size_t cpu = 0; cpu < std::size_t{CPU_SETSIZE}; ++cpu) {
         if (!CPU_ISSET(cpu, &allowed)) {
             continue;
         }
