@@ -32,6 +32,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -129,7 +130,7 @@ args parse_args(int argc, char** argv) {
         } else if (s == "--load" && i + 1 < argc) {
             a.load = std::strtod(argv[++i], nullptr);
             // An open queue at or above its capacity grows without bound.
-            if (!(a.load > 0.0 && a.load < 1.0)) {
+            if (std::isnan(a.load) || a.load <= 0.0 || a.load >= 1.0) {
                 std::cerr << "--load needs 0 < F < 1\n";
                 usage(2);
             }
