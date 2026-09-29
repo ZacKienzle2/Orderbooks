@@ -233,7 +233,8 @@ rule layout_build:
 
 
 # Each binary runs as the latency rule runs its binary, and the runs of one binary and load go to
-# the Slurm job of one group.
+# the Slurm job of one group. The first line of a result names the node, because every run whose
+# saturated rate halved in the layout run of ADR-0055 ran on smp-9-18.
 rule layout_latency:
     input:
         rules.layout_build.output,
@@ -249,8 +250,9 @@ rule layout_latency:
     params:
         load=lambda wildcards: f"--load {wildcards.load}" if float(wildcards.load) > 0 else "",
     shell:
-        'setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
-        " {input} --pin {params.load} --seed {wildcards.rep} > {output} 2> {log}"
+        "uname -n > {output}"
+        ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
+        " {input} --pin {params.load} --seed {wildcards.rep} >> {output} 2> {log}"
 
 
 # One bench_ci values object a binary, load and percentile, which bench_ci reads as one run of the
