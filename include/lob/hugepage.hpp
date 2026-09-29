@@ -1,6 +1,7 @@
 #ifndef LOB_HUGEPAGE_HPP
 #define LOB_HUGEPAGE_HPP
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <new>
@@ -96,14 +97,17 @@ class hugepage_region {
         alignment_ = alignment;
 
 #if defined(__linux__) && defined(MAP_HUGETLB)
-#if defined(MAP_HUGE_2MB)
-        constexpr int huge_2mb = MAP_HUGE_2MB;
+#if defined(MAP_HUGE_SHIFT)
+        // mmap(2) takes the base-2 logarithm of the huge page size in the bits
+        // at MAP_HUGE_SHIFT, the encoding that defines MAP_HUGE_2MB.
+        constexpr int huge_size = std::countr_zero(huge_page_bytes) << MAP_HUGE_SHIFT;
 #else
-        constexpr int huge_2mb = 21 << 26;  // 2 MiB selector in the MAP_HUGE bitfield
+        // A zero in that field asks mmap(2) for the default huge page size.
+        constexpr int huge_size = 0;
 #endif
         const std::size_t rounded = round_up_(bytes, huge_page_bytes);
         void* huge_map = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE,
-                                MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_2mb, -1, 0);
+                                MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | huge_size, -1, 0);
         if (huge_map != MAP_FAILED) {
             ptr_ = huge_map;
             mapped_bytes_ = rounded;

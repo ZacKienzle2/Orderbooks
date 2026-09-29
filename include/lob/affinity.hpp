@@ -60,9 +60,13 @@ namespace lob {
 #endif
 }
 
+// The pthread_setname_np(3) manual restricts a Linux thread name to 16
+// characters, including the terminating null byte.
+inline constexpr std::size_t thread_name_capacity = 16;
+
 // Best-effort thread name for diagnostics and perf records. Returns true if
-// the kernel accepted the name. Linux limits names to 15 characters plus a
-// terminator; macOS limits to 63.
+// the kernel accepted the name. A name must fit thread_name_capacity on Linux;
+// macOS limits it to 63 characters.
 [[nodiscard]] inline bool set_this_thread_name(const char* name) noexcept {
 #if defined(__linux__)
     return pthread_setname_np(pthread_self(), name) == 0;
