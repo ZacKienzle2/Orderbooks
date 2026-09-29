@@ -48,7 +48,7 @@ loads:
 # each load. Thirty binaries follow the initial experiment of 30 repetitions at each level
 # (Kalibera and Jones, ISMM 2013, section 9.1). A first comparison of these presets with one binary
 # a side favoured the flags, and across 30 binaries a side the build without them had the lower
-# p50 at both loads (ADR-0055).
+# p50 at 0.3 (ADR-0055).
 layout:
   presets:
     - conda-clang-rel
