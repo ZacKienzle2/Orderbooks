@@ -65,12 +65,14 @@ SOURCES = [
 # detect --force writes the default profile the conda profile includes from the environment's
 # compilers each time. The const entry of build_folder_vars names the build folder
 # build/<preset>/Release and its presets conan-<preset>-release after the preset (cmake_layout
-# reference), and the recipe's options name nothing here.
+# reference), and the recipe's options name nothing here. The & pattern applies a conf to the
+# consumer conanfile alone ("Profile patterns"), so no dependency built into the shared cache takes
+# it, and conf is not part of a package_id.
 def conan(preset, command, folder=None):
     options = " ".join(f'-o "&:{option}"' for option in config["conan"][preset])
     return (
         f"conan {command} . -pr:h workflow/conan/conda -pr:b default --build=missing {options}"
-        f" -c \"tools.cmake.cmake_layout:build_folder_vars=['const.{folder or preset}']\""
+        f" -c \"&:tools.cmake.cmake_layout:build_folder_vars=['const.{folder or preset}']\""
     )
 
 
@@ -259,7 +261,7 @@ rule layout_install:
     shell:
         "conan profile detect --force > {log} 2>&1"
         " && {params.conan} -c tools.build:jobs={threads}"
-        " -c \"tools.cmake.cmaketoolchain:extra_variables*={{'CMAKE_CXX_FLAGS': '-ffunction-sections'}}\""
+        " -c \"&:tools.cmake.cmaketoolchain:extra_variables*={{'CMAKE_CXX_FLAGS': '-ffunction-sections'}}\""
         " >> {log} 2>&1"
 
 
