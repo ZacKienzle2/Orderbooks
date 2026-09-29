@@ -1,0 +1,44 @@
+# Settings of the measurement workflow. A run takes every setting from this file and none from its
+# command line, so the configuration archived beside a result reproduces it (Ingo and Daly, DBTest
+# 2020, sections 2.1 and 2.4).
+
+# The configure, build and test presets of CMakePresets.json whose binaries are measured, each
+# with every rule. The conda presets take their compilers from the toolchain environment the rules
+# deploy. ADR-0055 compared conda-clang-rel with conda-clang-rel-no-frontend-flags, and listing
+# both here repeats that comparison, as listing conda-clang-pgo repeats that of ADR-0056.
+presets:
+  - conda-clang-rel
+
+# The preset whose tests train the profile, and the presets built from it.
+pgo:
+  train: conda-clang-pgo-generate
+  use:
+    - conda-clang-pgo
+
+# Executions of each measured process. Kalibera and Jones (ISMM 2013, section 9.1) open with an
+# initial experiment of 30 repetitions at each level, from which the variances dimension the real
+# experiment.
+repeats: 30
+
+# Top-down level 1 metrics of perf, each measured by a process of its own. The fc430 nodes run
+# without hyper-threading, so the kernel schedules eight general counters a core, and four of them
+# count while the other four read zero. The NMI watchdog holds the fixed cycle counter. The
+# TopdownL1 group asks for seven general events and three of them read zero, and a metric of four
+# or fewer general events reads true. Front end bound and retiring fit. Bad speculation takes six,
+# and back end bound is the remainder of all three.
+metrics:
+  - tma_frontend_bound
+  - tma_retiring
+
+# Offered loads of the latency phase of the load generator, as fractions of the rate at which its
+# saturated throughput phase delivered fills. Load 0 keeps the phase closed with one pair in
+# flight, which times service alone. The saturated phase claims its rings in batches, which
+# Poisson arrivals at a lower rate do not fill, so the pipeline saturates below that rate. A
+# Friday probe on smp-9-5 read a p50 of 954 reference cycles at 0.1, 1975 at 0.3 and 885247 at 0.5,
+# while the generator sent a mean of 33, 74 and 187 cycles behind its schedule, so the queue at
+# 0.5 was the pipeline's. The loads sit below that knee, where the generator stays lightly
+# utilised, which Treadmill asks of a client (ISCA 2016, section II.A).
+loads:
+  - 0
+  - 0.1
+  - 0.3

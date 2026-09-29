@@ -17,13 +17,8 @@ if(MSVC)
   return()
 endif()
 
-string(REPLACE "," ";" _lob_san_list "${LOB_SANITIZER}")
-set(_lob_san_flags "")
-foreach(_san IN LISTS _lob_san_list)
-  string(STRIP "${_san}" _san)
-  list(APPEND _lob_san_flags "-fsanitize=${_san}")
-endforeach()
-
-target_compile_options(lob_sanitizers INTERFACE ${_lob_san_flags} -fno-omit-frame-pointer
+# clang and gcc both take the comma-separated list -fsanitize= is documented with. The frame pointer
+# the sanitizer reports need comes from lob::compiler_flags, which every target links.
+target_compile_options(lob_sanitizers INTERFACE "-fsanitize=${LOB_SANITIZER}"
                                                 -fno-optimize-sibling-calls)
-target_link_options(lob_sanitizers INTERFACE ${_lob_san_flags})
+target_link_options(lob_sanitizers INTERFACE "-fsanitize=${LOB_SANITIZER}")

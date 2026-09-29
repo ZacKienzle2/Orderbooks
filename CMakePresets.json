@@ -1,23 +1,15 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 30,
-    "patch": 0
-  },
   "configurePresets": [
     {
       "name": "_base",
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/install/${presetName}",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_COLOR_DIAGNOSTICS": "ON",
-        "VCPKG_MANIFEST_MODE": "ON",
-        "VCPKG_MANIFEST_INSTALL": "ON"
+        "CMAKE_COLOR_DIAGNOSTICS": "ON"
       }
     },
     {
@@ -52,7 +44,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_ENABLE_LTO": "ON"
       }
@@ -63,7 +54,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
       }
     },
@@ -73,7 +63,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
       }
     },
@@ -83,7 +72,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++"
       }
     },
@@ -93,7 +81,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++"
       }
     },
@@ -103,7 +90,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_SANITIZER": "address,undefined"
       }
@@ -114,7 +100,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_SANITIZER": "thread"
       }
@@ -125,7 +110,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_SANITIZER": "memory"
       }
@@ -136,7 +120,6 @@
       "inherits": "_linux",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "LOB_BUILD_FUZZ": "ON",
         "LOB_BUILD_TESTS": "OFF",
@@ -167,6 +150,87 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
+    },
+    {
+      "name": "linux-clang-coverage",
+      "displayName": "Linux Clang source-based coverage of the test suite",
+      "inherits": "linux-clang-debug",
+      "cacheVariables": {
+        "LOB_COVERAGE": "ON",
+        "LOB_BUILD_BENCH": "OFF"
+      }
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "displayName": "Linux Clang source-based coverage of the fuzz corpora",
+      "inherits": "linux-clang-fuzz",
+      "cacheVariables": {
+        "LOB_COVERAGE": "ON",
+        "LOB_SANITIZER": ""
+      }
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "displayName": "Linux Clang profile training over the profiler workloads",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_PGO": "generate",
+        "LOB_BUILD_TESTS": "OFF",
+        "LOB_BUILD_BENCH": "OFF"
+      }
+    },
+    {
+      "name": "linux-clang-pgo",
+      "displayName": "Linux Clang Release built from the trained profile",
+      "inherits": "_linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LOB_PGO": "use"
+      }
+    },
+    {
+      "name": "_conda",
+      "hidden": true,
+      "description": "The compiler, linker and archiver of workflow/envs/toolchain.yaml, whose clang activation packages set CXX to the conda-forge compiler and its sysroot (conda-forge FAQ). That clang lacks the LLVMgold.so plugin the default linker would load for ThinLTO, and lld is a linker of the Clang ThinLTO documentation, so the preset selects it through CMAKE_LINKER_TYPE, which try_compile also reads. CMake looks for llvm-ar and llvm-ranlib under the x86_64-conda-linux-gnu- prefix of the compiler name (Modules/Compiler/Clang-FindBinUtils.cmake), and llvm-tools installs them without it, so the preset names the ones in CONDA_PREFIX, the variable the activation scripts build their own paths from. The activation also exports CXXFLAGS with flags of its own, such as -O2, -march=nocona and -fno-plt, which CMake would take into CMAKE_CXX_FLAGS on the first configure, so the preset sets that variable empty and the build takes the project flags alone, as the Linux presets do. LDFLAGS stays, since its rpath binds the environment's libstdc++.",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "$env{CXX}",
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_CXX_FLAGS": "",
+        "CMAKE_CXX_COMPILER_AR": "$env{CONDA_PREFIX}/bin/llvm-ar",
+        "CMAKE_CXX_COMPILER_RANLIB": "$env{CONDA_PREFIX}/bin/llvm-ranlib"
+      }
+    },
+    {
+      "name": "conda-clang-rel",
+      "inherits": ["_conda", "linux-clang-rel"],
+      "displayName": "Linux Clang Release in the conda toolchain of the workflow",
+      "description": "linux-clang-rel built with the conda toolchain of the workflow."
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "inherits": "conda-clang-rel",
+      "displayName": "conda-clang-rel without the front end flags",
+      "description": "conda-clang-rel with -fno-plt, -falign-functions=64 and -falign-loops=32 of cmake/CompilerFlags.cmake left out, the other side of the comparison that decides whether they stay. check_compiler_flag checks once and keeps its result in the cache variable it names (CheckCompilerFlag module), so a false result set here leaves the flag out without a change to the project.",
+      "cacheVariables": {
+        "LOB_HAVE_CXX__fno_plt": "OFF",
+        "LOB_HAVE_CXX__falign_functions_64": "OFF",
+        "LOB_HAVE_CXX__falign_loops_32": "OFF"
+      }
+    },
+    {
+      "name": "conda-clang-pgo-generate",
+      "inherits": ["_conda", "linux-clang-pgo-generate"],
+      "displayName": "Linux Clang profile training in the conda toolchain of the workflow",
+      "description": "linux-clang-pgo-generate built with the conda toolchain of the workflow, which supplies the llvm-profdata the merge finds beside the compiler."
+    },
+    {
+      "name": "conda-clang-pgo",
+      "inherits": ["_conda", "linux-clang-pgo"],
+      "displayName": "Linux Clang Release from the trained profile in the conda toolchain of the workflow",
+      "description": "linux-clang-pgo built with the conda toolchain of the workflow, from the profile conda-clang-pgo-generate merges."
     }
   ],
   "buildPresets": [
@@ -217,6 +281,38 @@
     {
       "name": "macos-clang-debug",
       "configurePreset": "macos-clang-debug"
+    },
+    {
+      "name": "linux-clang-coverage",
+      "configurePreset": "linux-clang-coverage"
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "configurePreset": "linux-clang-fuzz-coverage"
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "configurePreset": "linux-clang-pgo-generate"
+    },
+    {
+      "name": "linux-clang-pgo",
+      "configurePreset": "linux-clang-pgo"
+    },
+    {
+      "name": "conda-clang-rel",
+      "configurePreset": "conda-clang-rel"
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "configurePreset": "conda-clang-rel-no-frontend-flags"
+    },
+    {
+      "name": "conda-clang-pgo-generate",
+      "configurePreset": "conda-clang-pgo-generate"
+    },
+    {
+      "name": "conda-clang-pgo",
+      "configurePreset": "conda-clang-pgo"
     }
   ],
   "testPresets": [
@@ -224,12 +320,10 @@
       "name": "_test_base",
       "hidden": true,
       "output": {
-        "outputOnFailure": true,
-        "verbosity": "default"
+        "outputOnFailure": true
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
         "jobs": 0
       }
     },
@@ -282,6 +376,197 @@
       "name": "macos-clang-debug",
       "configurePreset": "macos-clang-debug",
       "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "configurePreset": "linux-clang-fuzz",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-coverage",
+      "configurePreset": "linux-clang-coverage",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "configurePreset": "linux-clang-fuzz-coverage",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "configurePreset": "linux-clang-pgo-generate",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "conda-clang-rel",
+      "configurePreset": "conda-clang-rel",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "configurePreset": "conda-clang-rel-no-frontend-flags",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "conda-clang-pgo-generate",
+      "configurePreset": "conda-clang-pgo-generate",
+      "inherits": "_test_base"
+    },
+    {
+      "name": "conda-clang-pgo",
+      "configurePreset": "conda-clang-pgo",
+      "inherits": "_test_base"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "linux-clang-fuzz",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-fuzz"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-fuzz"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-fuzz"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-coverage"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-coverage"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-coverage"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-fuzz-coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-fuzz-coverage"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-fuzz-coverage"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-fuzz-coverage"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-pgo-generate",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-pgo-generate"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-pgo-generate"
+        },
+        {
+          "type": "test",
+          "name": "linux-clang-pgo-generate"
+        }
+      ]
+    },
+    {
+      "name": "linux-clang-pgo",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-clang-pgo"
+        },
+        {
+          "type": "build",
+          "name": "linux-clang-pgo"
+        }
+      ]
+    },
+    {
+      "name": "conda-clang-rel",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "conda-clang-rel"
+        },
+        {
+          "type": "build",
+          "name": "conda-clang-rel"
+        },
+        {
+          "type": "test",
+          "name": "conda-clang-rel"
+        }
+      ]
+    },
+    {
+      "name": "conda-clang-rel-no-frontend-flags",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "conda-clang-rel-no-frontend-flags"
+        },
+        {
+          "type": "build",
+          "name": "conda-clang-rel-no-frontend-flags"
+        },
+        {
+          "type": "test",
+          "name": "conda-clang-rel-no-frontend-flags"
+        }
+      ]
+    },
+    {
+      "name": "conda-clang-pgo-generate",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "conda-clang-pgo-generate"
+        },
+        {
+          "type": "build",
+          "name": "conda-clang-pgo-generate"
+        },
+        {
+          "type": "test",
+          "name": "conda-clang-pgo-generate"
+        }
+      ]
+    },
+    {
+      "name": "conda-clang-pgo",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "conda-clang-pgo"
+        },
+        {
+          "type": "build",
+          "name": "conda-clang-pgo"
+        },
+        {
+          "type": "test",
+          "name": "conda-clang-pgo"
+        }
+      ]
     }
   ]
 }

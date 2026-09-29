@@ -1,0 +1,187 @@
+# The measurement workflow of Orderbooks. It builds each preset in the toolchain environment of
+# workflow/envs and classifies each profiler workload with the top-down method (Yasin, ISPASS 2014)
+# before any remedy is measured, since the method drills only into the categories it flags (section
+# 3). Every setting comes from config/config.yaml.
+
+import glob
+import os
+
+configfile: "config/config.yaml"
+
+
+def topdown_results(wildcards):
+    return [
+        path
+        for preset in config["presets"]
+        for path in expand(
+            "results/topdown/{preset}/{workload}/{metric}.json",
+            preset=preset,
+            workload=workloads(preset),
+            metric=config["metrics"],
+        )
+    ]
+
+
+def latency_results(wildcards):
+    return expand(
+        "results/latency/{preset}/{load}/{rep}.txt",
+        preset=config["presets"],
+        load=config["loads"],
+        rep=range(config["repeats"]),
+    )
+
+
+def sql_list(paths):
+    return "[" + ", ".join(f"'{path}'" for path in paths) + "]"
+
+
+rule all:
+    input:
+        "results/summary/topdown.csv",
+        "results/summary/latency.csv",
+
+
+SOURCES = [
+    path
+    for tree in ("include", "src", "apps", "bench", "tests", "fuzz", "cmake")
+    for path in glob.glob(f"{tree}/**/*", recursive=True)
+    if os.path.isfile(path)
+] + ["CMakeLists.txt", "CMakePresets.json", "vcpkg.json", "vcpkg-configuration.json"]
+
+
+# The training workflow runs every profiler workload instrumented and merges the counts into the
+# profile a LOB_PGO=use build reads, the default LOB_PGO_PROFILE of CMakeLists.txt. ADR-0056 trained
+# on the gateway and the load generator too, and kept the profile-guided build off.
+rule pgo_profile:
+    input:
+        SOURCES,
+    output:
+        "artifacts/pgo/train.profdata",
+    log:
+        "logs/pgo/train.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    params:
+        preset=config["pgo"]["train"],
+    shell:
+        "VCPKG_MAX_CONCURRENCY={threads} cmake --workflow --preset {params.preset} --fresh"
+        " > {log} 2>&1"
+
+
+# cmake --workflow configures, builds and runs the preset's tests, so a build that fails its tests on
+# Friday stops here. vcpkg builds the manifest on logical cores + 1 unless VCPKG_MAX_CONCURRENCY is
+# set (vcpkg environment variables reference), which counts the node rather than the job's threads.
+# A preset that reads the profile waits for the training.
+rule build:
+    input:
+        lambda wildcards: SOURCES
+        + (rules.pgo_profile.output if wildcards.preset in config["pgo"]["use"] else []),
+    output:
+        profile="build/{preset}/apps/profile/lob_profile",
+        loadgen="build/{preset}/apps/loadgen/lob_loadgen",
+    log:
+        "logs/build/{preset}.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    shell:
+        "VCPKG_MAX_CONCURRENCY={threads} cmake --workflow --preset {wildcards.preset} --fresh"
+        " > {log} 2>&1"
+
+
+# The profiler lists its workloads, so a workload added there is measured without a second list
+# here, as the profile training tests read the same listing.
+checkpoint workloads:
+    input:
+        rules.build.output.profile,
+    output:
+        "results/workloads/{preset}.txt",
+    log:
+        "logs/workloads/{preset}.log",
+    conda:
+        "envs/toolchain.yaml"
+    shell:
+        "{input} --list > {output} 2> {log}"
+
+
+def workloads(preset):
+    with open(checkpoints.workloads.get(preset=preset).output[0]) as listing:
+        return [line.split()[0] for line in listing if line.strip()]
+
+
+# Top-level slots of each workload, one metric of config/config.yaml a process.
+# setarch -R turns off address space randomisation for the process and env -i fixes its environment,
+# which brought retired instruction counts from a variation of 1.07 per cent to below 0.002 per cent
+# (Weaver and McKee, IISWC 2008, sections 4.2.1 and 5). perf stat -r repeats the process and -j writes
+# JSON, the tool's own output format. JSON output carries each metric's threshold, and perf adds the
+# events a threshold expression needs, two more general events for retiring, unless
+# --metric-no-threshold is given (perf stat -h). A threshold the metric's own events decide is
+# still reported.
+rule topdown:
+    input:
+        rules.build.output.profile,
+    output:
+        "results/topdown/{preset}/{workload}/{metric}.json",
+    log:
+        "logs/topdown/{preset}/{workload}/{metric}.log",
+    conda:
+        "envs/toolchain.yaml"
+    params:
+        repeats=config["repeats"],
+    shell:
+        'setarch -R env -i PATH="$PATH" perf stat -j -r {params.repeats}'
+        " --metric-no-threshold -M {wildcards.metric}"
+        " -o {output} -- {input} --workload {wildcards.workload} > {log} 2>&1"
+
+
+# End-to-end latency of the load generator, closed with one pair in flight at load 0 and open at the
+# other loads (Schroeder, Wierman and Harchol-Balter, NSDI 2006, section 5.1). numactl binds the
+# process and its memory to node 0, because threads and memory spread over two nodes inflated the
+# tail (Tales of the tail, SoCC 2014, section 4.5), and the pinned workers take the first CPUs of
+# that node. Each repetition draws its arrivals from a seed of its own. cpupower records the
+# frequency governor and the idle states, which a job cannot change and which moved the tail too
+# (section 4.6).
+rule latency:
+    input:
+        rules.build.output.loadgen,
+    output:
+        latency="results/latency/{preset}/{load}/{rep}.txt",
+        host="results/latency/{preset}/{load}/{rep}.host.txt",
+    log:
+        "logs/latency/{preset}/{load}/{rep}.log",
+    conda:
+        "envs/toolchain.yaml"
+    threads: workflow.cores
+    params:
+        load=lambda wildcards: f"--load {wildcards.load}" if float(wildcards.load) > 0 else "",
+    shell:
+        "cpupower frequency-info > {output.host} 2> {log}"
+        " && cpupower idle-info >> {output.host} 2>> {log}"
+        ' && setarch -R env -i PATH="$PATH" numactl --cpunodebind=0 --membind=0'
+        " {input} --pin {params.load} --seed {wildcards.rep} > {output.latency} 2>> {log}"
+
+
+# DuckDB summarises the results in SQL, each query reading the files its input lists through the
+# variable files, so a result of a preset or a load that config/config.yaml no longer names stays out.
+rule summary:
+    input:
+        topdown=topdown_results,
+        latency=latency_results,
+        topdown_sql="workflow/sql/topdown.sql",
+        latency_sql="workflow/sql/latency.sql",
+    output:
+        topdown="results/summary/topdown.csv",
+        latency="results/summary/latency.csv",
+    log:
+        "logs/summary.log",
+    conda:
+        "envs/summary.yaml"
+    params:
+        topdown=lambda wildcards, input: sql_list(input.topdown),
+        latency=lambda wildcards, input: sql_list(input.latency),
+    shell:
+        'duckdb -csv -c "SET VARIABLE files = {params.topdown}" -c ".read {input.topdown_sql}"'
+        " > {output.topdown} 2> {log}"
+        ' && duckdb -csv -c "SET VARIABLE files = {params.latency}" -c ".read {input.latency_sql}"'
+        " > {output.latency} 2>> {log}"
