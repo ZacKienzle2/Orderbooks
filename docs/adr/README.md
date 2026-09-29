@@ -1,14 +1,14 @@
 # Architecture Decision Records
 
-This directory holds the architectural decisions for Orderbooks, recorded as
+This directory contains the architectural decisions for Orderbooks, recorded as
 [Markdown Architecture Decision Records (MADR v3)](https://adr.github.io/madr/).
 
 ## Why ADRs
 
 An ADR captures one architectural decision, the alternatives considered, and the
-reasoning behind the chosen option. Each decision lives in its own file so
-reviewers can find, challenge, and supersede individual calls without rewriting
-a wall of prose.
+reasoning behind the chosen option. Each decision has its own file so reviewers
+can find, challenge, and supersede individual calls without rewriting a wall of
+prose.
 
 ## File naming
 
@@ -18,16 +18,16 @@ number assigned at creation time and never reused. Examples:
 - `0001-cpp20-baseline.md`
 - `0007-unordered-dense-id-index.md`
 
-Four digits gives headroom for a thousand-plus ADRs while preserving file-system
-sort order.
+The zero padding keeps file-system sort order and leaves headroom for a
+thousand-plus ADRs.
 
 ## Lifecycle
 
-Each ADR carries a `Status` field:
+Each ADR has a `Status` field.
 
 - **Proposed** - drafted, under review, not yet adopted.
 - **Accepted** - the decision is in force.
-- **Deprecated** - no longer recommended; retained for historical context.
+- **Deprecated** - no longer recommended, and kept for historical context.
 - **Superseded by ADR-NNNN** (link to the replacing ADR) - replaced by a later
   decision.
 
@@ -37,7 +37,7 @@ history.
 
 ## Writing a new ADR
 
-Copy `template.md` to the next free number with a slug of the title, for example
+Copy `template.md` to the next free number with a slug of the title, such as
 `docs/adr/0041-use-avx-512-fast-path-on-supporting-hosts.md`, set the status and
 date in its front matter, fill in the placeholders, link any related ADRs, and
 update the index below. The template is the scaffold.
@@ -50,7 +50,7 @@ update the index below. The template is the scaffold.
 | [0001](0001-cpp20-baseline.md)                                  | Accepted               | C++20 as the language baseline                                    |
 | [0002](0002-cmake-vcpkg-manifest-mode.md)                       | Accepted               | CMake 3.28 with vcpkg manifest mode                               |
 | [0003](0003-linux-x86-64-primary-macos-dev.md)                  | Accepted               | Linux x86_64 primary target, macOS for development                |
-| [0004](0004-dense-tick-ladder-book.md)                          | Accepted               | Dense tick-ladder order book representation                       |
+| [0004](0004-dense-tick-ladder-book.md)                          | Accepted               | Dense tick ladder for the order book                              |
 | [0005](0005-hierarchical-bitmap-best-price.md)                  | Accepted               | Hierarchical bitmap for best-price queries                        |
 | [0006](0006-slab-arena-intrusive-fifo.md)                       | Accepted               | Slab arena with intrusive FIFOs for orders                        |
 | [0007](0007-unordered-dense-id-index.md)                        | Superseded by ADR-0017 | ankerl::unordered_dense for the order-id index                    |
@@ -98,6 +98,7 @@ update the index below. The template is the scaffold.
 | [0050](0050-coverage-guided-fuzzing-at-the-trust-boundaries.md) | Accepted               | Coverage-guided fuzzing at the trust boundaries                   |
 | [0051](0051-compiler-directed-optimisation.md)                  | Accepted               | Compiler-directed optimisation: remarks surveyed, profile adopted |
 | [0052](0052-the-merger-is-not-on-the-reply-path.md)             | Accepted               | The merger belongs to consumers that need a total order           |
+| [0053](0053-trace-every-literal-and-check-to-a-source.md)       | Proposed               | Trace every literal and every disabled check to a source          |
 
 ## References
 
