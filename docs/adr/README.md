@@ -101,6 +101,7 @@ update the index below. The template is the scaffold.
 | [0053](0053-trace-every-literal-and-check-to-a-source.md)       | Proposed               | Trace every literal and every disabled check to a source          |
 | [0054](0054-measure-on-friday-through-a-snakemake-workflow.md)  | Proposed               | Measure on Friday through a Snakemake workflow                    |
 | [0055](0055-keep-the-front-end-flags.md)                        | Proposed               | Keep the front end flags of the release build                     |
+| [0056](0056-keep-the-profile-guided-build-off.md)               | Proposed               | Keep the profile-guided build off by default                      |
 
 ## References
 
