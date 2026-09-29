@@ -7,7 +7,9 @@ name: Fuzz
 # failure, so the run finds the cases nobody thought to write down.
 #
 # A pull request gets a short budget per harness, enough to replay the corpus
-# and explore around it. The scheduled run is the long one.
+# and explore around it. The scheduled run is the long one. A schedule event
+# has no inputs, so the long budget is the fallback rather than the input's
+# default, which a scheduled run would never read.
 
 on:
   pull_request:
@@ -23,9 +25,9 @@ on:
   workflow_dispatch:
     inputs:
       seconds:
-        description: "Budget per harness, in seconds"
+        description:
+          "Budget per harness, in seconds, or empty for the scheduled budget"
         required: false
-        default: "300"
 
 permissions:
   contents: read
@@ -54,22 +56,15 @@ jobs:
         uses: $/.github/actions/cmake-preset
         with:
           preset: linux-clang-fuzz
+          configure-args: >-
+            -DLOB_FUZZ_SECONDS=${{ inputs.seconds || (github.event_name ==
+            'pull_request' && '60') || '300' }}
 
-      # A crash leaves its input in the working directory, so the step fails
-      # and the artifact upload below carries the reproducer.
+      # ctest replays each corpus and then fuzzes it, every harness at once. A
+      # crash leaves its input beside the corpora, so the step fails and the
+      # artifact upload below carries the reproducer.
       - name: Fuzz each harness
-        env:
-          SECONDS_PER_HARNESS: ${{ inputs.seconds || '60' }}
-        run: |
-          mkdir -p artifacts/fuzz
-          cd artifacts/fuzz
-          for target in fix_raw fix_framed snapshot_restore gateway_wire; do
-            mkdir -p "corpus/$target"
-            echo "::group::$target"
-            "../../build/linux-clang-fuzz/fuzz/lob_fuzz_$target" "corpus/$target" \
-              -max_total_time="$SECONDS_PER_HARNESS" -print_final_stats=1 -rss_limit_mb=4096
-            echo "::endgroup::"
-          done
+        run: ctest --preset linux-clang-fuzz
 
       - name: Upload corpora and any reproducers
         if: always()

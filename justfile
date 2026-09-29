@@ -60,8 +60,12 @@ fuzzers:
 fuzz target="fix_framed" seconds="60": fuzzers
     build/linux-clang-fuzz/fuzz/lob_fuzz_{{ target }} artifacts/fuzz/corpus/{{ target }} -max_total_time={{ seconds }} -print_final_stats=1
 
-# Fuzz every harness in turn.
-fuzz-all seconds="60": (fuzz "fix_raw" seconds) (fuzz "fix_framed" seconds) (fuzz "snapshot_restore" seconds) (fuzz "gateway_wire" seconds)
+# Fuzz every harness at once, each for the budget, as ctest runs the fuzzing
+# tests that LOB_FUZZ_SECONDS registers.
+fuzz-all seconds="60":
+    cmake --preset linux-clang-fuzz -DLOB_FUZZ_SECONDS={{ seconds }}
+    cmake --build --preset linux-clang-fuzz
+    ctest --preset linux-clang-fuzz
 
 # Train a profile. The workflow builds instrumented, runs every workload the
 # profiler lists as a test, and merges the counts into artifacts/pgo. The
