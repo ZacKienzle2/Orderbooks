@@ -45,6 +45,10 @@ if(LOB_ENABLE_LTO)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
+# Testing is on whatever the build shape, because the profiler's training runs and the fuzz corpus
+# replays are tests too, and a preset that builds no unit tests still runs those.
+include(CTest)
+
 add_subdirectory(src/lob)
 
 if(LOB_HEADER_SELF_CONTAINMENT)
@@ -56,8 +60,6 @@ add_subdirectory(apps/gateway)
 add_subdirectory(apps/profile)
 
 if(LOB_BUILD_TESTS)
-  enable_testing()
-  include(CTest)
   add_subdirectory(tests)
 endif()
 
@@ -67,6 +69,48 @@ endif()
 
 if(LOB_BUILD_FUZZ)
   add_subdirectory(fuzz)
+endif()
+
+# An instrumented build pools every process's raw profile under LOB_PROFILE_DIR, one file per
+# binary, which clang's %m pattern merges as each process exits. The tests that write profiles are
+# setup tests of the lob_profiles fixture, so the merge below runs once all of them have, and the
+# pool is emptied first so a rebuilt binary's profile is never merged with its predecessor's.
+if(LOB_PROFILE_DIR)
+  add_test(NAME lob_profiles_clean COMMAND "${CMAKE_COMMAND}" -E rm -rf "${LOB_PROFILE_DIR}")
+  set_tests_properties(lob_profiles_clean PROPERTIES FIXTURES_SETUP lob_profiles_clean)
+  add_test(NAME lob_profiles_merge COMMAND "${LLVM_PROFDATA}" merge "-output=${LOB_PROFDATA}"
+                                           "${LOB_PROFILE_DIR}")
+  set_tests_properties(lob_profiles_merge PROPERTIES FIXTURES_REQUIRED lob_profiles)
+endif()
+
+# llvm-cov's arguments for the merged profile, written as a response file so the report names every
+# instrumented binary the build defines and only this repository's sources, with nothing listed by
+# hand: `llvm-cov report @build/<preset>/coverage.rsp`.
+if(LOB_COVERAGE)
+  set(_lob_cov_targets "")
+  if(TARGET lob_tests)
+    list(APPEND _lob_cov_targets lob_tests)
+  endif()
+  if(LOB_BUILD_FUZZ)
+    get_property(
+      _lob_fuzz_targets
+      DIRECTORY fuzz
+      PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND _lob_cov_targets ${_lob_fuzz_targets})
+  endif()
+  # The first binary is positional, as llvm-cov reads the positional arguments after it as sources.
+  list(TRANSFORM _lob_cov_targets REPLACE "(.+)" "-object=$<TARGET_FILE:\\1>")
+  list(
+    TRANSFORM _lob_cov_targets
+    REPLACE "^-object=" ""
+    AT 0)
+  list(JOIN _lob_cov_targets "\n" _lob_cov_objects)
+  file(
+    GENERATE
+    OUTPUT "${CMAKE_BINARY_DIR}/coverage.rsp"
+    CONTENT
+      "-instr-profile=${LOB_PROFDATA}\n${_lob_cov_objects}\n${PROJECT_SOURCE_DIR}/include\n${PROJECT_SOURCE_DIR}/src\n${PROJECT_SOURCE_DIR}/apps\n"
+  )
 endif()
 
 # Install rules deferred until the engine ABI is settled; consumers should currently embed the
