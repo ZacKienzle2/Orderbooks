@@ -37,9 +37,6 @@ def _parse_argv() -> argparse.Namespace:
         default=None,
         help="JSON Lines event log emitted by lob_replay",
     )
-    parser.add_argument(
-        "--bench", type=Path, default=None, help="Google Benchmark JSON output"
-    )
     raw = sys.argv[1:]
     if "--" in raw:
         raw = raw[raw.index("--") + 1 :]

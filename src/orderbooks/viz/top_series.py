@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from matplotlib.figure import Figure
 
     from .event_log import EventLog
 
@@ -30,8 +28,9 @@ def render(log: EventLog, output: str | Path | None = None) -> Figure:
 
     tops = log.tops.sort_values("seq")
 
-    fig, (ax_px, ax_spread) = plt.subplots(
-        2, 1, figsize=(10, 6), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
+    fig = Figure(figsize=(10, 6))
+    ax_px, ax_spread = fig.subplots(
+        2, 1, sharex=True, gridspec_kw={"height_ratios": [3, 1]}
     )
 
     has_bid = tops["bid_qty"] > 0

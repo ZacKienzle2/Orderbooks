@@ -5,15 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from matplotlib.figure import Figure
 
     from .event_log import EventLog
 
@@ -50,7 +48,7 @@ def at_seq(log: EventLog, seq: int) -> BookSnapshot:
     idx = int(np.searchsorted(seqs, seq, side="right")) - 1
     if idx < 0:
         return BookSnapshot(seq=seq, bid_px=0, ask_px=0, bid_qty=0, ask_qty=0)
-    row = log.tops.iloc[idx]
+    row = {name: column.to_numpy()[idx] for name, column in log.tops.items()}
     return BookSnapshot(
         seq=int(row["seq"]),
         bid_px=int(row["bid_px"]),
@@ -67,14 +65,23 @@ def render(snapshot: BookSnapshot, output: str | Path | None = None) -> Figure:
     dashboard as a single-frame view; for animated reconstruction across
     sequence ranges, see `replay_anim`.
     """
-    fig, ax = plt.subplots(figsize=(8, 3))
+    fig = Figure(figsize=(8, 3))
+    ax = fig.subplots()
     if snapshot.bid_qty:
         ax.barh(
-            snapshot.bid_px, -snapshot.bid_qty, color="#2E7D32", height=0.8, label="bid"
+            snapshot.bid_px,
+            -float(snapshot.bid_qty),
+            color="#2E7D32",
+            height=0.8,
+            label="bid",
         )
     if snapshot.ask_qty:
         ax.barh(
-            snapshot.ask_px, snapshot.ask_qty, color="#C62828", height=0.8, label="ask"
+            snapshot.ask_px,
+            float(snapshot.ask_qty),
+            color="#C62828",
+            height=0.8,
+            label="ask",
         )
     ax.axvline(0, color="#37474F", linewidth=1)
     ax.set_xlabel("quantity")

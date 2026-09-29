@@ -4,78 +4,68 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from matplotlib.figure import Figure
-
     from .event_log import EventLog
 
 
 def render(
-    log: EventLog, *, bins: int = 200, output: str | Path | None = None
+    log: EventLog,
+    *,
+    px_bins: int = 80,
+    bins: int = 200,
+    output: str | Path | None = None,
 ) -> Figure:
     """Render bid/ask price occupancy over time as a two-row heatmap.
 
-    The event sequence is binned into `bins` columns; price is binned into
-    its full ticks range observed in top events. Cells are coloured by the
-    aggregate quantity at the (price, time-bin) cell. Two panels (bid above,
-    ask below) so polarity and lead/lag are visible at a glance.
+    The event sequence is binned into `bins` columns. Price takes one row per
+    tick while the range observed in top events fits in `px_bins` rows, and is
+    binned into `px_bins` rows past that, so the figure's size does not grow
+    with the tick range. Cells are coloured by the aggregate quantity at the
+    (price, time-bin) cell. Two panels (bid above, ask below) so polarity and
+    lead/lag are visible at a glance.
     """
     if log.tops.empty:
         raise NoTopEventsError
 
     tops = log.tops
     seqs = tops["seq"].to_numpy()
-    seq_edges = np.linspace(int(seqs.min()), int(seqs.max()), bins + 1)
+    seq_range = (seqs.min(), seqs.max())
 
-    def panel(side_px: str, side_qty: str) -> tuple[np.ndarray, int, int]:
+    fig = Figure(figsize=(10, 6))
+    ax_bid, ax_ask = fig.subplots(2, 1, sharex=True)
+    for ax, side, cmap in ((ax_bid, "bid", "Greens"), (ax_ask, "ask", "Reds")):
         # The columns are read as arrays and masked there rather than through a
         # boolean DataFrame index, which copies the frame before histogram2d
         # reads three of its columns back out as arrays anyway.
-        qty = tops[side_qty].to_numpy()
+        qty = tops[f"{side}_qty"].to_numpy()
         keep = qty > 0
-        if not keep.any():
-            return np.zeros((1, bins)), 0, 0
-        px = tops[side_px].to_numpy()[keep]
-        px_min, px_max = int(px.min()), int(px.max())
-        px_edges = np.arange(px_min, px_max + 2)
-        h, _, _ = np.histogram2d(
-            px, seqs[keep], bins=[px_edges, seq_edges], weights=qty[keep]
-        )
-        return h, px_min, px_max
-
-    bid_h, bid_lo, bid_hi = panel("bid_px", "bid_qty")
-    ask_h, ask_lo, ask_hi = panel("ask_px", "ask_qty")
-
-    fig, (ax_bid, ax_ask) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-    if bid_h.size:
-        ax_bid.imshow(
-            bid_h,
-            aspect="auto",
-            origin="lower",
-            interpolation="nearest",
-            extent=(seq_edges[0], seq_edges[-1], bid_lo, bid_hi + 1),
-            cmap="Greens",
-        )
-    ax_bid.set_ylabel("bid px (ticks)")
+        if keep.any():
+            px = tops[f"{side}_px"].to_numpy()[keep]
+            px_min, px_max = px.min(), px.max()
+            h, px_edges, seq_edges = np.histogram2d(
+                px,
+                seqs[keep],
+                bins=[min(px_max - px_min + 1, px_bins), bins],
+                range=[(px_min - 0.5, px_max + 0.5), seq_range],
+                weights=qty[keep],
+            )
+            ax.imshow(
+                h,
+                aspect="auto",
+                origin="lower",
+                interpolation="nearest",
+                extent=(seq_edges[0], seq_edges[-1], px_edges[0], px_edges[-1]),
+                cmap=cmap,
+            )
+        ax.set_ylabel(f"{side} px (ticks)")
     ax_bid.set_title("Top-of-book occupancy and aggregate qty over time")
-
-    if ask_h.size:
-        ax_ask.imshow(
-            ask_h,
-            aspect="auto",
-            origin="lower",
-            interpolation="nearest",
-            extent=(seq_edges[0], seq_edges[-1], ask_lo, ask_hi + 1),
-            cmap="Reds",
-        )
-    ax_ask.set_ylabel("ask px (ticks)")
     ax_ask.set_xlabel("sequence")
 
     fig.tight_layout()

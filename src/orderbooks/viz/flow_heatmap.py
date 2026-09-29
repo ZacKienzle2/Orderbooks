@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 
 from .event_log import NoFillEventsError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from matplotlib.figure import Figure
 
     from .event_log import EventLog
 
@@ -35,18 +33,19 @@ def render(
         raise NoFillEventsError
 
     fills = log.fills
-    px_edges = np.linspace(
-        fills["px"].min() - 0.5, fills["px"].max() + 0.5, px_bins + 1
-    )
-    seq_edges = np.linspace(fills["seq"].min(), fills["seq"].max(), time_bins + 1)
-    h, _, _ = np.histogram2d(
+    h, px_edges, seq_edges = np.histogram2d(
         fills["px"].to_numpy(),
         fills["seq"].to_numpy(),
-        bins=[px_edges, seq_edges],
+        bins=[px_bins, time_bins],
+        range=[
+            (fills["px"].min() - 0.5, fills["px"].max() + 0.5),
+            (fills["seq"].min(), fills["seq"].max()),
+        ],
         weights=fills["qty"].to_numpy(),
     )
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig = Figure(figsize=(10, 5))
+    ax = fig.subplots()
     im = ax.imshow(
         h,
         aspect="auto",

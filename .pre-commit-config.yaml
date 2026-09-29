@@ -57,10 +57,11 @@ repos:
         files: src|tests|noxfile.py
         args: []
         additional_dependencies:
+          - duckdb
+          - hypothesis
           - matplotlib
           - nox
           - numpy
-          - orjson
           - pandas-stubs
           - pytest
           - scipy-stubs
@@ -77,14 +78,6 @@ repos:
     rev: "v0.11.0.1-1"
     hooks:
       - id: shellcheck
-
-  - repo: local
-    hooks:
-      - id: disallow-caps
-        name: Disallow improper capitalization
-        language: pygrep
-        entry: PyBind|Numpy|Cmake|CCache|Github|PyTest
-        exclude: .pre-commit-config.yaml
 
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: "v0.6.13"

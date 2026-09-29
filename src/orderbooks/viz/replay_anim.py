@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import matplotlib.animation as anim
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from .event_log import NoTopEventsError
 
@@ -48,9 +48,10 @@ def render(
     bid_qty, ask_qty = tops["bid_qty"].to_numpy(), tops["ask_qty"].to_numpy()
     px_min = int(min(bid_px.min(), ask_px.min()))
     px_max = int(max(bid_px.max(), ask_px.max()))
-    qty_max = int(max(bid_qty.max(), ask_qty.max()))
+    qty_max = float(max(bid_qty.max(), ask_qty.max()))
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig = Figure(figsize=figsize)
+    ax = fig.subplots()
     ax.set_xlabel("quantity (negative = bid, positive = ask)")
     ax.set_ylabel("price (ticks)")
     ax.grid(True, alpha=0.3)
@@ -71,7 +72,7 @@ def render(
             ax.barh(
                 row["ask_px"], row["ask_qty"], color="#C62828", height=0.8, label="ask"
             )
-        ax.set_title(f"seq {int(row['seq'])}")
+        ax.set_title(f"seq {tops['seq'].iat[i]}")
         ax.set_xlabel("quantity (negative = bid, positive = ask)")
         ax.set_ylabel("price (ticks)")
         if row["bid_qty"] > 0 or row["ask_qty"] > 0:

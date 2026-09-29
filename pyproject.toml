@@ -43,8 +43,8 @@ dependencies = [
   "pandas>=2.2",
   "matplotlib>=3.9",
   "scipy>=1.14",
-  "orjson>=3.11.9",
   "streamlit>=1.38",
+  "duckdb>=1.5.6",
 ]
 
 [project.urls]
@@ -56,6 +56,7 @@ Changelog = "https://github.com/ZacKienzle2/Orderbooks/releases"
 
 [dependency-groups]
 test = [
+  "hypothesis>=6",
   "pytest >=9",
   "pytest-cov >=7",
 ]
@@ -116,6 +117,7 @@ report.exclude_also = [
 
 [tool.mypy]
 files = ["src", "tests"]
+mypy_path = "src"
 python_version = "3.12"
 warn_unused_configs = true
 strict = true
@@ -178,6 +180,5 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D100", "D103", "T20"]
-"noxfile.py" = ["D", "T20"]
-"docs/conf.py" = ["D"]
+"noxfile.py" = ["T20"]
 "src/orderbooks/bench_ci.py" = ["T20"]
