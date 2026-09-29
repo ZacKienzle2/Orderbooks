@@ -42,3 +42,20 @@ loads:
   - 0
   - 0.1
   - 0.3
+
+# The layout experiment, run as the target `layout`. It builds each preset this many times with
+# lld's section padding randomised by a seed of its own, and runs each binary `repeats` times at
+# each load. Thirty binaries follow the initial experiment of 30 repetitions at each level
+# (Kalibera and Jones, ISMM 2013, section 9.1). ADR-0055 compared these presets with one binary a
+# side, and the difference it found was largest at 0.3 and absent closed.
+layout:
+  presets:
+    - conda-clang-rel
+    - conda-clang-rel-no-frontend-flags
+  binaries: 30
+  loads:
+    - 0
+    - 0.3
+  metrics:
+    - p50
+    - p99

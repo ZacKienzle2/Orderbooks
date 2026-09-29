@@ -29,3 +29,9 @@ set-resources:
     slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
   latency:
     slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+  layout_latency:
+    slurm_extra: --threads-per-core=1 --cores-per-socket=14 --exclusive
+# The runs of one binary and load form one connected group, and two of them, the binary's two loads,
+# go to one Slurm job, so a node runs a binary's runs back to back rather than one job each.
+group-components:
+  - layout=2
